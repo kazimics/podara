@@ -1,6 +1,7 @@
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
     alias(libs.plugins.compose.multiplatform)
+    alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.sqldelight)
 }
 
@@ -39,7 +40,7 @@ kotlin {
             }
         }
 
-        val jvmMain by getting {
+        val desktopMain by getting {
             dependencies {
                 implementation(libs.ktor.client.okhttp)
                 implementation(libs.sqldelight.sqlite.driver)
@@ -52,6 +53,7 @@ sqldelight {
     databases {
         create("PodiumDatabase") {
             packageName.set("app.podiumpodcasts.podium.sqldelight")
+            verifyMigrations.set(false)
         }
     }
 }

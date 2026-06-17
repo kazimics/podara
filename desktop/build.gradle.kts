@@ -3,14 +3,14 @@ import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
     alias(libs.plugins.compose.multiplatform)
-    application
+    alias(libs.plugins.kotlin.compose)
 }
 
 kotlin {
     jvm("desktop")
 
     sourceSets {
-        val jvmMain by getting {
+        val desktopMain by getting {
             dependencies {
                 implementation(compose.desktop.currentOs)
                 implementation(compose.material3)
@@ -25,8 +25,6 @@ kotlin {
                 implementation(project(":feature-settings"))
 
                 implementation(libs.kotlinx.coroutines.core)
-                implementation(libs.vlcj.core)
-                implementation(libs.vlcj.natives.win64)
             }
         }
     }
