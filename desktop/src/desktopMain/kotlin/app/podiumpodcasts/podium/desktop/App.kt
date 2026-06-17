@@ -18,6 +18,7 @@ import app.podiumpodcasts.podium.desktop.player.FullPlayer
 import app.podiumpodcasts.podium.desktop.player.MediaPlayerState
 import app.podiumpodcasts.podium.desktop.player.MiniPlayer
 import app.podiumpodcasts.podium.manager.AddPodcastResult
+import app.podiumpodcasts.podium.manager.DownloadManager
 import app.podiumpodcasts.podium.manager.PodcastManager
 import app.podiumpodcasts.podium.ui.theme.PodiumTheme
 import kotlinx.coroutines.launch
@@ -34,6 +35,11 @@ fun App() {
     }
 
     val podcastManager = remember { PodcastManager(database) }
+    val downloadManager = remember {
+        val downloadsDir = File(System.getProperty("user.home"), ".podium/downloads")
+        downloadsDir.mkdirs()
+        DownloadManager(database, downloadsDir)
+    }
     val playerState = remember { MediaPlayerState() }
     val scope = rememberCoroutineScope()
 
@@ -60,15 +66,12 @@ fun App() {
                         podcast = selectedPodcast!!,
                         database = database,
                         playerState = playerState,
-                        onBack = {
-                            selectedPodcast = null
-                        }
+                        downloadManager = downloadManager,
+                        onBack = { selectedPodcast = null }
                     )
                     currentScreen == "home" -> HomeScreen(
                         podcasts = podcasts,
-                        onPodcastClick = { podcast ->
-                            selectedPodcast = podcast
-                        },
+                        onPodcastClick = { podcast -> selectedPodcast = podcast },
                         onAddPodcast = { showAddDialog = true }
                     )
                     currentScreen == "settings" -> SettingsScreen(
@@ -175,9 +178,12 @@ private fun PodcastDetailScreen(
     podcast: Podcast,
     database: AppDatabase,
     playerState: MediaPlayerState,
+    downloadManager: DownloadManager,
     onBack: () -> Unit
 ) {
     var episodes by remember { mutableStateOf(emptyList<PodcastEpisode>()) }
+    var downloadingEpisodes by remember { mutableStateOf(setOf<String>()) }
+    val scope = rememberCoroutineScope()
 
     LaunchedEffect(podcast.origin) {
         episodes = database.episodes.getAllByOrigin(podcast.origin)
@@ -205,18 +211,36 @@ private fun PodcastDetailScreen(
         } else {
             LazyColumn(modifier = Modifier.fillMaxSize().padding(padding)) {
                 items(episodes) { episode ->
+                    val isDownloaded = remember(episode) {
+                        downloadManager.getDownloadFile(episode.origin, episode.audioUrl).exists()
+                    }
+                    val isDownloading = episode.id in downloadingEpisodes
+
                     ListItem(
                         headlineContent = { Text(episode.title) },
                         supportingContent = {
-                            Text(
-                                text = formatDuration(episode.duration),
-                                style = MaterialTheme.typography.bodySmall
-                            )
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text = formatDuration(episode.duration),
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                                if (isDownloaded) {
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Icon(
+                                        Icons.Default.CheckCircle,
+                                        contentDescription = "Downloaded",
+                                        modifier = Modifier.size(14.dp),
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                            }
                         },
                         leadingContent = {
                             IconButton(onClick = {
+                                val audioFile = downloadManager.getDownloadFile(episode.origin, episode.audioUrl)
+                                val url = if (audioFile.exists()) audioFile.absolutePath else episode.audioUrl
                                 playerState.play(
-                                    url = episode.audioUrl,
+                                    url = url,
                                     title = episode.title,
                                     artworkUrl = episode.imageUrl
                                 )
@@ -224,9 +248,36 @@ private fun PodcastDetailScreen(
                                 Icon(Icons.Default.PlayCircle, contentDescription = "Play")
                             }
                         },
+                        trailingContent = {
+                            if (!isDownloaded && !isDownloading) {
+                                IconButton(onClick = {
+                                    scope.launch {
+                                        downloadingEpisodes = downloadingEpisodes + episode.id
+                                        try {
+                                            downloadManager.downloadEpisode(
+                                                episodeId = episode.id,
+                                                audioUrl = episode.audioUrl,
+                                                origin = episode.origin
+                                            )
+                                        } finally {
+                                            downloadingEpisodes = downloadingEpisodes - episode.id
+                                        }
+                                    }
+                                }) {
+                                    Icon(Icons.Default.Download, contentDescription = "Download")
+                                }
+                            } else if (isDownloading) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(24.dp),
+                                    strokeWidth = 2.dp
+                                )
+                            }
+                        },
                         modifier = Modifier.clickable {
+                            val audioFile = downloadManager.getDownloadFile(episode.origin, episode.audioUrl)
+                            val url = if (audioFile.exists()) audioFile.absolutePath else episode.audioUrl
                             playerState.play(
-                                url = episode.audioUrl,
+                                url = url,
                                 title = episode.title,
                                 artworkUrl = episode.imageUrl
                             )
