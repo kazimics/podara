@@ -28,6 +28,12 @@ kotlin {
                 implementation(libs.vlcj.core)
             }
         }
+        val desktopTest by getting {
+            dependencies {
+                implementation(kotlin("test"))
+                implementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.2")
+            }
+        }
     }
 }
 
