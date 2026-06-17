@@ -2,13 +2,25 @@ package app.podiumpodcasts.podium.desktop.player
 
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.*
+import java.util.concurrent.TimeUnit
+
+data class QueueItem(
+    val url: String,
+    val title: String,
+    val artworkUrl: String? = null
+)
 
 class MediaPlayerState {
 
     private val player = VlcjMediaPlayer()
+    private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
+    private var sleepTimerJob: Job? = null
 
     var isPlaying by mutableStateOf(false)
         private set
@@ -33,6 +45,13 @@ class MediaPlayerState {
         private set
 
     var sleepTimerTrigger by mutableStateOf<Long?>(null)
+        private set
+    var sleepTimerMinutes by mutableStateOf<Int?>(null)
+        private set
+
+    val queue = mutableStateListOf<QueueItem>()
+    var queueIndex by mutableIntStateOf(-1)
+        private set
 
     init {
         player.onPlayStateChanged = { playing ->
@@ -56,6 +75,49 @@ class MediaPlayerState {
         isLoading = true
         error = null
         player.play(url)
+    }
+
+    fun playFromQueue(index: Int) {
+        if (index < 0 || index >= queue.size) return
+        queueIndex = index
+        val item = queue[index]
+        play(item.url, item.title, item.artworkUrl)
+    }
+
+    fun addToQueue(url: String, title: String, artworkUrl: String? = null) {
+        queue.add(QueueItem(url, title, artworkUrl))
+    }
+
+    fun removeFromQueue(index: Int) {
+        if (index < 0 || index >= queue.size) return
+        queue.removeAt(index)
+        if (index < queueIndex) {
+            queueIndex--
+        } else if (index == queueIndex) {
+            if (queue.isNotEmpty()) {
+                val newIndex = queueIndex.coerceAtMost(queue.size - 1)
+                queueIndex = newIndex
+                val item = queue[newIndex]
+                play(item.url, item.title, item.artworkUrl)
+            } else {
+                queueIndex = -1
+                stop()
+            }
+        }
+    }
+
+    fun playNext() {
+        if (queueIndex + 1 < queue.size) {
+            playFromQueue(queueIndex + 1)
+        }
+    }
+
+    fun playPrevious() {
+        if (currentPosition > 3000) {
+            seek(0)
+        } else if (queueIndex > 0) {
+            playFromQueue(queueIndex - 1)
+        }
     }
 
     fun pause() {
@@ -103,8 +165,31 @@ class MediaPlayerState {
         playbackSpeed = speed
     }
 
-    fun setSleepTimer(triggerUnixMillis: Long?) {
-        sleepTimerTrigger = triggerUnixMillis
+    fun setSleepTimer(minutes: Int?) {
+        sleepTimerJob?.cancel()
+        if (minutes == null || minutes <= 0) {
+            sleepTimerTrigger = null
+            sleepTimerMinutes = null
+            return
+        }
+        val triggerTime = System.currentTimeMillis() + TimeUnit.MINUTES.toMillis(minutes.toLong())
+        sleepTimerTrigger = triggerTime
+        sleepTimerMinutes = minutes
+
+        sleepTimerJob = scope.launch {
+            delay(TimeUnit.MINUTES.toMillis(minutes.toLong()))
+            withContext(Dispatchers.Main) {
+                pause()
+                sleepTimerTrigger = null
+                sleepTimerMinutes = null
+            }
+        }
+    }
+
+    fun cancelSleepTimer() {
+        sleepTimerJob?.cancel()
+        sleepTimerTrigger = null
+        sleepTimerMinutes = null
     }
 
     fun getProgress(): Float {
@@ -114,6 +199,8 @@ class MediaPlayerState {
     }
 
     fun release() {
+        sleepTimerJob?.cancel()
+        scope.cancel()
         player.release()
     }
 }

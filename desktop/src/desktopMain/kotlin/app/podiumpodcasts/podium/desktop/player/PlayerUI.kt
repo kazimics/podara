@@ -3,6 +3,8 @@ package app.podiumpodcasts.podium.desktop.player
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -80,6 +82,7 @@ fun MiniPlayer(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FullPlayer(
     state: MediaPlayerState,
@@ -88,6 +91,8 @@ fun FullPlayer(
 ) {
     var sliderPosition by remember { mutableFloatStateOf(0f) }
     var isDragging by remember { mutableStateOf(false) }
+    var showQueue by remember { mutableStateOf(false) }
+    var showSleepTimer by remember { mutableStateOf(false) }
 
     LaunchedEffect(state.currentPosition, state.duration) {
         if (!isDragging && state.duration > 0) {
@@ -117,7 +122,7 @@ fun FullPlayer(
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f).padding(horizontal = 8.dp)
             )
-            IconButton(onClick = { }) {
+            IconButton(onClick = { showQueue = true }) {
                 Icon(Icons.Default.QueueMusic, contentDescription = "Queue")
             }
         }
@@ -159,6 +164,14 @@ fun FullPlayer(
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically
         ) {
+            IconButton(onClick = { state.playPrevious() }) {
+                Icon(
+                    Icons.Default.SkipPrevious,
+                    contentDescription = "Previous",
+                    modifier = Modifier.size(32.dp)
+                )
+            }
+
             IconButton(onClick = { state.seekBack() }) {
                 Icon(
                     Icons.Default.Replay10,
@@ -185,6 +198,14 @@ fun FullPlayer(
                     modifier = Modifier.size(32.dp)
                 )
             }
+
+            IconButton(onClick = { state.playNext() }) {
+                Icon(
+                    Icons.Default.SkipNext,
+                    contentDescription = "Next",
+                    modifier = Modifier.size(32.dp)
+                )
+            }
         }
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -199,11 +220,161 @@ fun FullPlayer(
                 onSpeedSelected = { state.changePlaybackSpeed(it) }
             )
 
+            SleepTimerButton(
+                state = state,
+                onClick = { showSleepTimer = true }
+            )
+
             VolumeControl(
                 currentVolume = state.volume,
                 onVolumeChange = { state.changeVolume(it) }
             )
         }
+    }
+
+    if (showQueue) {
+        QueueSheet(
+            state = state,
+            onDismiss = { showQueue = false }
+        )
+    }
+
+    if (showSleepTimer) {
+        SleepTimerSheet(
+            state = state,
+            onDismiss = { showSleepTimer = false }
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun QueueSheet(
+    state: MediaPlayerState,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Queue") },
+        text = {
+            if (state.queue.isEmpty()) {
+                Text("Queue is empty")
+            } else {
+                LazyColumn {
+                    itemsIndexed(state.queue) { index, item ->
+                        ListItem(
+                            headlineContent = {
+                                Text(
+                                    text = item.title,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    color = if (index == state.queueIndex)
+                                        MaterialTheme.colorScheme.primary
+                                    else MaterialTheme.colorScheme.onSurface
+                                )
+                            },
+                            leadingContent = {
+                                if (index == state.queueIndex) {
+                                    Icon(
+                                        Icons.Default.PlayArrow,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                            },
+                            trailingContent = {
+                                IconButton(onClick = { state.removeFromQueue(index) }) {
+                                    Icon(Icons.Default.Close, contentDescription = "Remove")
+                                }
+                            },
+                            modifier = Modifier.clickable {
+                                state.playFromQueue(index)
+                                onDismiss()
+                            }
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Close")
+            }
+        }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SleepTimerSheet(
+    state: MediaPlayerState,
+    onDismiss: () -> Unit
+) {
+    val options = listOf(5, 10, 15, 20, 30, 45, 60, 90)
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Column {
+                Text("Sleep Timer")
+                if (state.sleepTimerMinutes != null) {
+                    Text(
+                        text = "Active: ${state.sleepTimerMinutes} min",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+        },
+        text = {
+            Column {
+                if (state.sleepTimerMinutes != null) {
+                    TextButton(
+                        onClick = {
+                            state.cancelSleepTimer()
+                            onDismiss()
+                        }
+                    ) {
+                        Text("Cancel Timer")
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+                options.forEach { minutes ->
+                    TextButton(
+                        onClick = {
+                            state.setSleepTimer(minutes)
+                            onDismiss()
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("$minutes minutes")
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Close")
+            }
+        }
+    )
+}
+
+@Composable
+private fun SleepTimerButton(
+    state: MediaPlayerState,
+    onClick: () -> Unit
+) {
+    TextButton(onClick = onClick) {
+        Icon(
+            Icons.Default.Timer,
+            contentDescription = "Sleep Timer",
+            modifier = Modifier.size(18.dp)
+        )
+        Spacer(modifier = Modifier.width(4.dp))
+        Text(
+            text = if (state.sleepTimerMinutes != null) "${state.sleepTimerMinutes}m" else "Timer"
+        )
     }
 }
 
