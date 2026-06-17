@@ -64,7 +64,8 @@ fun App() {
                         database = database,
                         onPodcastClick = { podcast ->
                             selectedPodcast = podcast
-                        }
+                        },
+                        playerState = playerState
                     )
                     currentScreen == "settings" -> SettingsScreen(
                         onBack = { currentScreen = "home" }
@@ -85,13 +86,20 @@ fun App() {
 private fun HomeScreen(
     podcasts: List<Podcast>,
     database: AppDatabase,
-    onPodcastClick: (Podcast) -> Unit
+    onPodcastClick: (Podcast) -> Unit,
+    playerState: MediaPlayerState
 ) {
+    var testUrl by remember { mutableStateOf("") }
+    var showTestDialog by remember { mutableStateOf(false) }
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("Podium") },
                 actions = {
+                    IconButton(onClick = { showTestDialog = true }) {
+                        Icon(Icons.Default.PlayCircle, contentDescription = "Test Playback")
+                    }
                     IconButton(onClick = { }) {
                         Icon(Icons.Default.Add, contentDescription = "Add Podcast")
                     }
@@ -109,6 +117,10 @@ private fun HomeScreen(
                     Spacer(modifier = Modifier.height(16.dp))
                     Text("No podcasts yet", style = MaterialTheme.typography.headlineSmall)
                     Text("Add one to get started!", style = MaterialTheme.typography.bodyMedium)
+                    Spacer(modifier = Modifier.height(16.dp))
+                    TextButton(onClick = { showTestDialog = true }) {
+                        Text("Test Audio Playback")
+                    }
                 }
             }
         } else {
@@ -126,6 +138,43 @@ private fun HomeScreen(
                 }
             }
         }
+    }
+
+    if (showTestDialog) {
+        AlertDialog(
+            onDismissRequest = { showTestDialog = false },
+            title = { Text("Test Audio Playback") },
+            text = {
+                Column {
+                    Text("Enter an audio URL to test playback:")
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = testUrl,
+                        onValueChange = { testUrl = it },
+                        label = { Text("Audio URL") },
+                        placeholder = { Text("https://example.com/audio.mp3") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        if (testUrl.isNotBlank()) {
+                            playerState.play(url = testUrl, title = "Test Audio")
+                            showTestDialog = false
+                        }
+                    }
+                ) {
+                    Text("Play")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showTestDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 }
 
