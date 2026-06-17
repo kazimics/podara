@@ -9,29 +9,20 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import app.podiumpodcasts.podium.data.AppDatabase
-import app.podiumpodcasts.podium.data.repository.SettingsRepository
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
-    settingsRepository: SettingsRepository,
     onBack: () -> Unit
 ) {
-    val enableArtworkColors by settingsRepository.appearance.enableArtworkColors.collectAsState()
-    val playerPlaybackSpeed by settingsRepository.behavior.playerPlaybackSpeed.collectAsState()
-    val scope = rememberCoroutineScope()
-
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("Settings") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back"
-                        )
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 }
             )
@@ -44,24 +35,6 @@ fun SettingsScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(16.dp)
         ) {
-            Text("Appearance", style = MaterialTheme.typography.titleMedium)
-            Spacer(modifier = Modifier.height(8.dp))
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text("Enable artwork colors")
-                Switch(
-                    checked = enableArtworkColors,
-                    onCheckedChange = {
-                        scope.launch { settingsRepository.appearance.setEnableArtworkColors(it) }
-                    }
-                )
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-            Text("Playback", style = MaterialTheme.typography.titleMedium)
-            Spacer(modifier = Modifier.height(8.dp))
-            Text("Playback speed: ${playerPlaybackSpeed}x")
-
-            Spacer(modifier = Modifier.height(16.dp))
             Text("About", style = MaterialTheme.typography.titleMedium)
             Spacer(modifier = Modifier.height(8.dp))
             Text("Podium - Podcast Player", style = MaterialTheme.typography.bodyMedium)
