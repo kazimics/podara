@@ -39,6 +39,14 @@ room = "2.8.4"
 rssparser = "6.1.4"
 workRuntimeKtx = "2.11.1"
 
+# KMP / Compose Multiplatform
+composeMultiplatform = "1.9.0"
+sqlDelight = "2.1.0"
+kotlinxCoroutines = "1.10.2"
+kotlinxDatetime = "0.7.0"
+multiplatformSettings = "1.3.0"
+vlcj = "4.8.4"
+
 [libraries]
 aboutlibraries-core = { group = "com.mikepenz", name = "aboutlibraries-core", version.ref = "aboutLibraries" }
 aboutlibraries-compose-m3 = { module = "com.mikepenz:aboutlibraries-compose-m3", version.ref = "aboutLibraries" }
@@ -108,9 +116,36 @@ rssparser = { module = "com.prof18.rssparser:rssparser", version.ref = "rssparse
 xmlutil-core = { module = "io.github.pdvrieze.xmlutil:core-android", version.ref = "xmlutil" }
 xmlutil-serialization = { module = "io.github.pdvrieze.xmlutil:serialization", version.ref = "xmlutil" }
 
+# KMP / Compose Multiplatform (shared module)
+kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinxCoroutines" }
+kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "kotlinxDatetime" }
+kotlinx-serialization-json-core = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinxSerializationJson" }
+ktor-client-core-kmp = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
+ktor-client-content-negotiation-kmp = { module = "io.ktor:ktor-client-content-negotiation", version.ref = "ktor" }
+ktor-serialization-json = { module = "io.ktor:ktor-serialization-kotlinx-json", version.ref = "ktor" }
+ktor-client-logging-kmp = { module = "io.ktor:ktor-client-logging", version.ref = "ktor" }
+rssparser-kmp = { module = "com.prof18.rssparser:rssparser", version.ref = "rssparser" }
+multiplatform-settings-core = { module = "com.russhwolf:multiplatform-settings", version.ref = "multiplatformSettings" }
+multiplatform-settings-coroutines = { module = "com.russhwolf:multiplatform-settings-coroutines", version.ref = "multiplatformSettings" }
+
+# Desktop specific
+vlcj-core = { module = "uk.co.caprica:vlcj", version.ref = "vlcj" }
+vlcj-natives-win32 = { module = "uk.co.caprica:vlcj-natives-win32", version.ref = "vlcj" }
+vlcj-natives-win64 = { module = "uk.co.caprica:vlcj-natives-win64", version.ref = "vlcj" }
+
+# SQLDelight
+sqldelight-runtime = { module = "app.cash.sqldelight:runtime", version.ref = "sqlDelight" }
+sqldelight-coroutines = { module = "app.cash.sqldelight:coroutines-extensions", version.ref = "sqlDelight" }
+sqldelight-sqlite-driver = { module = "app.cash.sqldelight:sqlite-driver", version.ref = "sqlDelight" }
+
 [plugins]
 aboutLibraries = { id = "com.mikepenz.aboutlibraries.plugin", version.ref = "aboutLibraries" }
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 jetbrains-kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlinSerialization" }
+
+# KMP / Compose Multiplatform
+kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
+compose-multiplatform = { id = "org.jetbrains.compose", version.ref = "composeMultiplatform" }
+sqldelight = { id = "app.cash.sqldelight", version.ref = "sqlDelight" }
