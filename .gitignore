@@ -43,3 +43,6 @@ shared/build/
 desktop/build/
 feature-*/build/
 
+# Runtime state
+data/
+
