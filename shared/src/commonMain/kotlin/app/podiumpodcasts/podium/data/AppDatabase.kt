@@ -247,6 +247,35 @@ class HistoryDao(private val conn: Connection) {
         list
     }
 
+    suspend fun getAllWithEpisode(): List<Pair<PodcastHistory, PodcastEpisode?>> = withContext(Dispatchers.IO) {
+        val rs = conn.createStatement().executeQuery(
+            """SELECT h.id, h.origin, h.episodeId, h.timestamp,
+               e.title as epTitle, e.audioUrl as epAudioUrl, e.imageUrl as epImageUrl,
+               e.podcastTitle as epPodcastTitle, e.duration as epDuration
+               FROM podcastHistory h
+               LEFT JOIN podcastEpisode e ON h.episodeId = e.id
+               ORDER BY h.timestamp DESC"""
+        )
+        val list = mutableListOf<Pair<PodcastHistory, PodcastEpisode?>>()
+        while (rs.next()) {
+            val history = PodcastHistory(
+                id = rs.getInt("id"), origin = rs.getString("origin"),
+                episodeId = rs.getString("episodeId"), timestamp = rs.getLong("timestamp")
+            )
+            val epTitle = rs.getString("epTitle")
+            val episode = if (epTitle != null) PodcastEpisode(
+                id = history.episodeId, guid = "", origin = history.origin,
+                link = "", title = epTitle, description = "",
+                imageUrl = rs.getString("epImageUrl"), author = "",
+                pubDate = 0, duration = rs.getInt("epDuration"),
+                audioUrl = rs.getString("epAudioUrl") ?: "",
+                podcastTitle = rs.getString("epPodcastTitle") ?: ""
+            ) else null
+            list.add(history to episode)
+        }
+        list
+    }
+
     suspend fun insert(origin: String, episodeId: String) = withContext(Dispatchers.IO) {
         val ts = System.currentTimeMillis()
         conn.prepareStatement("INSERT INTO podcastHistory (origin, episodeId, timestamp) VALUES (?, ?, ?)").apply {
@@ -258,6 +287,10 @@ class HistoryDao(private val conn: Connection) {
         conn.prepareStatement("DELETE FROM podcastHistory WHERE episodeId = ?").apply {
             setString(1, episodeId); executeUpdate()
         }
+    }
+
+    suspend fun deleteAll() = withContext(Dispatchers.IO) {
+        conn.createStatement().executeUpdate("DELETE FROM podcastHistory")
     }
 }
 

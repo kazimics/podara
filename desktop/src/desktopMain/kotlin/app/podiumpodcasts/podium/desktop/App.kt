@@ -24,6 +24,19 @@ import app.podiumpodcasts.podium.ui.theme.PodiumTheme
 import kotlinx.coroutines.launch
 import java.io.File
 
+private suspend fun playAndRecordHistory(
+    database: AppDatabase,
+    playerState: MediaPlayerState,
+    episode: PodcastEpisode
+) {
+    playerState.play(
+        url = episode.audioUrl,
+        title = episode.title,
+        artworkUrl = episode.imageUrl
+    )
+    database.history.insert(episode.origin, episode.id)
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun App() {
@@ -74,6 +87,7 @@ fun App() {
                         onPodcastClick = { podcast -> selectedPodcast = podcast },
                         onAddPodcast = { showAddDialog = true },
                         onDiscover = { currentScreen = "discover" },
+                        onHistory = { currentScreen = "history" },
                         onSettings = { currentScreen = "settings" }
                     )
                     currentScreen == "discover" -> DiscoverScreen(
@@ -85,6 +99,11 @@ fun App() {
                     )
                     currentScreen == "settings" -> SettingsScreen(
                         database = database,
+                        onBack = { currentScreen = "home" }
+                    )
+                    currentScreen == "history" -> HistoryScreen(
+                        database = database,
+                        playerState = playerState,
                         onBack = { currentScreen = "home" }
                     )
                 }
@@ -134,6 +153,7 @@ private fun HomeScreen(
     onPodcastClick: (Podcast) -> Unit,
     onAddPodcast: () -> Unit,
     onDiscover: () -> Unit,
+    onHistory: () -> Unit,
     onSettings: () -> Unit
 ) {
     Scaffold(
@@ -143,6 +163,9 @@ private fun HomeScreen(
                 actions = {
                     IconButton(onClick = onDiscover) {
                         Icon(Icons.Default.Explore, contentDescription = "Discover")
+                    }
+                    IconButton(onClick = onHistory) {
+                        Icon(Icons.Default.History, contentDescription = "History")
                     }
                     IconButton(onClick = onSettings) {
                         Icon(Icons.Default.Settings, contentDescription = "Settings")
@@ -255,13 +278,12 @@ private fun PodcastDetailScreen(
                         },
                         leadingContent = {
                             IconButton(onClick = {
-                                val audioFile = downloadManager.getDownloadFile(episode.origin, episode.audioUrl)
-                                val url = if (audioFile.exists()) audioFile.absolutePath else episode.audioUrl
-                                playerState.play(
-                                    url = url,
-                                    title = episode.title,
-                                    artworkUrl = episode.imageUrl
-                                )
+                                scope.launch {
+                                    val audioFile = downloadManager.getDownloadFile(episode.origin, episode.audioUrl)
+                                    val url = if (audioFile.exists()) audioFile.absolutePath else episode.audioUrl
+                                    val epWithUrl = episode.copy(audioUrl = url)
+                                    playAndRecordHistory(database, playerState, epWithUrl)
+                                }
                             }) {
                                 Icon(Icons.Default.PlayCircle, contentDescription = "Play")
                             }
@@ -292,13 +314,12 @@ private fun PodcastDetailScreen(
                             }
                         },
                         modifier = Modifier.clickable {
-                            val audioFile = downloadManager.getDownloadFile(episode.origin, episode.audioUrl)
-                            val url = if (audioFile.exists()) audioFile.absolutePath else episode.audioUrl
-                            playerState.play(
-                                url = url,
-                                title = episode.title,
-                                artworkUrl = episode.imageUrl
-                            )
+                            scope.launch {
+                                val audioFile = downloadManager.getDownloadFile(episode.origin, episode.audioUrl)
+                                val url = if (audioFile.exists()) audioFile.absolutePath else episode.audioUrl
+                                val epWithUrl = episode.copy(audioUrl = url)
+                                playAndRecordHistory(database, playerState, epWithUrl)
+                            }
                         }
                     )
                     HorizontalDivider()

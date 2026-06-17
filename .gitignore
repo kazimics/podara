@@ -44,5 +44,5 @@ desktop/build/
 feature-*/build/
 
 # Runtime state
-data/
+/data/
 
