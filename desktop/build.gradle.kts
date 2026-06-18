@@ -25,8 +25,9 @@ kotlin {
                 // JDBC SQLite for desktop
                 implementation("org.xerial:sqlite-jdbc:3.46.1.0")
 
-                // JavaFX Media for audio playback (MP3, AAC, M4A)
+                // JavaFX for audio playback (base + graphics + media)
                 implementation(files("../libs/javafx-base-21.0.2-win.jar"))
+                implementation(files("../libs/javafx-graphics-21.0.2-win.jar"))
                 implementation(files("../libs/javafx-media-21.0.2-win.jar"))
             }
         }
