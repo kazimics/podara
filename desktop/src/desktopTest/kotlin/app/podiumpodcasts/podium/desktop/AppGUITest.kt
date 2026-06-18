@@ -327,4 +327,88 @@ class AppGUITest {
         }
         composeTestRule.onNodeWithText("Search podcasts").assertIsDisplayed()
     }
+
+    // === Navigation Flow Tests ===
+
+    @Test
+    fun testNavigateToDiscover() {
+        composeTestRule.setContent {
+            PodiumTheme { App() }
+        }
+        composeTestRule.onNodeWithContentDescription("Discover").performClick()
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithText("Discover").assertIsDisplayed()
+    }
+
+    @Test
+    fun testNavigateToHistory() {
+        composeTestRule.setContent {
+            PodiumTheme { App() }
+        }
+        composeTestRule.onNodeWithContentDescription("History").performClick()
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithText("History").assertIsDisplayed()
+    }
+
+    @Test
+    fun testNavigateToSettings() {
+        composeTestRule.setContent {
+            PodiumTheme { App() }
+        }
+        composeTestRule.onNodeWithContentDescription("Settings").performClick()
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithText("Settings").assertIsDisplayed()
+    }
+
+    // === Add Podcast Dialog Tests ===
+
+    @Test
+    fun testAddPodcastDialogOpens() {
+        composeTestRule.setContent {
+            PodiumTheme { App() }
+        }
+        composeTestRule.onNodeWithContentDescription("Add Podcast").performClick()
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithText("Enter the RSS feed URL of the podcast:").assertIsDisplayed()
+        composeTestRule.onNodeWithText("RSS Feed URL").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Cancel").assertIsDisplayed()
+    }
+
+    @Test
+    fun testAddPodcastDialogCancel() {
+        composeTestRule.setContent {
+            PodiumTheme { App() }
+        }
+        composeTestRule.onNodeWithContentDescription("Add Podcast").performClick()
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithText("Cancel").performClick()
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithText("No podcasts yet").assertIsDisplayed()
+    }
+
+    // === Home Screen Empty State Tests ===
+
+    @Test
+    fun testEmptyStateShowsRssIcon() {
+        composeTestRule.setContent {
+            PodiumTheme { App() }
+        }
+        composeTestRule.onNodeWithText("No podcasts yet").assertIsDisplayed()
+    }
+
+    @Test
+    fun testEmptyStateShowsSubtitle() {
+        composeTestRule.setContent {
+            PodiumTheme { App() }
+        }
+        composeTestRule.onNodeWithText("Add one to get started!").assertIsDisplayed()
+    }
+
+    @Test
+    fun testEmptyStateAddButtonInCenter() {
+        composeTestRule.setContent {
+            PodiumTheme { App() }
+        }
+        composeTestRule.onNodeWithText("Add Podcast").assertIsDisplayed()
+    }
 }

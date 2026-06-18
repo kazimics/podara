@@ -60,7 +60,7 @@ jobs:
         run: chmod +x gradlew || true
 
       - name: Run GUI tests
-        run: ./gradlew :desktop:desktopTest --tests "app.podiumpodcasts.podium.desktop.AppGUITest"
+        run: ./gradlew :desktop:desktopTest --tests "app.podiumpodcasts.podium.desktop.AppGUITest" --tests "app.podiumpodcasts.podium.desktop.DiscoverScreenTest" --tests "app.podiumpodcasts.podium.desktop.HistoryScreenTest" --tests "app.podiumpodcasts.podium.desktop.SettingsScreenTest"
 
       - name: Upload test results
         uses: actions/upload-artifact@v5
