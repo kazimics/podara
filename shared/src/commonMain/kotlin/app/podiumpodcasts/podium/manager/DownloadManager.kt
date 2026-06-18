@@ -1,6 +1,7 @@
 package app.podiumpodcasts.podium.manager
 
 import app.podiumpodcasts.podium.data.AppDatabase
+import app.podiumpodcasts.podium.utils.Logger
 import app.podiumpodcasts.podium.utils.sha256
 import io.ktor.client.HttpClient
 import io.ktor.client.request.prepareGet
@@ -9,6 +10,8 @@ import io.ktor.http.isSuccess
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
+
+private const val TAG = "DownloadManager"
 
 class DownloadManager(
     private val db: AppDatabase,
@@ -21,14 +24,17 @@ class DownloadManager(
             val episodeDir = File(downloadsDir, origin.sha256())
             episodeDir.mkdirs()
             val outputFile = File(episodeDir, audioUrl.sha256())
+            Logger.i(TAG, "Downloading to: ${outputFile.absolutePath}")
 
             client.prepareGet(audioUrl).execute { httpResponse ->
                 if (!httpResponse.status.isSuccess()) throw Exception("HTTP ${httpResponse.status.value}")
                 outputFile.writeBytes(httpResponse.readBytes())
             }
 
+            Logger.i(TAG, "Download complete: ${outputFile.absolutePath} (${outputFile.length()} bytes)")
             Result.success(outputFile)
         } catch (e: Exception) {
+            Logger.e(TAG, "Download failed: $audioUrl", e)
             Result.failure(e)
         }
     }

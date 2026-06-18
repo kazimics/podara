@@ -36,12 +36,7 @@ class VlcjMediaPlayer {
     private fun findVlcPath(): String? {
         Logger.d(TAG, "Searching for VLC installation...")
 
-        val bundledPath = javaClass.getResource("/vlc")?.toURI()?.let { File(it) }
-        if (bundledPath?.exists() == true) {
-            Logger.d(TAG, "Found bundled VLC at: ${bundledPath.absolutePath}")
-            return bundledPath.absolutePath
-        }
-
+        // Check common VLC installation paths first (most reliable for packaged app)
         val commonPaths = listOf(
             "C:\\Program Files\\VideoLAN\\VLC",
             "C:\\Program Files (x86)\\VideoLAN\\VLC",
@@ -53,6 +48,24 @@ class VlcjMediaPlayer {
                 Logger.d(TAG, "Found VLC at: $path")
                 return path
             }
+        }
+
+        // Check bundled resources (only works when running from Gradle, not from packaged JAR)
+        try {
+            val resource = javaClass.getResource("/vlc")
+            if (resource != null) {
+                val uri = resource.toURI()
+                // jar: URIs are not hierarchical - can't convert to File
+                if (uri.scheme == "file") {
+                    val bundledPath = File(uri)
+                    if (bundledPath.exists()) {
+                        Logger.d(TAG, "Found bundled VLC at: ${bundledPath.absolutePath}")
+                        return bundledPath.absolutePath
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Logger.d(TAG, "Bundled VLC not available: ${e.message}")
         }
 
         Logger.w(TAG, "VLC not found in any standard location")
