@@ -8,6 +8,8 @@ English | [中文](README_zh.md)
 **podium** is a modern, open-source Podcast app for **Windows**, written in Kotlin using Compose Multiplatform.
 The app uses **Material 3** design and **vlcj** for media playback.
 
+This project is a Windows desktop port of [aimok04/podium](https://github.com/aimok04/podium), an Android podcast app.
+
 > [!CAUTION]
 > Keep in mind that *podium* is work in progress software.
 > It is far from feature complete and can contain bugs.

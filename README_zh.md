@@ -8,6 +8,8 @@
 **podium** 是一个现代化的开源播客应用，面向 **Windows** 平台，使用 Kotlin 和 Compose Multiplatform 开发。
 应用采用 **Material 3** 设计，使用 **vlcj** 进行媒体播放。
 
+本项目移植自 [aimok04/podium](https://github.com/aimok04/podium) — 一个 Android 播客应用。
+
 > [!CAUTION]
 > 请注意，*podium* 仍在开发中，功能尚未完善，可能存在 Bug。
 
