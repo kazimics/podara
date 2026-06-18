@@ -279,14 +279,15 @@ private fun openFilePicker(title: String, vararg extensions: String): File? {
 }
 
 private fun openDirectoryPicker(title: String): String? {
-    val frame = Frame()
-    val dialog = FileDialog(frame, title, FileDialog.LOAD)
-    dialog.file = "*.dummy"
-    dialog.isVisible = true
+    val chooser = javax.swing.JFileChooser()
+    chooser.dialogTitle = title
+    chooser.fileSelectionMode = javax.swing.JFileChooser.DIRECTORIES_ONLY
+    chooser.isAcceptAllFileFilterUsed = false
 
-    val dir = dialog.directory
-    dialog.dispose()
-    frame.dispose()
-
-    return dir
+    val result = chooser.showOpenDialog(null)
+    return if (result == javax.swing.JFileChooser.APPROVE_OPTION) {
+        chooser.selectedFile.absolutePath
+    } else {
+        null
+    }
 }
