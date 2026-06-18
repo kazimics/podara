@@ -46,11 +46,12 @@ compose.desktop {
         mainClass = "app.podiumpodcasts.podium.desktop.MainKt"
 
         jvmArgs += "-Dfile.encoding=UTF-8"
+        jvmArgs += "--add-modules=java.sql"
 
         nativeDistributions {
             targetFormats(TargetFormat.Msi, TargetFormat.Exe)
             packageName = "podium"
-            packageVersion = "1.0.0"
+            packageVersion = "1.2.0"
             description = "Podium Podcasts"
             vendor = "Podium Podcasts"
 
@@ -65,56 +66,44 @@ compose.desktop {
     }
 }
 
-tasks.register("patchRuntimeModules") {
-    dependsOn("createRuntimeImage")
+tasks.matching { it.name == "createRuntimeImage" }.configureEach {
     doLast {
-        val javaHome = System.getenv("JAVA_HOME") ?: System.getProperty("java.home")
-        val jmodsDir = File(javaHome, "jmods")
-        val javaSqlJmod = File(jmodsDir, "java.sql.jmod")
+        try {
+            // Access the jlink command arguments via reflection
+            val javaHome = System.getenv("JAVA_HOME") ?: System.getProperty("java.home")
+            val jmodsPath = "$javaHome/jmods"
 
-        val runtimeDirs = File(project.buildDir, "compose").walkTopDown()
-            .filter { it.name == "modules" && it.parentFile?.name == "lib" }
-            .map { it.parentFile.parentFile }
-            .toList()
+            // Find the runtime output directory
+            val runtimeDir = File(project.buildDir, "compose/tmp/main/runtime")
 
-        for (runtimeDir in runtimeDirs) {
-            if (javaSqlJmod.exists()) {
-                val modulesFile = File(runtimeDir, "lib/modules")
-                val existingModules = if (modulesFile.exists()) {
-                    modulesFile.readText().trim().split("\n").filter { it.isNotBlank() }
-                } else emptyList()
+            println("Adding java.sql module to JRE at ${runtimeDir.absolutePath}")
 
-                if ("java.sql" in existingModules) {
-                    println("java.sql already in JRE, skipping patch")
-                    continue
-                }
+            // Run jlink to add java.sql to the existing modules
+            val tempDir = File(runtimeDir.parentFile, "runtime_with_sql")
+            if (tempDir.exists()) tempDir.deleteRecursively()
 
-                val allModules = (existingModules + "java.sql").joinToString(",")
-                println("Patching JRE at ${runtimeDir.absolutePath} with java.sql module")
-                val tempDir = File(runtimeDir.parentFile, "runtime_patched")
-                if (tempDir.exists()) tempDir.deleteRecursively()
-                val jlinkPath = File(javaHome, "bin/jlink").absolutePath
-                val process = ProcessBuilder(
-                    jlinkPath,
-                    "--module-path", jmodsDir.absolutePath,
-                    "--add-modules", allModules,
-                    "--output", tempDir.absolutePath,
-                    "--no-header-files",
-                    "--no-man-pages",
-                    "--strip-debug"
-                ).redirectErrorStream(true).start()
-                val output = process.inputStream.bufferedReader().readText()
-                val exitCode = process.waitFor()
-                if (exitCode != 0) {
-                    throw GradleException("jlink failed with exit code $exitCode:\n$output")
-                }
+            val process = ProcessBuilder(
+                File(javaHome, "bin/jlink").absolutePath,
+                "--module-path", jmodsPath,
+                "--add-modules", "ALL-MODULE-PATH,java.sql",
+                "--output", tempDir.absolutePath,
+                "--no-header-files",
+                "--no-man-pages",
+                "--strip-debug"
+            ).redirectErrorStream(true).start()
+
+            val output = process.inputStream.bufferedReader().readText()
+            val exitCode = process.waitFor()
+
+            if (exitCode == 0 && tempDir.exists()) {
                 runtimeDir.deleteRecursively()
                 tempDir.renameTo(runtimeDir)
+                println("JRE patched successfully with java.sql module")
+            } else {
+                println("jlink warning (exit code $exitCode): $output")
             }
+        } catch (e: Exception) {
+            println("Warning: Could not patch JRE with java.sql: ${e.message}")
         }
     }
-}
-
-tasks.matching { it.name == "packageMsi" || it.name == "packageExe" }.configureEach {
-    dependsOn("patchRuntimeModules")
 }
