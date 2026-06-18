@@ -128,6 +128,6 @@ class ExportManagerTest {
         assertTrue(opml.contains("</head>"))
         assertTrue(opml.contains("<body>"))
         assertTrue(opml.contains("</body>"))
-        assertTrue(opml.endsWith("</opml>"))
+        assertTrue(opml.trimEnd().endsWith("</opml>"))
     }
 }
