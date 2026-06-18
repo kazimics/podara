@@ -5,15 +5,16 @@
 
 English | [中文](README_zh.md)
 
-**podium** 是一个现代化的开源播客应用，面向 **Windows** 平台，使用 Kotlin 和 Compose Multiplatform 开发。
-应用采用 **Material 3** 设计，使用 **vlcj** 进行媒体播放。
+**podium** is a modern, open-source Podcast app for **Windows**, written in Kotlin using Compose Multiplatform.
+The app uses **Material 3** design and **vlcj** for media playback.
 
 > [!CAUTION]
-> 请注意，*podium* 仍在开发中，功能尚未完善，可能存在 Bug。
+> Keep in mind that *podium* is work in progress software.
+> It is far from feature complete and can contain bugs.
 
 > [!NOTE]
-> *podium* 仍缺少一些重要功能。
-> 如果你有任何想法，请提交 Issue！
+> *podium* is still lacking some essential features.
+> Please open up an issue if you have any ideas!
 
 ## Notable Features
 

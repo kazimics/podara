@@ -1,3 +1,0 @@
-- Added support for Android Auto 🚘.
-- Added saving of selected country on discover tab.
-- Added German 🇩🇪 translation (thanks to @DDOneApps).

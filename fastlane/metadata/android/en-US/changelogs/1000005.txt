@@ -1,8 +1,0 @@
-This release contains some new features and two new languages:
-
-- Added search, filter, and order bar to episodes list (#15).
-- Added Turkish 🇹🇷 (by @furkngld) and Spanish 🇪🇸 (by @Slayer015) translations (#19, #24).
-- Added an "Undo" option when swiping items (#7).
-- Added saving and restoring of playback speed (#21).
-- Added support for playing video files (for now, just audio) (#25).
-- Fixed an issue where some podcasts couldn't be added.
