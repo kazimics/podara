@@ -21,7 +21,7 @@ data class QueueItem(
 
 class MediaPlayerState {
 
-    private val player = VlcjMediaPlayer()
+    private val player = JfxMediaPlayer()
     private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
     private var sleepTimerJob: Job? = null
 

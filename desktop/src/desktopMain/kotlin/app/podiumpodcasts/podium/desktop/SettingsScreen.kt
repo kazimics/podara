@@ -28,7 +28,8 @@ import java.io.File
 @Composable
 fun SettingsScreen(
     database: AppDatabase,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onDownloadPathChanged: ((String) -> Unit)? = null
 ) {
     val exportManager = remember { ExportManager(database) }
     val importManager = remember { ImportManager(database) }
@@ -135,6 +136,7 @@ fun SettingsScreen(
                         if (dir != null) {
                             Settings.setDownloadPath(dir)
                             downloadPath = dir
+                            onDownloadPathChanged?.invoke(dir)
                             Logger.i("Settings", "Download path changed to: $dir")
                         }
                     }) {
@@ -150,6 +152,7 @@ fun SettingsScreen(
                     onClick = {
                         Settings.resetDownloadPath()
                         downloadPath = Settings.getDownloadPath()
+                        onDownloadPathChanged?.invoke(downloadPath)
                         Logger.i("Settings", "Download path reset to default")
                     },
                     modifier = Modifier.padding(start = 72.dp)
