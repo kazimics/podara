@@ -332,21 +332,10 @@ private fun PodcastDetailScreen(
                     ListItem(
                         headlineContent = { Text(episode.title) },
                         supportingContent = {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(
-                                    text = formatDuration(episode.duration),
-                                    style = MaterialTheme.typography.bodySmall
-                                )
-                                if (isDownloaded) {
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Icon(
-                                        Icons.Default.CheckCircle,
-                                        contentDescription = "Downloaded",
-                                        modifier = Modifier.size(14.dp),
-                                        tint = MaterialTheme.colorScheme.primary
-                                    )
-                                }
-                            }
+                            Text(
+                                text = formatDuration(episode.duration),
+                                style = MaterialTheme.typography.bodySmall
+                            )
                         },
                         leadingContent = {
                             IconButton(onClick = {
