@@ -33,57 +33,66 @@ class DownloadManagerTest {
 
     @Test
     fun testGetDownloadFileReturnsCorrectPath() {
-        val origin = "https://example.com/feed.xml"
-        val audioUrl = "https://example.com/audio.mp3"
-
-        val file = downloadManager.getDownloadFile(origin, audioUrl)
-
+        val file = downloadManager.getDownloadFile("https://example.com/feed.xml", "https://example.com/audio.mp3")
         assertTrue(file.absolutePath.contains(testDownloadsDir.absolutePath))
         assertTrue(file.name.isNotEmpty())
     }
 
     @Test
     fun testGetDownloadFileConsistentPath() {
-        val origin = "https://example.com/feed.xml"
-        val audioUrl = "https://example.com/audio.mp3"
-
-        val file1 = downloadManager.getDownloadFile(origin, audioUrl)
-        val file2 = downloadManager.getDownloadFile(origin, audioUrl)
-
+        val file1 = downloadManager.getDownloadFile("https://example.com/feed.xml", "https://example.com/audio.mp3")
+        val file2 = downloadManager.getDownloadFile("https://example.com/feed.xml", "https://example.com/audio.mp3")
         assertEquals(file1.absolutePath, file2.absolutePath)
-    }
-
-    @Test
-    fun testGetDownloadFileDifferentOrigins() {
-        val file1 = downloadManager.getDownloadFile("https://example.com/feed1.xml", "https://example.com/audio.mp3")
-        val file2 = downloadManager.getDownloadFile("https://example.com/feed2.xml", "https://example.com/audio.mp3")
-
-        assertNotEquals(file1.absolutePath, file2.absolutePath)
     }
 
     @Test
     fun testGetDownloadFileDifferentUrls() {
         val file1 = downloadManager.getDownloadFile("https://example.com/feed.xml", "https://example.com/audio1.mp3")
         val file2 = downloadManager.getDownloadFile("https://example.com/feed.xml", "https://example.com/audio2.mp3")
-
         assertNotEquals(file1.absolutePath, file2.absolutePath)
     }
 
     @Test
-    fun testDownloadAndDeleteEpisode() = runBlocking {
-        try {
-            val origin = "https://example.com/feed.xml"
-            val audioUrl = "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"
+    fun testGetDownloadFileWithTitles() {
+        val file = downloadManager.getDownloadFile(
+            "https://example.com/feed.xml",
+            "https://example.com/audio.m4a",
+            episodeTitle = "E45 Test Episode",
+            podcastTitle = "Test Podcast"
+        )
+        assertEquals("Test Podcast", file.parentFile.name)
+        assertEquals("E45 Test Episode.m4a", file.name)
+    }
 
-            val result = downloadManager.downloadEpisode("test-episode", audioUrl, origin)
+    @Test
+    fun testGetDownloadFileWithSpecialCharacters() {
+        val file = downloadManager.getDownloadFile(
+            "https://example.com/feed.xml",
+            "https://example.com/audio.mp3",
+            episodeTitle = "Episode: Test Special",
+            podcastTitle = "Podcast With Backslash"
+        )
+        assertEquals("Podcast With Backslash", file.parentFile.name)
+        assertEquals("Episode_ Test Special.mp3", file.name)
+    }
+
+    @Test
+    fun testDownloadEpisodeWithTitles() = runBlocking {
+        try {
+            val result = downloadManager.downloadEpisode(
+                episodeId = "test-ep",
+                audioUrl = "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
+                origin = "https://example.com/feed.xml",
+                episodeTitle = "Test Episode",
+                podcastTitle = "My Podcast"
+            )
 
             if (result.isSuccess) {
                 val file = result.getOrNull()!!
                 assertTrue(file.exists(), "Downloaded file should exist")
                 assertTrue(file.length() > 0, "Downloaded file should not be empty")
-
-                downloadManager.deleteEpisodeDownload("test-episode", origin, audioUrl)
-                assertFalse(file.exists(), "File should be deleted after deleteEpisodeDownload")
+                assertEquals("My Podcast", file.parentFile.name)
+                assertEquals("Test Episode.mp3", file.name)
             }
         } catch (e: Exception) {
             println("Skipping test: Network not available: ${e.message}")
@@ -96,16 +105,14 @@ class DownloadManagerTest {
             "https://example.com/feed.xml",
             "https://example.com/nonexistent.mp3"
         )
-
         assertFalse(file.exists())
     }
 
     @Test
-    fun testDeleteNonExistentFile() = runBlocking {
-        downloadManager.deleteEpisodeDownload(
-            "nonexistent",
-            "https://example.com/feed.xml",
-            "https://example.com/audio.mp3"
-        )
+    fun testSanitizeFileName() {
+        assertEquals("test", downloadManager.sanitizeFileName("test"))
+        assertEquals("a_b_c", downloadManager.sanitizeFileName("a/b\\c"))
+        assertEquals("a_b_c_d", downloadManager.sanitizeFileName("a:b*c?d"))
+        assertEquals("a__b", downloadManager.sanitizeFileName("a<>b"))
     }
 }

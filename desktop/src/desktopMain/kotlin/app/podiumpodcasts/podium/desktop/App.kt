@@ -79,8 +79,9 @@ fun App() {
     }
 
     val podcastManager = remember { PodcastManager(database) }
-    val downloadManager = remember {
-        val downloadsDir = File(Settings.getDownloadPath())
+    var downloadPath by remember { mutableStateOf(Settings.getDownloadPath()) }
+    val downloadManager = remember(downloadPath) {
+        val downloadsDir = File(downloadPath)
         downloadsDir.mkdirs()
         DownloadManager(database, downloadsDir)
     }
@@ -93,6 +94,8 @@ fun App() {
     var showFullPlayer by remember { mutableStateOf(false) }
     var showAddDialog by remember { mutableStateOf(false) }
     var addError by remember { mutableStateOf<String?>(null) }
+    var downloadProgress by remember { mutableStateOf(mapOf<String, Pair<Long, Long>>()) }
+    var downloadingEpisodes by remember { mutableStateOf(setOf<String>()) }
 
     LaunchedEffect(Unit) {
         Logger.d(TAG, "Loading podcasts from database")
@@ -113,6 +116,18 @@ fun App() {
                         database = database,
                         playerState = playerState,
                         downloadManager = downloadManager,
+                        downloadingEpisodes = downloadingEpisodes,
+                        downloadProgress = downloadProgress,
+                        onDownloadStart = { epId ->
+                            downloadingEpisodes = downloadingEpisodes + epId
+                        },
+                        onDownloadProgress = { epId, current, total ->
+                            downloadProgress = downloadProgress + (epId to Pair(current, total))
+                        },
+                        onDownloadComplete = { epId ->
+                            downloadingEpisodes = downloadingEpisodes - epId
+                            downloadProgress = downloadProgress - epId
+                        },
                         onBack = { selectedPodcast = null }
                     )
                     currentScreen == "home" -> HomeScreen(
@@ -132,7 +147,8 @@ fun App() {
                     )
                     currentScreen == "settings" -> SettingsScreen(
                         database = database,
-                        onBack = { currentScreen = "home" }
+                        onBack = { currentScreen = "home" },
+                        onDownloadPathChanged = { newPath -> downloadPath = newPath }
                     )
                     currentScreen == "history" -> HistoryScreen(
                         database = database,
@@ -253,10 +269,14 @@ private fun PodcastDetailScreen(
     database: AppDatabase,
     playerState: MediaPlayerState,
     downloadManager: DownloadManager,
+    downloadingEpisodes: Set<String>,
+    downloadProgress: Map<String, Pair<Long, Long>>,
+    onDownloadStart: (String) -> Unit,
+    onDownloadProgress: (String, Long, Long) -> Unit,
+    onDownloadComplete: (String) -> Unit,
     onBack: () -> Unit
 ) {
     var episodes by remember { mutableStateOf(emptyList<PodcastEpisode>()) }
-    var downloadingEpisodes by remember { mutableStateOf(setOf<String>()) }
     val scope = rememberCoroutineScope()
 
     LaunchedEffect(podcast.origin) {
@@ -286,9 +306,11 @@ private fun PodcastDetailScreen(
             LazyColumn(modifier = Modifier.fillMaxSize().padding(padding)) {
                 items(episodes) { episode ->
                     val isDownloaded = remember(episode) {
-                        downloadManager.getDownloadFile(episode.origin, episode.audioUrl).exists()
+                        downloadManager.getDownloadFile(
+                            episode.origin, episode.audioUrl,
+                            episode.title, podcast.title
+                        ).exists()
                     }
-                    val isDownloading = episode.id in downloadingEpisodes
 
                     ListItem(
                         headlineContent = { Text(episode.title) },
@@ -312,7 +334,10 @@ private fun PodcastDetailScreen(
                         leadingContent = {
                             IconButton(onClick = {
                                 scope.launch {
-                                    val audioFile = downloadManager.getDownloadFile(episode.origin, episode.audioUrl)
+                                    val audioFile = downloadManager.getDownloadFile(
+                                        episode.origin, episode.audioUrl,
+                                        episode.title, podcast.title
+                                    )
                                     val url = if (audioFile.exists()) audioFile.absolutePath else episode.audioUrl
                                     val epWithUrl = episode.copy(audioUrl = url)
                                     playAndRecordHistory(database, playerState, epWithUrl)
@@ -322,33 +347,59 @@ private fun PodcastDetailScreen(
                             }
                         },
                         trailingContent = {
-                            if (!isDownloaded && !isDownloading) {
+                            val isDownloaded = remember(episode) {
+                                downloadManager.getDownloadFile(
+                                    episode.origin, episode.audioUrl,
+                                    episode.title, podcast.title
+                                ).exists()
+                            }
+                            val isDownloading = episode.id in downloadingEpisodes
+                            val progress = downloadProgress[episode.id]
+
+                            if (isDownloaded) {
+                                Icon(
+                                    Icons.Default.CheckCircle,
+                                    contentDescription = "Downloaded",
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            } else if (isDownloading && progress != null) {
+                                val fraction = if (progress.second > 0) {
+                                    progress.first.toFloat() / progress.second
+                                } else 0f
+                                CircularProgressIndicator(
+                                    progress = { fraction },
+                                    modifier = Modifier.size(24.dp),
+                                    strokeWidth = 2.dp
+                                )
+                            } else if (!isDownloaded && !isDownloading) {
                                 IconButton(onClick = {
+                                    onDownloadStart(episode.id)
                                     scope.launch {
-                                        downloadingEpisodes = downloadingEpisodes + episode.id
                                         try {
                                             downloadManager.downloadEpisode(
                                                 episodeId = episode.id,
                                                 audioUrl = episode.audioUrl,
-                                                origin = episode.origin
-                                            )
+                                                origin = episode.origin,
+                                                episodeTitle = episode.title,
+                                                podcastTitle = podcast.title
+                                            ) { current, total ->
+                                                onDownloadProgress(episode.id, current, total)
+                                            }
                                         } finally {
-                                            downloadingEpisodes = downloadingEpisodes - episode.id
+                                            onDownloadComplete(episode.id)
                                         }
                                     }
                                 }) {
                                     Icon(Icons.Default.Download, contentDescription = "Download")
                                 }
-                            } else if (isDownloading) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(24.dp),
-                                    strokeWidth = 2.dp
-                                )
                             }
                         },
                         modifier = Modifier.clickable {
                             scope.launch {
-                                val audioFile = downloadManager.getDownloadFile(episode.origin, episode.audioUrl)
+                                val audioFile = downloadManager.getDownloadFile(
+                                    episode.origin, episode.audioUrl,
+                                    episode.title, podcast.title
+                                )
                                 val url = if (audioFile.exists()) audioFile.absolutePath else episode.audioUrl
                                 val epWithUrl = episode.copy(audioUrl = url)
                                 playAndRecordHistory(database, playerState, epWithUrl)

@@ -2,10 +2,10 @@ package app.podiumpodcasts.podium.manager
 
 import app.podiumpodcasts.podium.data.AppDatabase
 import app.podiumpodcasts.podium.utils.Logger
-import app.podiumpodcasts.podium.utils.sha256
 import io.ktor.client.HttpClient
 import io.ktor.client.request.prepareGet
 import io.ktor.client.statement.readBytes
+import io.ktor.http.contentLength
 import io.ktor.http.isSuccess
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -19,16 +19,27 @@ class DownloadManager(
 ) {
     private val client = HttpClient()
 
-    suspend fun downloadEpisode(episodeId: String, audioUrl: String, origin: String): Result<File> = withContext(Dispatchers.IO) {
+    suspend fun downloadEpisode(
+        episodeId: String,
+        audioUrl: String,
+        origin: String,
+        episodeTitle: String = episodeId,
+        podcastTitle: String = "Unknown",
+        onProgress: ((Long, Long) -> Unit)? = null
+    ): Result<File> = withContext(Dispatchers.IO) {
         try {
-            val episodeDir = File(downloadsDir, origin.sha256())
-            episodeDir.mkdirs()
-            val outputFile = File(episodeDir, audioUrl.sha256())
+            val podcastDir = File(downloadsDir, sanitizeFileName(podcastTitle))
+            podcastDir.mkdirs()
+            val ext = audioUrl.substringAfterLast('.', "mp3").substringBefore('?')
+            val outputFile = File(podcastDir, "${sanitizeFileName(episodeTitle)}.$ext")
             Logger.i(TAG, "Downloading to: ${outputFile.absolutePath}")
 
             client.prepareGet(audioUrl).execute { httpResponse ->
                 if (!httpResponse.status.isSuccess()) throw Exception("HTTP ${httpResponse.status.value}")
-                outputFile.writeBytes(httpResponse.readBytes())
+                val totalBytes = httpResponse.contentLength() ?: 0L
+                val bytes = httpResponse.readBytes()
+                onProgress?.invoke(bytes.size.toLong(), totalBytes)
+                outputFile.writeBytes(bytes)
             }
 
             Logger.i(TAG, "Download complete: ${outputFile.absolutePath} (${outputFile.length()} bytes)")
@@ -39,15 +50,24 @@ class DownloadManager(
         }
     }
 
-    suspend fun deleteEpisodeDownload(episodeId: String, origin: String, audioUrl: String) {
+    fun getDownloadFile(origin: String, audioUrl: String, episodeTitle: String = "", podcastTitle: String = ""): File {
+        if (episodeTitle.isNotEmpty() && podcastTitle.isNotEmpty()) {
+            val podcastDir = File(downloadsDir, sanitizeFileName(podcastTitle))
+            val ext = audioUrl.substringAfterLast('.', "mp3").substringBefore('?')
+            return File(podcastDir, "${sanitizeFileName(episodeTitle)}.$ext")
+        }
         val episodeDir = File(downloadsDir, origin.sha256())
-        val outputFile = File(episodeDir, audioUrl.sha256())
-        if (outputFile.exists()) outputFile.delete()
+        val ext = audioUrl.substringAfterLast('.', "mp3").substringBefore('?')
+        return File(episodeDir, "${audioUrl.sha256()}.$ext")
     }
 
-    fun getDownloadFile(origin: String, audioUrl: String): File {
-        val episodeDir = File(downloadsDir, origin.sha256())
-        return File(episodeDir, audioUrl.sha256())
+    fun sanitizeFileName(name: String): String {
+        val illegal = charArrayOf('/', '\\', ':', '*', '?', '"', '<', '>', '|')
+        var result = name
+        for (c in illegal) {
+            result = result.replace(c, '_')
+        }
+        return result.trim()
     }
 }
 
