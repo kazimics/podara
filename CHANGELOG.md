@@ -49,8 +49,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - JavaFX Toolkit not initialized before MediaPlayer creation
 - JavaFX native library loading from JAR with multiple fallback paths
 
-### Known Issues
-- Audio speed change (倍速) may alter pitch on Windows — JavaFX GStreamer backend doesn't support time-stretching natively. Pure Java WSOLA implementation attempted but JLayer API compatibility issues prevented completion. Will revisit with FFmpeg or SoundTouch in future.
+### Added
+- Pitch-preserving speed control using WSOLA time-stretching algorithm
+- When speed != 1.0x, switches to PitchPlayer (JLayer decode + WSOLA + javax.sound output)
+- When speed == 1.0x, uses JavaFX MediaPlayer normally
 - Updated CI workflow to run new test classes
 - Removed unused Android deploy workflow (deploy.yaml)
 - Removed build artifacts from git tracking

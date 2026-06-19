@@ -72,6 +72,9 @@ object NativeLibLoader {
 class JfxMediaPlayer {
 
     private var mediaPlayer: MediaPlayer? = null
+    private var pitchPlayer: PitchPlayer? = null
+    private var currentUrl: String? = null
+    private var currentSpeed = 1.0f
 
     var isPlaying = false
         private set
@@ -91,6 +94,8 @@ class JfxMediaPlayer {
     fun play(url: String) {
         Logger.i(TAG, "play() url=$url")
         release()
+        currentUrl = url
+        currentSpeed = 1.0f
 
         try {
             NativeLibLoader.load()
@@ -108,7 +113,7 @@ class JfxMediaPlayer {
             }
 
             mp.setOnPlaying {
-                Logger.d(TAG, "Playback started")
+                Logger.d(TAG, "Playback started (JavaFX)")
                 isPlaying = true
                 onPlayStateChanged?.invoke(true)
                 startPositionUpdates(mp)
@@ -160,6 +165,7 @@ class JfxMediaPlayer {
     fun stop() {
         Logger.d(TAG, "stop()")
         mediaPlayer?.stop()
+        pitchPlayer?.stop()
     }
 
     fun seek(positionMs: Long) {
@@ -176,14 +182,40 @@ class JfxMediaPlayer {
 
     fun setPlaybackSpeed(speed: Float) {
         val clamped = speed.coerceIn(0.25f, 4.0f)
-        mediaPlayer?.rate = clamped.toDouble()
+        Logger.d(TAG, "setPlaybackSpeed($clamped)")
+        currentSpeed = clamped
+
+        if (clamped == 1.0f) {
+            pitchPlayer?.stop()
+            pitchPlayer = null
+            if (mediaPlayer == null && currentUrl != null) {
+                play(currentUrl!!)
+            } else {
+                mediaPlayer?.rate = 1.0
+            }
+        } else {
+            mediaPlayer?.stop()
+            mediaPlayer = null
+
+            val pp = PitchPlayer()
+            pp.onPlayStateChanged = { playing ->
+                isPlaying = playing
+                onPlayStateChanged?.invoke(playing)
+            }
+            pp.onError = { msg ->
+                onError?.invoke(msg)
+            }
+            pitchPlayer = pp
+            pp.play(currentUrl!!, clamped)
+        }
         this.playbackSpeed = clamped
-        Logger.d(TAG, "setPlaybackSpeed($clamped) - note: pitch may change on Windows")
     }
 
     fun release() {
         mediaPlayer?.dispose()
         mediaPlayer = null
+        pitchPlayer?.release()
+        pitchPlayer = null
         isPlaying = false
     }
 
