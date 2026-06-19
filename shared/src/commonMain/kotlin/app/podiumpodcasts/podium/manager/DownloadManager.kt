@@ -2,15 +2,8 @@ package app.podiumpodcasts.podium.manager
 
 import app.podiumpodcasts.podium.data.AppDatabase
 import app.podiumpodcasts.podium.utils.Logger
-import io.ktor.client.HttpClient
-import io.ktor.client.request.prepareGet
-import io.ktor.client.statement.readBytes
-import io.ktor.http.contentLength
-import io.ktor.http.isSuccess
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.withContext
 import java.io.File
+import java.net.URL
 
 private const val TAG = "DownloadManager"
 
@@ -18,8 +11,6 @@ class DownloadManager(
     private val db: AppDatabase,
     private val downloadsDir: File
 ) {
-    private val client = HttpClient()
-
     suspend fun downloadEpisode(
         episodeId: String,
         audioUrl: String,
@@ -27,23 +18,36 @@ class DownloadManager(
         episodeTitle: String = episodeId,
         podcastTitle: String = "Unknown",
         onProgress: ((Long, Long) -> Unit)? = null
-    ): Result<File> = withContext(Dispatchers.IO) {
-        try {
+    ): Result<File> {
+        return try {
             val podcastDir = File(downloadsDir, sanitizeFileName(podcastTitle))
             podcastDir.mkdirs()
             val ext = audioUrl.substringAfterLast('.', "mp3").substringBefore('?')
             val outputFile = File(podcastDir, "${sanitizeFileName(episodeTitle)}.$ext")
             Logger.i(TAG, "Downloading to: ${outputFile.absolutePath}")
 
-            // Report 0% before starting
             onProgress?.invoke(0L, 0L)
 
-            client.prepareGet(audioUrl).execute { httpResponse ->
-                if (!httpResponse.status.isSuccess()) throw Exception("HTTP ${httpResponse.status.value}")
-                val totalBytes = httpResponse.contentLength() ?: 0L
-                val bytes = httpResponse.readBytes()
-                outputFile.writeBytes(bytes)
-                onProgress?.invoke(bytes.size.toLong(), totalBytes)
+            val url = URL(audioUrl)
+            val connection = url.openConnection()
+            connection.connectTimeout = 10000
+            connection.readTimeout = 30000
+            val totalBytes = connection.contentLength.toLong()
+            val inputStream = connection.getInputStream()
+            val buffer = ByteArray(8192)
+            var bytesRead = 0L
+            val outputStream = outputFile.outputStream()
+            try {
+                while (true) {
+                    val read = inputStream.read(buffer)
+                    if (read == -1) break
+                    outputStream.write(buffer, 0, read)
+                    bytesRead += read
+                    onProgress?.invoke(bytesRead, totalBytes)
+                }
+            } finally {
+                outputStream.close()
+                inputStream.close()
             }
 
             Logger.i(TAG, "Download complete: ${outputFile.absolutePath} (${outputFile.length()} bytes)")

@@ -98,6 +98,28 @@ fun App() {
     var downloadingEpisodes by remember { mutableStateOf(setOf<String>()) }
     var downloadVersion by remember { mutableIntStateOf(0) }
 
+    val startDownload = { episode: PodcastEpisode, podcastTitle: String ->
+        downloadingEpisodes = downloadingEpisodes + episode.id
+        scope.launch {
+            try {
+                downloadManager.downloadEpisode(
+                    episodeId = episode.id,
+                    audioUrl = episode.audioUrl,
+                    origin = episode.origin,
+                    episodeTitle = episode.title,
+                    podcastTitle = podcastTitle
+                ) { current, total ->
+                    downloadProgress = downloadProgress + (episode.id to Pair(current, total))
+                }
+            } finally {
+                downloadingEpisodes = downloadingEpisodes - episode.id
+                downloadProgress = downloadProgress - episode.id
+                downloadVersion++
+            }
+        }
+        Unit
+    }
+
     LaunchedEffect(Unit) {
         Logger.d(TAG, "Loading podcasts from database")
         podcasts = database.podcasts.getAllSync()
@@ -120,17 +142,7 @@ fun App() {
                         downloadingEpisodes = downloadingEpisodes,
                         downloadProgress = downloadProgress,
                         downloadVersion = downloadVersion,
-                        onDownloadStart = { epId ->
-                            downloadingEpisodes = downloadingEpisodes + epId
-                        },
-                        onDownloadProgress = { epId, current, total ->
-                            downloadProgress = downloadProgress + (epId to Pair(current, total))
-                        },
-                        onDownloadComplete = { epId ->
-                            downloadingEpisodes = downloadingEpisodes - epId
-                            downloadProgress = downloadProgress - epId
-                            downloadVersion++
-                        },
+                        onStartDownload = startDownload,
                         onBack = { selectedPodcast = null }
                     )
                     currentScreen == "home" -> HomeScreen(
@@ -275,9 +287,7 @@ private fun PodcastDetailScreen(
     downloadingEpisodes: Set<String>,
     downloadProgress: Map<String, Pair<Long, Long>>,
     downloadVersion: Int,
-    onDownloadStart: (String) -> Unit,
-    onDownloadProgress: (String, Long, Long) -> Unit,
-    onDownloadComplete: (String) -> Unit,
+    onStartDownload: (PodcastEpisode, String) -> Unit,
     onBack: () -> Unit
 ) {
     var episodes by remember { mutableStateOf(emptyList<PodcastEpisode>()) }
@@ -377,22 +387,7 @@ private fun PodcastDetailScreen(
                                 )
                             } else {
                                 IconButton(onClick = {
-                                    onDownloadStart(episode.id)
-                                    scope.launch {
-                                        try {
-                                            downloadManager.downloadEpisode(
-                                                episodeId = episode.id,
-                                                audioUrl = episode.audioUrl,
-                                                origin = episode.origin,
-                                                episodeTitle = episode.title,
-                                                podcastTitle = podcast.title
-                                            ) { current, total ->
-                                                onDownloadProgress(episode.id, current, total)
-                                            }
-                                        } finally {
-                                            onDownloadComplete(episode.id)
-                                        }
-                                    }
+                                    onStartDownload(episode, podcast.title)
                                 }) {
                                     Icon(Icons.Default.Download, contentDescription = "Download")
                                 }
