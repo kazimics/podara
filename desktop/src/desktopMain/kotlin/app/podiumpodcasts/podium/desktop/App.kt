@@ -96,6 +96,7 @@ fun App() {
     var addError by remember { mutableStateOf<String?>(null) }
     var downloadProgress by remember { mutableStateOf(mapOf<String, Pair<Long, Long>>()) }
     var downloadingEpisodes by remember { mutableStateOf(setOf<String>()) }
+    var downloadVersion by remember { mutableIntStateOf(0) }
 
     LaunchedEffect(Unit) {
         Logger.d(TAG, "Loading podcasts from database")
@@ -118,6 +119,7 @@ fun App() {
                         downloadManager = downloadManager,
                         downloadingEpisodes = downloadingEpisodes,
                         downloadProgress = downloadProgress,
+                        downloadVersion = downloadVersion,
                         onDownloadStart = { epId ->
                             downloadingEpisodes = downloadingEpisodes + epId
                         },
@@ -127,6 +129,7 @@ fun App() {
                         onDownloadComplete = { epId ->
                             downloadingEpisodes = downloadingEpisodes - epId
                             downloadProgress = downloadProgress - epId
+                            downloadVersion++
                         },
                         onBack = { selectedPodcast = null }
                     )
@@ -271,6 +274,7 @@ private fun PodcastDetailScreen(
     downloadManager: DownloadManager,
     downloadingEpisodes: Set<String>,
     downloadProgress: Map<String, Pair<Long, Long>>,
+    downloadVersion: Int,
     onDownloadStart: (String) -> Unit,
     onDownloadProgress: (String, Long, Long) -> Unit,
     onDownloadComplete: (String) -> Unit,
@@ -305,7 +309,7 @@ private fun PodcastDetailScreen(
         } else {
             LazyColumn(modifier = Modifier.fillMaxSize().padding(padding)) {
                 items(episodes) { episode ->
-                    val isDownloaded = remember(episode) {
+                    val isDownloaded = remember(episode, downloadVersion) {
                         downloadManager.getDownloadFile(
                             episode.origin, episode.audioUrl,
                             episode.title, podcast.title
@@ -347,7 +351,7 @@ private fun PodcastDetailScreen(
                             }
                         },
                         trailingContent = {
-                            val isDownloaded = remember(episode) {
+                            val isDownloaded = remember(episode, downloadVersion) {
                                 downloadManager.getDownloadFile(
                                     episode.origin, episode.audioUrl,
                                     episode.title, podcast.title
