@@ -326,12 +326,7 @@ private fun PodcastDetailScreen(
         } else {
             LazyColumn(modifier = Modifier.fillMaxSize().padding(padding)) {
                 items(episodes) { episode ->
-                    val isDownloaded = episode.id in completedDownloads || remember(episode, downloadVersion) {
-                        downloadManager.getDownloadFile(
-                            episode.origin, episode.audioUrl,
-                            episode.title, podcast.title
-                        ).exists()
-                    }
+                    val isDownloaded = episode.id in completedDownloads
 
                     ListItem(
                         headlineContent = { Text(episode.title) },
@@ -368,12 +363,7 @@ private fun PodcastDetailScreen(
                             }
                         },
                         trailingContent = {
-                            val isDownloaded = episode.id in completedDownloads || remember(episode, downloadVersion) {
-                                downloadManager.getDownloadFile(
-                                    episode.origin, episode.audioUrl,
-                                    episode.title, podcast.title
-                                ).exists()
-                            }
+                            val isDownloaded = episode.id in completedDownloads
                             val isDownloading = episode.id in downloadingEpisodes
                             val progress = downloadProgress[episode.id]
 
