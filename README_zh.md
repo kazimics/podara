@@ -6,7 +6,7 @@
 [English](README.md) | 中文
 
 **podium-windows** 是一个现代化的开源播客应用，面向 **Windows** 平台，使用 Kotlin 和 Compose Multiplatform 开发。
-应用采用 **Material 3** 设计，使用 **vlcj** 进行媒体播放。
+应用采用 **Material 3** 设计，使用 **JavaFX Media** 进行音频播放。
 
 本项目移植自 [aimok04/podium](https://github.com/aimok04/podium) — 一个 Android 播客应用。
 
@@ -66,11 +66,13 @@ gradlew.bat :desktop:desktopTest
 | 层级 | 技术 |
 |------|------|
 | UI | Compose Multiplatform + Material 3 |
-| 媒体播放 | JavaFX MediaPlayer |
+| 媒体播放 | JavaFX Media + JLayer |
+| 图片加载 | Coil 3 |
 | 数据库 | JDBC SQLite |
 | 网络 | Ktor |
 | RSS 解析 | rssparser |
 | 序列化 | kotlinx.serialization |
+| 设置管理 | Multiplatform Settings |
 
 ## 项目结构
 
