@@ -153,6 +153,7 @@ fun App() {
                     selectedPodcast != null -> PodcastDetailScreen(
                         podcast = selectedPodcast!!,
                         database = database,
+                        subscriptionManager = subscriptionManager,
                         playerState = playerState,
                         downloadManager = downloadManager,
                         downloadingEpisodes = downloadingEpisodes,
@@ -449,6 +450,7 @@ private fun HomeScreen(
 private fun PodcastDetailScreen(
     podcast: Podcast,
     database: AppDatabase,
+    subscriptionManager: SubscriptionManager,
     playerState: MediaPlayerState,
     downloadManager: DownloadManager,
     downloadingEpisodes: Set<String>,
@@ -459,6 +461,7 @@ private fun PodcastDetailScreen(
     onBack: () -> Unit
 ) {
     var episodes by remember { mutableStateOf(emptyList<PodcastEpisode>()) }
+    var showUnsubscribeDialog by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
     LaunchedEffect(podcast.origin) {
@@ -472,6 +475,11 @@ private fun PodcastDetailScreen(
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.Default.ArrowBack, contentDescription = Strings["nav_back"])
+                    }
+                },
+                actions = {
+                    IconButton(onClick = { showUnsubscribeDialog = true }) {
+                        Icon(Icons.Default.Delete, contentDescription = "取消订阅")
                     }
                 }
             )
@@ -592,6 +600,30 @@ private fun PodcastDetailScreen(
                 }
             }
         }
+    }
+
+    if (showUnsubscribeDialog) {
+        AlertDialog(
+            onDismissRequest = { showUnsubscribeDialog = false },
+            title = { Text("取消订阅") },
+            text = { Text("确定要取消订阅 \"${podcast.title}\" 吗？") },
+            confirmButton = {
+                TextButton(onClick = {
+                    scope.launch {
+                        subscriptionManager.unsubscribe(podcast.origin)
+                        onBack()
+                    }
+                    showUnsubscribeDialog = false
+                }) {
+                    Text("取消订阅")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showUnsubscribeDialog = false }) {
+                    Text(Strings["dialog_cancel"])
+                }
+            }
+        )
     }
 }
 
