@@ -84,7 +84,16 @@ object Strings {
         "opml_import_error" to "Import Failed",
         "error_loading" to "Failed to load: %1\$s",
         "error_adding_podcast" to "Failed to add: %1\$s",
-        "add_podcast_hint" to "Enter the RSS feed URL of the podcast:"
+        "add_podcast_hint" to "Enter the RSS feed URL of the podcast:",
+        "home_edit" to "Edit",
+        "home_cancel" to "Cancel",
+        "home_select_all" to "Select All",
+        "home_delete_selected" to "Delete Selected",
+        "home_selected_count" to "Selected %1\$d",
+        "unsubscribe" to "Unsubscribe",
+        "unsubscribe_confirm" to "Are you sure you want to unsubscribe from \"%1\$s\"?",
+        "batch_unsubscribe" to "Batch Unsubscribe",
+        "batch_unsubscribe_confirm" to "Are you sure you want to unsubscribe from the selected %1\$d podcasts?"
     )
 
     private val zh = mapOf(
@@ -164,7 +173,16 @@ object Strings {
         "opml_import_error" to "导入失败",
         "error_loading" to "加载失败：%1\$s",
         "error_adding_podcast" to "添加失败：%1\$s",
-        "add_podcast_hint" to "输入播客的 RSS 订阅地址："
+        "add_podcast_hint" to "输入播客的 RSS 订阅地址：",
+        "home_edit" to "编辑",
+        "home_cancel" to "取消",
+        "home_select_all" to "全选",
+        "home_delete_selected" to "删除选中",
+        "home_selected_count" to "已选择 %1\$d 个",
+        "unsubscribe" to "取消订阅",
+        "unsubscribe_confirm" to "确定要取消订阅 \"%1\$s\" 吗？",
+        "batch_unsubscribe" to "批量取消订阅",
+        "batch_unsubscribe_confirm" to "确定要取消订阅选中的 %1\$d 个播客吗？"
     )
 
     private val maps = mapOf("en" to en, "zh" to zh)

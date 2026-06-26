@@ -277,7 +277,7 @@ private fun HomeScreen(
                             isEditing = false
                             selectedPodcasts = emptySet()
                         }) {
-                            Icon(Icons.Default.ArrowBack, contentDescription = "取消")
+                            Icon(Icons.Default.ArrowBack, contentDescription = Strings["home_cancel"])
                         }
                     }
                 },
@@ -290,10 +290,10 @@ private fun HomeScreen(
                                 selectedPodcasts = podcasts.map { it.origin }.toSet()
                             }
                         }) {
-                            Icon(Icons.Default.SelectAll, contentDescription = "全选")
+                            Icon(Icons.Default.SelectAll, contentDescription = Strings["home_select_all"])
                         }
                         IconButton(onClick = { showBatchUnsubscribeDialog = true }) {
-                            Icon(Icons.Default.Delete, contentDescription = "删除选中")
+                            Icon(Icons.Default.Delete, contentDescription = Strings["home_delete_selected"])
                         }
                     } else {
                         IconButton(onClick = onDiscover) {
@@ -309,7 +309,7 @@ private fun HomeScreen(
                             Icon(Icons.Default.Add, contentDescription = Strings["home_add_podcast"])
                         }
                         IconButton(onClick = { isEditing = true }) {
-                            Icon(Icons.Default.Edit, contentDescription = "编辑")
+                            Icon(Icons.Default.Edit, contentDescription = Strings["home_edit"])
                         }
                     }
                 }
@@ -369,7 +369,7 @@ private fun HomeScreen(
                                     podcastToUnsubscribe = podcast
                                     showUnsubscribeDialog = true
                                 }) {
-                                    Icon(Icons.Default.Delete, contentDescription = "取消订阅")
+                                    Icon(Icons.Default.Delete, contentDescription = Strings["unsubscribe"])
                                 }
                             }
                         },
@@ -391,8 +391,8 @@ private fun HomeScreen(
                 showUnsubscribeDialog = false
                 podcastToUnsubscribe = null
             },
-            title = { Text("取消订阅") },
-            text = { Text("确定要取消订阅 \"${podcastToUnsubscribe!!.title}\" 吗？") },
+            title = { Text(Strings["unsubscribe"]) },
+            text = { Text(Strings.get("unsubscribe_confirm", podcastToUnsubscribe!!.title)) },
             confirmButton = {
                 TextButton(onClick = {
                     scope.launch {
@@ -402,7 +402,7 @@ private fun HomeScreen(
                     showUnsubscribeDialog = false
                     podcastToUnsubscribe = null
                 }) {
-                    Text("取消订阅")
+                    Text(Strings["unsubscribe"])
                 }
             },
             dismissButton = {
@@ -419,8 +419,8 @@ private fun HomeScreen(
     if (showBatchUnsubscribeDialog) {
         AlertDialog(
             onDismissRequest = { showBatchUnsubscribeDialog = false },
-            title = { Text("批量取消订阅") },
-            text = { Text("确定要取消订阅选中的 ${selectedPodcasts.size} 个播客吗？") },
+            title = { Text(Strings["batch_unsubscribe"]) },
+            text = { Text(Strings.get("batch_unsubscribe_confirm", selectedPodcasts.size)) },
             confirmButton = {
                 TextButton(onClick = {
                     scope.launch {
@@ -433,7 +433,7 @@ private fun HomeScreen(
                     }
                     showBatchUnsubscribeDialog = false
                 }) {
-                    Text("取消订阅")
+                    Text(Strings["unsubscribe"])
                 }
             },
             dismissButton = {
@@ -479,7 +479,7 @@ private fun PodcastDetailScreen(
                 },
                 actions = {
                     IconButton(onClick = { showUnsubscribeDialog = true }) {
-                        Icon(Icons.Default.Delete, contentDescription = "取消订阅")
+                        Icon(Icons.Default.Delete, contentDescription = Strings["unsubscribe"])
                     }
                 }
             )
@@ -605,8 +605,8 @@ private fun PodcastDetailScreen(
     if (showUnsubscribeDialog) {
         AlertDialog(
             onDismissRequest = { showUnsubscribeDialog = false },
-            title = { Text("取消订阅") },
-            text = { Text("确定要取消订阅 \"${podcast.title}\" 吗？") },
+            title = { Text(Strings["unsubscribe"]) },
+            text = { Text(Strings.get("unsubscribe_confirm", podcast.title)) },
             confirmButton = {
                 TextButton(onClick = {
                     scope.launch {
@@ -615,7 +615,7 @@ private fun PodcastDetailScreen(
                     }
                     showUnsubscribeDialog = false
                 }) {
-                    Text("取消订阅")
+                    Text(Strings["unsubscribe"])
                 }
             },
             dismissButton = {
