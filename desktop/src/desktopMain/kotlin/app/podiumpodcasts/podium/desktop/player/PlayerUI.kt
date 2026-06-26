@@ -16,6 +16,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.podiumpodcasts.podium.ui.theme.PodiumTheme
+import app.podiumpodcasts.podium.utils.Strings
 
 @Composable
 fun MiniPlayer(
@@ -52,7 +53,7 @@ fun MiniPlayer(
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = state.currentTitle ?: "No playback",
+                        text = state.currentTitle ?: Strings["player_no_playback"],
                         style = MaterialTheme.typography.bodyMedium,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
@@ -67,22 +68,22 @@ fun MiniPlayer(
                 }
 
                 IconButton(onClick = { state.seekBack() }) {
-                    Icon(Icons.Default.Replay10, contentDescription = "Seek Back")
+                    Icon(Icons.Default.Replay10, contentDescription = Strings["player_seek_back"])
                 }
 
                 IconButton(onClick = { state.togglePlayPause() }) {
                     Icon(
                         if (state.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                        contentDescription = if (state.isPlaying) "Pause" else "Play"
+                        contentDescription = if (state.isPlaying) Strings["player_pause"] else Strings["player_play"]
                     )
                 }
 
                 IconButton(onClick = { state.seekForward() }) {
-                    Icon(Icons.Default.Forward10, contentDescription = "Seek Forward")
+                    Icon(Icons.Default.Forward10, contentDescription = Strings["player_seek_forward"])
                 }
 
                 IconButton(onClick = onShowQueue) {
-                    Icon(Icons.Default.QueueMusic, contentDescription = "Queue")
+                    Icon(Icons.Default.QueueMusic, contentDescription = Strings["player_queue"])
                 }
             }
         }
@@ -120,17 +121,18 @@ fun FullPlayer(
             verticalAlignment = Alignment.CenterVertically
         ) {
             IconButton(onClick = onClose) {
-                Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Close")
+                Icon(Icons.Default.KeyboardArrowDown, contentDescription = Strings["player_close"])
             }
+
             Text(
-                text = state.currentTitle ?: "Now Playing",
+                text = state.currentTitle ?: Strings["player_now_playing"],
                 style = MaterialTheme.typography.titleMedium,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f).padding(horizontal = 8.dp)
             )
             IconButton(onClick = { showQueue = true }) {
-                Icon(Icons.Default.QueueMusic, contentDescription = "Queue")
+                Icon(Icons.Default.QueueMusic, contentDescription = Strings["player_queue"])
             }
         }
 
@@ -174,7 +176,7 @@ fun FullPlayer(
             IconButton(onClick = { state.playPrevious() }) {
                 Icon(
                     Icons.Default.SkipPrevious,
-                    contentDescription = "Previous",
+                    contentDescription = Strings["player_previous"],
                     modifier = Modifier.size(32.dp)
                 )
             }
@@ -182,7 +184,7 @@ fun FullPlayer(
             IconButton(onClick = { state.seekBack() }) {
                 Icon(
                     Icons.Default.Replay10,
-                    contentDescription = "Seek Back",
+                    contentDescription = Strings["player_seek_back"],
                     modifier = Modifier.size(32.dp)
                 )
             }
@@ -193,7 +195,7 @@ fun FullPlayer(
             ) {
                 Icon(
                     if (state.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                    contentDescription = if (state.isPlaying) "Pause" else "Play",
+                    contentDescription = if (state.isPlaying) Strings["player_pause"] else Strings["player_play"],
                     modifier = Modifier.size(32.dp)
                 )
             }
@@ -201,7 +203,7 @@ fun FullPlayer(
             IconButton(onClick = { state.seekForward() }) {
                 Icon(
                     Icons.Default.Forward10,
-                    contentDescription = "Seek Forward",
+                    contentDescription = Strings["player_seek_forward"],
                     modifier = Modifier.size(32.dp)
                 )
             }
@@ -209,7 +211,7 @@ fun FullPlayer(
             IconButton(onClick = { state.playNext() }) {
                 Icon(
                     Icons.Default.SkipNext,
-                    contentDescription = "Next",
+                    contentDescription = Strings["player_next"],
                     modifier = Modifier.size(32.dp)
                 )
             }
@@ -284,12 +286,12 @@ fun QueueDrawer(
                         if (isSelectionMode) {
                             Text("${selectedIndices.size} selected")
                         } else {
-                            Text("Queue (${state.queue.size})")
+                            Text(Strings.get("player_queue_count", state.queue.size))
                         }
                     },
                     navigationIcon = {
                         IconButton(onClick = onDismiss) {
-                            Icon(Icons.Default.Close, contentDescription = "Close")
+                            Icon(Icons.Default.Close, contentDescription = Strings["player_close"])
                         }
                     },
                     actions = {
@@ -301,7 +303,7 @@ fun QueueDrawer(
                                 isSelectionMode = true
                             }
                         }) {
-                            Text(if (isSelectionMode) "Cancel" else "Select")
+                            Text(if (isSelectionMode) Strings["dialog_cancel"] else Strings["player_select"])
                         }
                     }
                 )
@@ -311,7 +313,7 @@ fun QueueDrawer(
                         modifier = Modifier.weight(1f).fillMaxWidth(),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text("Queue is empty", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(Strings["player_queue_empty"], color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 } else {
                     LazyColumn(modifier = Modifier.weight(1f)) {
@@ -349,11 +351,11 @@ fun QueueDrawer(
                                         Row {
                                             if (onDownload != null && !item.isDownloaded) {
                                                 IconButton(onClick = { onDownload(item) }) {
-                                                    Icon(Icons.Default.Download, contentDescription = "Download")
+                                                    Icon(Icons.Default.Download, contentDescription = Strings["episode_download"])
                                                 }
                                             }
                                             IconButton(onClick = { state.removeFromQueue(index) }) {
-                                                Icon(Icons.Default.Close, contentDescription = "Remove")
+                                                Icon(Icons.Default.Close, contentDescription = Strings["player_remove"])
                                             }
                                         }
                                     }
@@ -386,7 +388,7 @@ fun QueueDrawer(
                                 selectedIndices = setOf()
                                 isSelectionMode = false
                             }) {
-                                Text("Download")
+                                Text(Strings["episode_download"])
                             }
                         }
                         TextButton(onClick = {
@@ -394,7 +396,7 @@ fun QueueDrawer(
                             selectedIndices = setOf()
                             isSelectionMode = false
                         }) {
-                            Text("Delete")
+                            Text(Strings["player_delete"])
                         }
                     }
                 }
@@ -411,14 +413,16 @@ private fun SleepTimerSheet(
 ) {
     val options = listOf(5, 10, 15, 20, 30, 45, 60, 90)
 
+    val sleepMinutes = state.sleepTimerMinutes
+
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
             Column {
-                Text("Sleep Timer")
-                if (state.sleepTimerMinutes != null) {
+                Text(Strings["player_sleep_timer"])
+                if (sleepMinutes != null) {
                     Text(
-                        text = "Active: ${state.sleepTimerMinutes} min",
+                        text = Strings.get("player_sleep_timer_active", sleepMinutes),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.primary
                     )
@@ -434,7 +438,7 @@ private fun SleepTimerSheet(
                             onDismiss()
                         }
                     ) {
-                        Text("Cancel Timer")
+                        Text(Strings["player_cancel_timer"])
                     }
                     Spacer(modifier = Modifier.height(8.dp))
                 }
@@ -446,14 +450,14 @@ private fun SleepTimerSheet(
                         },
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text("$minutes minutes")
+                        Text(Strings.get("player_minutes", minutes))
                     }
                 }
             }
         },
         confirmButton = {
             TextButton(onClick = onDismiss) {
-                Text("Close")
+                Text(Strings["dialog_close"])
             }
         }
     )
@@ -467,12 +471,12 @@ private fun SleepTimerButton(
     TextButton(onClick = onClick) {
         Icon(
             Icons.Default.Timer,
-            contentDescription = "Sleep Timer",
+            contentDescription = Strings["player_sleep_timer"],
             modifier = Modifier.size(18.dp)
         )
         Spacer(modifier = Modifier.width(4.dp))
         Text(
-            text = if (state.sleepTimerMinutes != null) "${state.sleepTimerMinutes}m" else "Timer"
+            text = if (state.sleepTimerMinutes != null) "${state.sleepTimerMinutes}m" else Strings["player_timer"]
         )
     }
 }
@@ -518,7 +522,7 @@ private fun VolumeControl(
     ) {
         Icon(
             if (currentVolume > 0) Icons.Default.VolumeUp else Icons.Default.VolumeOff,
-            contentDescription = if (currentVolume > 0) "Mute" else "Unmute",
+            contentDescription = if (currentVolume > 0) Strings["player_mute"] else Strings["player_unmute"],
             modifier = Modifier.size(20.dp).clickable { onToggleMute() }
         )
         Slider(

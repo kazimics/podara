@@ -28,6 +28,7 @@ import app.podiumpodcasts.podium.manager.PodcastManager
 import app.podiumpodcasts.podium.ui.theme.PodiumTheme
 import app.podiumpodcasts.podium.utils.Logger
 import app.podiumpodcasts.podium.utils.Settings
+import app.podiumpodcasts.podium.utils.Strings
 import kotlinx.coroutines.launch
 import java.io.File
 import java.io.PrintWriter
@@ -177,7 +178,8 @@ fun App() {
                     currentScreen == "settings" -> SettingsScreen(
                         database = database,
                         onBack = { currentScreen = "home" },
-                        onDownloadPathChanged = { newPath -> downloadPath = newPath }
+                        onDownloadPathChanged = { newPath -> downloadPath = newPath },
+                        onLanguageChanged = { /* Language change is handled by Settings */ }
                     )
                     currentScreen == "history" -> HistoryScreen(
                         database = database,
@@ -245,19 +247,19 @@ private fun HomeScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Podium") },
+                title = { Text(Strings["home_title"]) },
                 actions = {
                     IconButton(onClick = onDiscover) {
-                        Icon(Icons.Default.Explore, contentDescription = "Discover")
+                        Icon(Icons.Default.Explore, contentDescription = Strings["nav_discover"])
                     }
                     IconButton(onClick = onHistory) {
-                        Icon(Icons.Default.History, contentDescription = "History")
+                        Icon(Icons.Default.History, contentDescription = Strings["nav_history"])
                     }
                     IconButton(onClick = onSettings) {
-                        Icon(Icons.Default.Settings, contentDescription = "Settings")
+                        Icon(Icons.Default.Settings, contentDescription = Strings["nav_settings"])
                     }
                     IconButton(onClick = onAddPodcast) {
-                        Icon(Icons.Default.Add, contentDescription = "Add Podcast")
+                        Icon(Icons.Default.Add, contentDescription = Strings["home_add_podcast"])
                     }
                 }
             )
@@ -271,13 +273,13 @@ private fun HomeScreen(
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Icon(Icons.Default.RssFeed, null, Modifier.size(64.dp))
                     Spacer(modifier = Modifier.height(16.dp))
-                    Text("No podcasts yet", style = MaterialTheme.typography.headlineSmall)
-                    Text("Add one to get started!", style = MaterialTheme.typography.bodyMedium)
+                    Text(Strings["home_empty"], style = MaterialTheme.typography.headlineSmall)
+                    Text(Strings["home_empty_hint"], style = MaterialTheme.typography.bodyMedium)
                     Spacer(modifier = Modifier.height(16.dp))
                     FilledTonalButton(onClick = onAddPodcast) {
                         Icon(Icons.Default.Add, null, Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Add Podcast")
+                        Text(Strings["home_add_podcast"])
                     }
                 }
             }
@@ -333,7 +335,7 @@ private fun PodcastDetailScreen(
                 title = { Text(podcast.title) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.Default.ArrowBack, contentDescription = Strings["nav_back"])
                     }
                 }
             )
@@ -405,7 +407,7 @@ private fun PodcastDetailScreen(
                                         )
                                     }
                                 }) {
-                                    Icon(Icons.Default.PlaylistAdd, contentDescription = "Add to Queue")
+                                    Icon(Icons.Default.PlaylistAdd, contentDescription = Strings["episode_add_to_queue"])
                                 }
 
                                 Box(
@@ -415,7 +417,7 @@ private fun PodcastDetailScreen(
                                     if (isDownloaded) {
                                         Icon(
                                             Icons.Default.CheckCircle,
-                                            contentDescription = "Downloaded",
+                                            contentDescription = Strings["episode_downloaded"],
                                             tint = MaterialTheme.colorScheme.primary
                                         )
                                     } else if (isDownloading) {
@@ -431,7 +433,7 @@ private fun PodcastDetailScreen(
                                         IconButton(onClick = {
                                             onStartDownload(episode, podcast.title)
                                         }) {
-                                            Icon(Icons.Default.Download, contentDescription = "Download")
+                                            Icon(Icons.Default.Download, contentDescription = Strings["episode_download"])
                                         }
                                     }
                                 }
@@ -467,10 +469,10 @@ private fun AddPodcastDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Add Podcast") },
+        title = { Text(Strings["home_add_podcast"]) },
         text = {
             Column {
-                Text("Enter the RSS feed URL of the podcast:")
+                Text(Strings["add_podcast_hint"])
                 Spacer(modifier = Modifier.height(8.dp))
                 OutlinedTextField(
                     value = url,
@@ -498,12 +500,12 @@ private fun AddPodcastDialog(
                     }
                 }
             ) {
-                Text("Add")
+                Text(Strings["dialog_ok"])
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text(Strings["dialog_cancel"])
             }
         }
     )

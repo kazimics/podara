@@ -21,6 +21,7 @@ import app.podiumpodcasts.podium.data.AppDatabase
 import app.podiumpodcasts.podium.manager.AddPodcastResult
 import app.podiumpodcasts.podium.manager.PodcastManager
 import app.podiumpodcasts.podium.utils.Logger
+import app.podiumpodcasts.podium.utils.Strings
 import coil3.compose.AsyncImage
 import kotlinx.coroutines.launch
 
@@ -63,10 +64,10 @@ fun DiscoverScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Discover") },
+                title = { Text(Strings["discover_title"]) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = Strings["nav_back"])
                     }
                 }
             )
@@ -76,7 +77,7 @@ fun DiscoverScreen(
             OutlinedTextField(
                 value = searchQuery,
                 onValueChange = { searchQuery = it },
-                label = { Text("Search podcasts") },
+                label = { Text(Strings["discover_search_hint"]) },
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 8.dp),
@@ -112,7 +113,7 @@ fun DiscoverScreen(
                     },
                     modifier = Modifier.padding(horizontal = 16.dp)
                 ) {
-                    Text("Search")
+                    Text(Strings["discover_search"])
                 }
             }
 
@@ -180,12 +181,12 @@ fun DiscoverScreen(
                                             }
                                         }
                                     }) {
-                                        Icon(Icons.Default.Add, contentDescription = "Add Podcast")
+                                        Icon(Icons.Default.Add, contentDescription = Strings["discover_add"])
                                     }
                                 } else {
                                     Icon(
                                         Icons.Default.Check,
-                                        contentDescription = "Added",
+                                        contentDescription = Strings["discover_added"],
                                         tint = MaterialTheme.colorScheme.primary
                                     )
                                 }

@@ -9,10 +9,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Added
 - Podcast cover images display on Home, Discover, History screens, and episode lists
 - Coil 3 image loading library for network image fetching
+- Multi-language support (English / Simplified Chinese)
+- Language selector in Settings screen
 
 ### Fixed
 - Download status showing completed when local file no longer exists
 - History list now falls back to podcast cover when episode has no image
+- All GUI tests now pass with Coil image loading integration
 
 ## [0.1.0] - 2026-06-25
 

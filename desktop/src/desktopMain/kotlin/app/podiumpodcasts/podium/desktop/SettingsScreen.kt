@@ -1,5 +1,6 @@
 package app.podiumpodcasts.podium.desktop
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -19,6 +20,7 @@ import app.podiumpodcasts.podium.manager.ImportManager
 import app.podiumpodcasts.podium.manager.ImportResult
 import app.podiumpodcasts.podium.utils.Logger
 import app.podiumpodcasts.podium.utils.Settings
+import app.podiumpodcasts.podium.utils.Strings
 import kotlinx.coroutines.launch
 import java.awt.FileDialog
 import java.awt.Frame
@@ -29,7 +31,8 @@ import java.io.File
 fun SettingsScreen(
     database: AppDatabase,
     onBack: () -> Unit,
-    onDownloadPathChanged: ((String) -> Unit)? = null
+    onDownloadPathChanged: ((String) -> Unit)? = null,
+    onLanguageChanged: ((String) -> Unit)? = null
 ) {
     val exportManager = remember { ExportManager(database) }
     val importManager = remember { ImportManager(database) }
@@ -41,14 +44,16 @@ fun SettingsScreen(
     var showImportResult by remember { mutableStateOf<ImportResult?>(null) }
     var isImporting by remember { mutableStateOf(false) }
     var downloadPath by remember { mutableStateOf(Settings.getDownloadPath()) }
+    var currentLanguage by remember { mutableStateOf(Settings.getLanguage()) }
+    var showLanguageDialog by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Settings") },
+                title = { Text(Strings["settings_title"]) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = Strings["nav_back"])
                     }
                 }
             )
@@ -61,12 +66,33 @@ fun SettingsScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(16.dp)
         ) {
-            Text("Data", style = MaterialTheme.typography.titleMedium)
+            Text(Strings["settings_language"], style = MaterialTheme.typography.titleMedium)
             Spacer(modifier = Modifier.height(8.dp))
 
             ListItem(
-                headlineContent = { Text("Export OPML") },
-                supportingContent = { Text("Export your podcast subscriptions as OPML") },
+                headlineContent = { Text(Strings["settings_language"]) },
+                supportingContent = {
+                    Text(
+                        text = if (currentLanguage == "zh") "简体中文" else "English",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                },
+                leadingContent = { Icon(Icons.Default.Language, null) },
+                trailingContent = {
+                    TextButton(onClick = { showLanguageDialog = true }) {
+                        Text(Strings["settings_change"])
+                    }
+                }
+            )
+
+            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+
+            Text(Strings["settings_data"], style = MaterialTheme.typography.titleMedium)
+            Spacer(modifier = Modifier.height(8.dp))
+
+            ListItem(
+                headlineContent = { Text(Strings["settings_export_opml"]) },
+                supportingContent = { Text(Strings["settings_export_opml_desc"]) },
                 leadingContent = { Icon(Icons.Default.FileDownload, null) },
                 trailingContent = {
                     TextButton(onClick = {
@@ -75,14 +101,14 @@ fun SettingsScreen(
                             showExportDialog = true
                         }
                     }) {
-                        Text("Export")
+                        Text(Strings["settings_export"])
                     }
                 }
             )
 
             ListItem(
-                headlineContent = { Text("Import OPML") },
-                supportingContent = { Text("Import podcast subscriptions from OPML file") },
+                headlineContent = { Text(Strings["settings_import_opml"]) },
+                supportingContent = { Text(Strings["settings_import_opml_desc"]) },
                 leadingContent = { Icon(Icons.Default.FileUpload, null) },
                 trailingContent = {
                     TextButton(
@@ -109,7 +135,7 @@ fun SettingsScreen(
                                 strokeWidth = 2.dp
                             )
                         } else {
-                            Text("Import")
+                            Text(Strings["settings_import"])
                         }
                     }
                 }
@@ -117,11 +143,11 @@ fun SettingsScreen(
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
-            Text("Downloads", style = MaterialTheme.typography.titleMedium)
+            Text(Strings["settings_downloads"], style = MaterialTheme.typography.titleMedium)
             Spacer(modifier = Modifier.height(8.dp))
 
             ListItem(
-                headlineContent = { Text("Download Location") },
+                headlineContent = { Text(Strings["settings_download_location"]) },
                 supportingContent = {
                     Text(
                         text = downloadPath,
@@ -140,7 +166,7 @@ fun SettingsScreen(
                             Logger.i("Settings", "Download path changed to: $dir")
                         }
                     }) {
-                        Text("Change")
+                        Text(Strings["settings_change"])
                     }
                 }
             )
@@ -157,26 +183,67 @@ fun SettingsScreen(
                     },
                     modifier = Modifier.padding(start = 72.dp)
                 ) {
-                    Text("Reset to Default")
+                    Text(Strings["settings_reset_default"])
                 }
             }
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
-            Text("About", style = MaterialTheme.typography.titleMedium)
+            Text(Strings["settings_about"], style = MaterialTheme.typography.titleMedium)
             Spacer(modifier = Modifier.height(8.dp))
             Text("Podium - Podcast Player", style = MaterialTheme.typography.bodyMedium)
-            Text("Version 0.1.0", style = MaterialTheme.typography.bodySmall)
+            Text(Strings.get("settings_version", "0.1.0"), style = MaterialTheme.typography.bodySmall)
         }
+    }
+
+    if (showLanguageDialog) {
+        val languages = listOf("en" to "English", "zh" to "简体中文")
+        AlertDialog(
+            onDismissRequest = { showLanguageDialog = false },
+            title = { Text(Strings["settings_language"]) },
+            text = {
+                Column {
+                    languages.forEach { (code, name) ->
+                        ListItem(
+                            headlineContent = { Text(name) },
+                            leadingContent = {
+                                RadioButton(
+                                    selected = currentLanguage == code,
+                                    onClick = {
+                                        currentLanguage = code
+                                        Settings.setLanguage(code)
+                                        Strings.updateLanguage(code)
+                                        showLanguageDialog = false
+                                        onLanguageChanged?.invoke(code)
+                                    }
+                                )
+                            },
+                            modifier = Modifier.clickable {
+                                currentLanguage = code
+                                Settings.setLanguage(code)
+                                Strings.updateLanguage(code)
+                                showLanguageDialog = false
+                                onLanguageChanged?.invoke(code)
+                            }
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showLanguageDialog = false }) {
+                    Text(Strings["dialog_cancel"])
+                }
+            }
+        )
     }
 
     if (showExportDialog && exportedOpml != null) {
         AlertDialog(
             onDismissRequest = { showExportDialog = false },
-            title = { Text("Export OPML") },
+            title = { Text(Strings["opml_export_title"]) },
             text = {
                 Column {
-                    Text("Copy the OPML content below:")
+                    Text(Strings["opml_export_copy_hint"])
                     Spacer(modifier = Modifier.height(8.dp))
                     OutlinedTextField(
                         value = exportedOpml!!,
@@ -194,12 +261,12 @@ fun SettingsScreen(
                     showExportDialog = false
                     showCopiedSnackbar = true
                 }) {
-                    Text("Copy to Clipboard")
+                    Text(Strings["dialog_copy_to_clipboard"])
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showExportDialog = false }) {
-                    Text("Close")
+                    Text(Strings["dialog_close"])
                 }
             }
         )
@@ -210,11 +277,11 @@ fun SettingsScreen(
             modifier = Modifier.padding(16.dp),
             action = {
                 TextButton(onClick = { showCopiedSnackbar = false }) {
-                    Text("OK")
+                    Text(Strings["dialog_ok"])
                 }
             }
         ) {
-            Text("OPML copied to clipboard!")
+            Text(Strings["opml_export_copied"])
         }
     }
 
@@ -223,13 +290,16 @@ fun SettingsScreen(
             is ImportResult.Success -> {
                 AlertDialog(
                     onDismissRequest = { showImportResult = null },
-                    title = { Text("Import Complete") },
+                    title = { Text(Strings["opml_import_title"]) },
                     text = {
                         Column {
-                            Text("Added: ${result.added} podcasts")
-                            Text("Skipped (duplicates): ${result.skipped}")
+                            Text(Strings.get("opml_import_added", result.added))
+                            Text(Strings.get("opml_import_skipped", result.skipped))
                             if (result.failed > 0) {
-                                Text("Failed: ${result.failed}", color = MaterialTheme.colorScheme.error)
+                                Text(
+                                    Strings.get("opml_import_failed", result.failed),
+                                    color = MaterialTheme.colorScheme.error
+                                )
                                 result.errors.forEach { error ->
                                     Text(
                                         text = "  - $error",
@@ -242,7 +312,7 @@ fun SettingsScreen(
                     },
                     confirmButton = {
                         TextButton(onClick = { showImportResult = null }) {
-                            Text("OK")
+                            Text(Strings["dialog_ok"])
                         }
                     }
                 )
@@ -250,11 +320,11 @@ fun SettingsScreen(
             is ImportResult.Error -> {
                 AlertDialog(
                     onDismissRequest = { showImportResult = null },
-                    title = { Text("Import Failed") },
+                    title = { Text(Strings["opml_import_error"]) },
                     text = { Text(result.message) },
                     confirmButton = {
                         TextButton(onClick = { showImportResult = null }) {
-                            Text("OK")
+                            Text(Strings["dialog_ok"])
                         }
                     }
                 )

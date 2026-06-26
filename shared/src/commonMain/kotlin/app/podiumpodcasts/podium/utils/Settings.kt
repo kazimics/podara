@@ -31,6 +31,15 @@ object Settings {
         save()
     }
 
+    fun getLanguage(): String {
+        return props.getProperty("language", "en")
+    }
+
+    fun setLanguage(language: String) {
+        props.setProperty("language", language)
+        save()
+    }
+
     private fun save() {
         try {
             settingsFile.parentFile?.mkdirs()

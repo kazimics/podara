@@ -22,6 +22,7 @@ import app.podiumpodcasts.podium.data.model.PodcastEpisode
 import app.podiumpodcasts.podium.desktop.player.MediaPlayerState
 import coil3.compose.AsyncImage
 import kotlinx.coroutines.launch
+import app.podiumpodcasts.podium.utils.Strings
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -43,16 +44,16 @@ fun HistoryScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("History") },
+                title = { Text(Strings["history_title"]) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = Strings["nav_back"])
                     }
                 },
                 actions = {
                     if (historyItems.isNotEmpty()) {
                         IconButton(onClick = { showClearDialog = true }) {
-                            Icon(Icons.Default.DeleteSweep, contentDescription = "Clear History")
+                            Icon(Icons.Default.DeleteSweep, contentDescription = Strings["history_clear"])
                         }
                     }
                 }
@@ -67,8 +68,8 @@ fun HistoryScreen(
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Icon(Icons.Default.History, null, Modifier.size(64.dp))
                     Spacer(modifier = Modifier.height(16.dp))
-                    Text("No history yet", style = MaterialTheme.typography.headlineSmall)
-                    Text("Episodes you play will appear here", style = MaterialTheme.typography.bodyMedium)
+                    Text(Strings["history_empty"], style = MaterialTheme.typography.headlineSmall)
+                    Text(Strings["history_empty_hint"], style = MaterialTheme.typography.bodyMedium)
                 }
             }
         } else {
@@ -127,7 +128,7 @@ fun HistoryScreen(
                                             episodeId = episode.id
                                         )
                                     }) {
-                                        Icon(Icons.Default.PlaylistAdd, contentDescription = "Add to Queue")
+                                        Icon(Icons.Default.PlaylistAdd, contentDescription = Strings["episode_add_to_queue"])
                                     }
                                     IconButton(onClick = {
                                         scope.launch {
@@ -158,8 +159,8 @@ fun HistoryScreen(
     if (showClearDialog) {
         AlertDialog(
             onDismissRequest = { showClearDialog = false },
-            title = { Text("Clear History") },
-            text = { Text("Are you sure you want to clear all history?") },
+            title = { Text(Strings["history_clear"]) },
+            text = { Text(Strings["history_clear_confirm"]) },
             confirmButton = {
                 TextButton(onClick = {
                     scope.launch {
@@ -168,12 +169,12 @@ fun HistoryScreen(
                     }
                     showClearDialog = false
                 }) {
-                    Text("Clear")
+                    Text(Strings["history_clear_action"])
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showClearDialog = false }) {
-                    Text("Cancel")
+                    Text(Strings["dialog_cancel"])
                 }
             }
         )
