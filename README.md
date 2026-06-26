@@ -27,6 +27,7 @@ This project is a Windows desktop port of [aimok04/podium](https://github.com/ai
 - **Queue management** - build and manage your playback queue.
 - **OPML import/export** - transfer your subscriptions between apps.
 - **History** - track your listening history.
+- **Subscription management** - unsubscribe from podcasts individually or in batch.
 
 ## Installation
 
