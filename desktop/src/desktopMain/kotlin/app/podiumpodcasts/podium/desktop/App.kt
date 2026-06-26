@@ -266,7 +266,7 @@ private fun HomeScreen(
             TopAppBar(
                 title = {
                     if (isEditing) {
-                        Text("已选择 ${selectedPodcasts.size} 个")
+                        Text(Strings.get("home_selected_count", selectedPodcasts.size))
                     } else {
                         Text(Strings["home_title"])
                     }
@@ -398,9 +398,9 @@ private fun HomeScreen(
                     scope.launch {
                         subscriptionManager.unsubscribe(podcastToUnsubscribe!!.origin)
                         onPodcastsChanged(database.podcasts.getAllSync())
+                        showUnsubscribeDialog = false
+                        podcastToUnsubscribe = null
                     }
-                    showUnsubscribeDialog = false
-                    podcastToUnsubscribe = null
                 }) {
                     Text(Strings["unsubscribe"])
                 }
@@ -430,8 +430,8 @@ private fun HomeScreen(
                         onPodcastsChanged(database.podcasts.getAllSync())
                         selectedPodcasts = emptySet()
                         isEditing = false
+                        showBatchUnsubscribeDialog = false
                     }
-                    showBatchUnsubscribeDialog = false
                 }) {
                     Text(Strings["unsubscribe"])
                 }
@@ -612,8 +612,8 @@ private fun PodcastDetailScreen(
                     scope.launch {
                         subscriptionManager.unsubscribe(podcast.origin)
                         onBack()
+                        showUnsubscribeDialog = false
                     }
-                    showUnsubscribeDialog = false
                 }) {
                     Text(Strings["unsubscribe"])
                 }
