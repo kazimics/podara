@@ -4,6 +4,7 @@ import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
 import app.podiumpodcasts.podium.data.AppDatabase
 import app.podiumpodcasts.podium.ui.theme.PodiumTheme
+import app.podiumpodcasts.podium.utils.Strings
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -44,7 +45,7 @@ class DiscoverScreenTest {
                 DiscoverScreen(database = database, onBack = {})
             }
         }
-        composeTestRule.onNodeWithText("Discover").assertIsDisplayed()
+        composeTestRule.onNodeWithText(Strings["discover_title"]).assertIsDisplayed()
     }
 
     @Test
@@ -54,7 +55,7 @@ class DiscoverScreenTest {
                 DiscoverScreen(database = database, onBack = {})
             }
         }
-        composeTestRule.onNodeWithText("Search podcasts").assertIsDisplayed()
+        composeTestRule.onNodeWithText(Strings["discover_search_hint"]).assertIsDisplayed()
     }
 
     @Test
@@ -64,8 +65,8 @@ class DiscoverScreenTest {
                 DiscoverScreen(database = database, onBack = {})
             }
         }
-        composeTestRule.onNodeWithText("Search podcasts").performTextInput("test")
-        composeTestRule.onNodeWithText("Search").assertIsDisplayed()
+        composeTestRule.onNodeWithText(Strings["discover_search_hint"]).performTextInput("test")
+        composeTestRule.onNodeWithText(Strings["discover_search"]).assertIsDisplayed()
     }
 
     @Test
@@ -75,7 +76,7 @@ class DiscoverScreenTest {
                 DiscoverScreen(database = database, onBack = {})
             }
         }
-        composeTestRule.onNodeWithText("Search podcasts").performTextInput("test query")
+        composeTestRule.onNodeWithText(Strings["discover_search_hint"]).performTextInput("test query")
         composeTestRule.onNodeWithContentDescription("Clear").assertIsDisplayed()
     }
 
@@ -87,7 +88,7 @@ class DiscoverScreenTest {
                 DiscoverScreen(database = database, onBack = { backClicked = true })
             }
         }
-        composeTestRule.onNodeWithContentDescription("Back").performClick()
+        composeTestRule.onNodeWithContentDescription(Strings["nav_back"]).performClick()
         composeTestRule.waitForIdle()
         assert(backClicked) { "Back button should trigger onBack" }
     }
@@ -99,7 +100,7 @@ class DiscoverScreenTest {
                 DiscoverScreen(database = database, onBack = {})
             }
         }
-        composeTestRule.onNodeWithText("Search").assertDoesNotExist()
+        composeTestRule.onNodeWithText(Strings["discover_search"]).assertDoesNotExist()
     }
 
     @Test
@@ -109,6 +110,6 @@ class DiscoverScreenTest {
                 DiscoverScreen(database = database, onBack = {})
             }
         }
-        composeTestRule.onNodeWithContentDescription("Back").assertIsDisplayed()
+        composeTestRule.onNodeWithContentDescription(Strings["nav_back"]).assertIsDisplayed()
     }
 }

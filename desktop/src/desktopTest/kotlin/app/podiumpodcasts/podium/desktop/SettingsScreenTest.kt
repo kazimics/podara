@@ -4,6 +4,7 @@ import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
 import app.podiumpodcasts.podium.data.AppDatabase
 import app.podiumpodcasts.podium.ui.theme.PodiumTheme
+import app.podiumpodcasts.podium.utils.Strings
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -44,7 +45,7 @@ class SettingsScreenTest {
                 SettingsScreen(database = database, onBack = {})
             }
         }
-        composeTestRule.onNodeWithText("Settings").assertIsDisplayed()
+        composeTestRule.onNodeWithText(Strings["settings_title"]).assertIsDisplayed()
     }
 
     @Test
@@ -54,7 +55,7 @@ class SettingsScreenTest {
                 SettingsScreen(database = database, onBack = {})
             }
         }
-        composeTestRule.onNodeWithText("Version 0.1.0").assertIsDisplayed()
+        composeTestRule.onNodeWithText(Strings.get("settings_version", "0.1.0")).assertIsDisplayed()
     }
 
     @Test
@@ -74,8 +75,8 @@ class SettingsScreenTest {
                 SettingsScreen(database = database, onBack = {})
             }
         }
-        composeTestRule.onNodeWithText("Export OPML").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Export").assertIsDisplayed()
+        composeTestRule.onNodeWithText(Strings["settings_export_opml"]).assertIsDisplayed()
+        composeTestRule.onNodeWithText(Strings["settings_export"]).assertIsDisplayed()
     }
 
     @Test
@@ -85,8 +86,8 @@ class SettingsScreenTest {
                 SettingsScreen(database = database, onBack = {})
             }
         }
-        composeTestRule.onNodeWithText("Import OPML").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Import").assertIsDisplayed()
+        composeTestRule.onNodeWithText(Strings["settings_import_opml"]).assertIsDisplayed()
+        composeTestRule.onNodeWithText(Strings["settings_import"]).assertIsDisplayed()
     }
 
     @Test
@@ -97,7 +98,7 @@ class SettingsScreenTest {
                 SettingsScreen(database = database, onBack = { backClicked = true })
             }
         }
-        composeTestRule.onNodeWithContentDescription("Back").performClick()
+        composeTestRule.onNodeWithContentDescription(Strings["nav_back"]).performClick()
         composeTestRule.waitForIdle()
         assert(backClicked) { "Back button should trigger onBack" }
     }
@@ -109,7 +110,7 @@ class SettingsScreenTest {
                 SettingsScreen(database = database, onBack = {})
             }
         }
-        composeTestRule.onNodeWithText("Data").assertIsDisplayed()
+        composeTestRule.onNodeWithText(Strings["settings_data"]).assertIsDisplayed()
     }
 
     @Test
@@ -119,7 +120,7 @@ class SettingsScreenTest {
                 SettingsScreen(database = database, onBack = {})
             }
         }
-        composeTestRule.onNodeWithText("About").assertIsDisplayed()
+        composeTestRule.onNodeWithText(Strings["settings_about"]).assertIsDisplayed()
     }
 
     @Test
@@ -129,7 +130,7 @@ class SettingsScreenTest {
                 SettingsScreen(database = database, onBack = {})
             }
         }
-        composeTestRule.onNodeWithText("Export your podcast subscriptions as OPML").assertIsDisplayed()
+        composeTestRule.onNodeWithText(Strings["settings_export_opml_desc"]).assertIsDisplayed()
     }
 
     @Test
@@ -139,6 +140,6 @@ class SettingsScreenTest {
                 SettingsScreen(database = database, onBack = {})
             }
         }
-        composeTestRule.onNodeWithText("Import podcast subscriptions from OPML file").assertIsDisplayed()
+        composeTestRule.onNodeWithText(Strings["settings_import_opml_desc"]).assertIsDisplayed()
     }
 }

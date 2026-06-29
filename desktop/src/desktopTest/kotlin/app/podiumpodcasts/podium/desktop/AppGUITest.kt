@@ -7,6 +7,7 @@ import app.podiumpodcasts.podium.data.model.Podcast
 import app.podiumpodcasts.podium.data.model.PodcastEpisode
 import app.podiumpodcasts.podium.desktop.player.MediaPlayerState
 import app.podiumpodcasts.podium.ui.theme.PodiumTheme
+import app.podiumpodcasts.podium.utils.Strings
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -47,7 +48,7 @@ class AppGUITest {
         composeTestRule.setContent {
             PodiumTheme { App() }
         }
-        composeTestRule.onNodeWithText("Podium").assertIsDisplayed()
+        composeTestRule.onNodeWithText(Strings["home_title"]).assertIsDisplayed()
     }
 
     @Test
@@ -55,7 +56,7 @@ class AppGUITest {
         composeTestRule.setContent {
             PodiumTheme { App() }
         }
-        composeTestRule.onNodeWithContentDescription("Add Podcast").assertIsDisplayed()
+        composeTestRule.onNodeWithContentDescription(Strings["home_add_podcast"]).assertIsDisplayed()
     }
 
     @Test
@@ -63,7 +64,7 @@ class AppGUITest {
         composeTestRule.setContent {
             PodiumTheme { App() }
         }
-        composeTestRule.onNodeWithContentDescription("Discover").assertIsDisplayed()
+        composeTestRule.onNodeWithContentDescription(Strings["nav_discover"]).assertIsDisplayed()
     }
 
     @Test
@@ -71,7 +72,7 @@ class AppGUITest {
         composeTestRule.setContent {
             PodiumTheme { App() }
         }
-        composeTestRule.onNodeWithContentDescription("History").assertIsDisplayed()
+        composeTestRule.onNodeWithContentDescription(Strings["nav_history"]).assertIsDisplayed()
     }
 
     @Test
@@ -79,7 +80,7 @@ class AppGUITest {
         composeTestRule.setContent {
             PodiumTheme { App() }
         }
-        composeTestRule.onNodeWithContentDescription("Settings").assertIsDisplayed()
+        composeTestRule.onNodeWithContentDescription(Strings["nav_settings"]).assertIsDisplayed()
     }
 
     // === Podcast List Tests ===
@@ -104,7 +105,7 @@ class AppGUITest {
             PodiumTheme { App() }
         }
         // Note: This tests the initial state before data loads
-        composeTestRule.onNodeWithText("Podium").assertIsDisplayed()
+        composeTestRule.onNodeWithText(Strings["home_title"]).assertIsDisplayed()
     }
 
     // === Settings Screen Tests ===
@@ -116,10 +117,10 @@ class AppGUITest {
                 SettingsScreen(database = database, onBack = {})
             }
         }
-        composeTestRule.onNodeWithText("Settings").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Export OPML").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Import OPML").assertIsDisplayed()
-        composeTestRule.onNodeWithText("About").assertIsDisplayed()
+        composeTestRule.onNodeWithText(Strings["settings_title"]).assertIsDisplayed()
+        composeTestRule.onNodeWithText(Strings["settings_export_opml"]).assertIsDisplayed()
+        composeTestRule.onNodeWithText(Strings["settings_import_opml"]).assertIsDisplayed()
+        composeTestRule.onNodeWithText(Strings["settings_about"]).assertIsDisplayed()
     }
 
     @Test
@@ -129,7 +130,7 @@ class AppGUITest {
                 SettingsScreen(database = database, onBack = {})
             }
         }
-        composeTestRule.onNodeWithText("Version 0.1.0").assertIsDisplayed()
+        composeTestRule.onNodeWithText(Strings.get("settings_version", "0.1.0")).assertIsDisplayed()
     }
 
     @Test
@@ -189,7 +190,9 @@ class AppGUITest {
             }
         }
         composeTestRule.waitForIdle()
-        composeTestRule.onNodeWithContentDescription("Play").assertIsDisplayed()
+        composeTestRule.onNode(
+            hasContentDescription(Strings["player_play"]) or hasContentDescription(Strings["player_pause"])
+        ).assertIsDisplayed()
     }
 
     @Test
@@ -206,8 +209,8 @@ class AppGUITest {
             }
         }
         composeTestRule.waitForIdle()
-        composeTestRule.onNodeWithContentDescription("Seek Back").assertIsDisplayed()
-        composeTestRule.onNodeWithContentDescription("Seek Forward").assertIsDisplayed()
+        composeTestRule.onNodeWithContentDescription(Strings["player_seek_back"]).assertIsDisplayed()
+        composeTestRule.onNodeWithContentDescription(Strings["player_seek_forward"]).assertIsDisplayed()
     }
 
     // === FullPlayer Tests ===
@@ -240,9 +243,11 @@ class AppGUITest {
             }
         }
         composeTestRule.waitForIdle()
-        composeTestRule.onNodeWithContentDescription("Play").assertIsDisplayed()
-        composeTestRule.onNodeWithContentDescription("Seek Back").assertIsDisplayed()
-        composeTestRule.onNodeWithContentDescription("Seek Forward").assertIsDisplayed()
+        composeTestRule.onNode(
+            hasContentDescription(Strings["player_play"]) or hasContentDescription(Strings["player_pause"])
+        ).assertIsDisplayed()
+        composeTestRule.onNodeWithContentDescription(Strings["player_seek_back"]).assertIsDisplayed()
+        composeTestRule.onNodeWithContentDescription(Strings["player_seek_forward"]).assertIsDisplayed()
     }
 
     @Test
@@ -257,7 +262,7 @@ class AppGUITest {
                 )
             }
         }
-        composeTestRule.onNodeWithContentDescription("Queue").assertIsDisplayed()
+        composeTestRule.onNodeWithContentDescription(Strings["player_queue"]).assertIsDisplayed()
     }
 
     @Test
@@ -287,7 +292,7 @@ class AppGUITest {
                 )
             }
         }
-        composeTestRule.onNodeWithText("Timer").assertIsDisplayed()
+        composeTestRule.onNodeWithText(Strings["player_timer"]).assertIsDisplayed()
     }
 
     // === History Screen Tests ===
@@ -299,7 +304,7 @@ class AppGUITest {
                 HistoryScreen(database = database, playerState = MediaPlayerState(), onBack = {})
             }
         }
-        composeTestRule.onNodeWithText("No history yet").assertIsDisplayed()
+        composeTestRule.onNodeWithText(Strings["history_empty"]).assertIsDisplayed()
     }
 
     @Test
@@ -309,7 +314,7 @@ class AppGUITest {
                 HistoryScreen(database = database, playerState = MediaPlayerState(), onBack = {})
             }
         }
-        composeTestRule.onNodeWithText("History").assertIsDisplayed()
+        composeTestRule.onNodeWithText(Strings["history_title"]).assertIsDisplayed()
     }
 
     // === Discover Screen Tests ===
@@ -321,7 +326,7 @@ class AppGUITest {
                 DiscoverScreen(database = database, onBack = {})
             }
         }
-        composeTestRule.onNodeWithText("Discover").assertIsDisplayed()
+        composeTestRule.onNodeWithText(Strings["discover_title"]).assertIsDisplayed()
     }
 
     @Test
@@ -331,7 +336,7 @@ class AppGUITest {
                 DiscoverScreen(database = database, onBack = {})
             }
         }
-        composeTestRule.onNodeWithText("Search podcasts").assertIsDisplayed()
+        composeTestRule.onNodeWithText(Strings["discover_search_hint"]).assertIsDisplayed()
     }
 
     // === Navigation Flow Tests ===
@@ -341,9 +346,9 @@ class AppGUITest {
         composeTestRule.setContent {
             PodiumTheme { App() }
         }
-        composeTestRule.onNodeWithContentDescription("Discover").performClick()
+        composeTestRule.onNodeWithContentDescription(Strings["nav_discover"]).performClick()
         composeTestRule.waitForIdle()
-        composeTestRule.onNodeWithText("Discover").assertIsDisplayed()
+        composeTestRule.onNodeWithText(Strings["discover_title"]).assertIsDisplayed()
     }
 
     @Test
@@ -351,9 +356,9 @@ class AppGUITest {
         composeTestRule.setContent {
             PodiumTheme { App() }
         }
-        composeTestRule.onNodeWithContentDescription("History").performClick()
+        composeTestRule.onNodeWithContentDescription(Strings["nav_history"]).performClick()
         composeTestRule.waitForIdle()
-        composeTestRule.onNodeWithText("History").assertIsDisplayed()
+        composeTestRule.onNodeWithText(Strings["history_title"]).assertIsDisplayed()
     }
 
     @Test
@@ -361,9 +366,9 @@ class AppGUITest {
         composeTestRule.setContent {
             PodiumTheme { App() }
         }
-        composeTestRule.onNodeWithContentDescription("Settings").performClick()
+        composeTestRule.onNodeWithContentDescription(Strings["nav_settings"]).performClick()
         composeTestRule.waitForIdle()
-        composeTestRule.onNodeWithText("Settings").assertIsDisplayed()
+        composeTestRule.onNodeWithText(Strings["settings_title"]).assertIsDisplayed()
     }
 
     // === Add Podcast Dialog Tests ===
@@ -373,10 +378,10 @@ class AppGUITest {
         composeTestRule.setContent {
             PodiumTheme { App() }
         }
-        composeTestRule.onNodeWithContentDescription("Add Podcast").performClick()
+        composeTestRule.onNodeWithContentDescription(Strings["home_add_podcast"]).performClick()
         composeTestRule.waitForIdle()
-        composeTestRule.onNodeWithText("Enter the RSS feed URL of the podcast:").assertIsDisplayed()
+        composeTestRule.onNodeWithText(Strings["add_podcast_hint"]).assertIsDisplayed()
         composeTestRule.onNodeWithText("RSS Feed URL").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Cancel").assertIsDisplayed()
+        composeTestRule.onNodeWithText(Strings["dialog_cancel"]).assertIsDisplayed()
     }
 }

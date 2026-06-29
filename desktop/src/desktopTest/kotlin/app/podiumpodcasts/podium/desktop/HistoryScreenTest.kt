@@ -5,6 +5,7 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import app.podiumpodcasts.podium.data.AppDatabase
 import app.podiumpodcasts.podium.desktop.player.MediaPlayerState
 import app.podiumpodcasts.podium.ui.theme.PodiumTheme
+import app.podiumpodcasts.podium.utils.Strings
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -45,8 +46,8 @@ class HistoryScreenTest {
                 HistoryScreen(database = database, playerState = MediaPlayerState(), onBack = {})
             }
         }
-        composeTestRule.onNodeWithText("No history yet").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Episodes you play will appear here").assertIsDisplayed()
+        composeTestRule.onNodeWithText(Strings["history_empty"]).assertIsDisplayed()
+        composeTestRule.onNodeWithText(Strings["history_empty_hint"]).assertIsDisplayed()
     }
 
     @Test
@@ -56,7 +57,7 @@ class HistoryScreenTest {
                 HistoryScreen(database = database, playerState = MediaPlayerState(), onBack = {})
             }
         }
-        composeTestRule.onNodeWithText("History").assertIsDisplayed()
+        composeTestRule.onNodeWithText(Strings["history_title"]).assertIsDisplayed()
     }
 
     @Test
@@ -67,7 +68,7 @@ class HistoryScreenTest {
                 HistoryScreen(database = database, playerState = MediaPlayerState(), onBack = { backClicked = true })
             }
         }
-        composeTestRule.onNodeWithContentDescription("Back").performClick()
+        composeTestRule.onNodeWithContentDescription(Strings["nav_back"]).performClick()
         composeTestRule.waitForIdle()
         assert(backClicked) { "Back button should trigger onBack" }
     }
@@ -79,7 +80,7 @@ class HistoryScreenTest {
                 HistoryScreen(database = database, playerState = MediaPlayerState(), onBack = {})
             }
         }
-        composeTestRule.onNodeWithContentDescription("Clear History").assertDoesNotExist()
+        composeTestRule.onNodeWithContentDescription(Strings["history_clear"]).assertDoesNotExist()
     }
 
     @Test
@@ -89,7 +90,7 @@ class HistoryScreenTest {
                 HistoryScreen(database = database, playerState = MediaPlayerState(), onBack = {})
             }
         }
-        composeTestRule.onNodeWithText("History").assertIsDisplayed()
+        composeTestRule.onNodeWithText(Strings["history_title"]).assertIsDisplayed()
     }
 
     @Test
@@ -99,6 +100,6 @@ class HistoryScreenTest {
                 HistoryScreen(database = database, playerState = MediaPlayerState(), onBack = {})
             }
         }
-        composeTestRule.onNodeWithText("No history yet").assertIsDisplayed()
+        composeTestRule.onNodeWithText(Strings["history_empty"]).assertIsDisplayed()
     }
 }
