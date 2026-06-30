@@ -33,12 +33,17 @@ jobs:
           END=$(date +%s)
           echo "::notice::Compilation took $((END - START)) seconds"
 
-      - name: Prepare mpv native directory
+      - name: Prepare native directories
         shell: powershell
         run: |
-          $nativeDir = Join-Path $env:USERPROFILE ".podium\native"
-          New-Item -ItemType Directory -Path $nativeDir -Force | Out-Null
-          Write-Host "Created native directory: $nativeDir"
+          $dirs = @(
+            (Join-Path $env:USERPROFILE ".podium\native"),
+            (Join-Path $env:USERPROFILE ".skiko")
+          )
+          foreach ($dir in $dirs) {
+            New-Item -ItemType Directory -Path $dir -Force | Out-Null
+            Write-Host "Created: $dir"
+          }
 
       - name: Run unit tests
         shell: bash
@@ -81,12 +86,17 @@ jobs:
           END=$(date +%s)
           echo "::notice::Compilation took $((END - START)) seconds"
 
-      - name: Prepare mpv native directory
+      - name: Prepare native directories
         shell: powershell
         run: |
-          $nativeDir = Join-Path $env:USERPROFILE ".podium\native"
-          New-Item -ItemType Directory -Path $nativeDir -Force | Out-Null
-          Write-Host "Created native directory: $nativeDir"
+          $dirs = @(
+            (Join-Path $env:USERPROFILE ".podium\native"),
+            (Join-Path $env:USERPROFILE ".skiko")
+          )
+          foreach ($dir in $dirs) {
+            New-Item -ItemType Directory -Path $dir -Force | Out-Null
+            Write-Host "Created: $dir"
+          }
 
       - name: Run GUI tests
         shell: bash
