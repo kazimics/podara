@@ -33,11 +33,18 @@ jobs:
           END=$(date +%s)
           echo "::notice::Compilation took $((END - START)) seconds"
 
+      - name: Prepare mpv native directory
+        shell: powershell
+        run: |
+          $nativeDir = Join-Path $env:USERPROFILE ".podium\native"
+          New-Item -ItemType Directory -Path $nativeDir -Force | Out-Null
+          Write-Host "Created native directory: $nativeDir"
+
       - name: Run unit tests
         shell: bash
         run: |
           START=$(date +%s)
-          ./gradlew :desktop:desktopTest --tests "app.podiumpodcasts.podium.desktop.VlcjMediaPlayerTest" --tests "app.podiumpodcasts.podium.desktop.ExportManagerTest" --tests "app.podiumpodcasts.podium.desktop.PodcastManagerTest" --tests "app.podiumpodcasts.podium.desktop.DownloadManagerTest" --tests "app.podiumpodcasts.podium.desktop.ImportManagerTest" --tests "app.podiumpodcasts.podium.desktop.MediaPlayerStateTest" --tests "app.podiumpodcasts.podium.desktop.HistoryDaoTest"
+          ./gradlew :desktop:desktopTest --tests "app.podiumpodcasts.podium.desktop.VlcjMediaPlayerTest" --tests "app.podiumpodcasts.podium.desktop.ExportManagerTest" --tests "app.podiumpodcasts.podium.desktop.PodcastManagerTest" --tests "app.podiumpodcasts.podium.desktop.DownloadManagerTest" --tests "app.podiumpodcasts.podium.desktop.ImportManagerTest" --tests "app.podiumpodcasts.podium.desktop.MediaPlayerStateTest" --tests "app.podiumpodcasts.podium.desktop.HistoryDaoTest" --tests "app.podiumpodcasts.podium.desktop.AudioPlayerTest" --tests "app.podiumpodcasts.podium.desktop.MpvAudioPlayerEngineTest" --tests "app.podiumpodcasts.podium.desktop.UnsubscribeTest"
           END=$(date +%s)
           echo "::notice::Tests took $((END - START)) seconds"
 
@@ -73,6 +80,13 @@ jobs:
           ./gradlew :shared:compileKotlinDesktop :desktop:compileTestKotlinDesktop
           END=$(date +%s)
           echo "::notice::Compilation took $((END - START)) seconds"
+
+      - name: Prepare mpv native directory
+        shell: powershell
+        run: |
+          $nativeDir = Join-Path $env:USERPROFILE ".podium\native"
+          New-Item -ItemType Directory -Path $nativeDir -Force | Out-Null
+          Write-Host "Created native directory: $nativeDir"
 
       - name: Run GUI tests
         shell: bash
