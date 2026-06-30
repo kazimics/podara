@@ -98,7 +98,7 @@ object DesignTokens {
 
     // ── Featured Card ──
     object FeaturedCard {
-        val Height = 280.dp
+        val Height = 250.dp
         val Radius = 18.dp
         val Padding = 20.dp
         val CoverRadius = 12.dp
@@ -119,7 +119,7 @@ object DesignTokens {
         val ImageSize = 150.dp
         val ImageRadius = 14.dp
         val Spacing = 12.dp
-        val Gap = 16.dp
+        val Gap = 10.dp
         val TitleSize = 13.sp
         val AuthorSize = 11.sp
     }

@@ -26,7 +26,9 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import java.awt.Cursor
@@ -139,14 +141,15 @@ fun DiscoverScreen(
                 .fillMaxWidth()
                 .padding(start = header.PaddingHorizontal, end = header.PaddingHorizontal, top = header.PaddingTop, bottom = DesignTokens.Spacing.sm),
             horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.Bottom
+            verticalAlignment = Alignment.Top
         ) {
             Column {
                 Text(
                     text = "Discover",
                     color = colors.textPrimary,
                     fontSize = header.TitleSize,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = FontFamily.Serif
                 )
                 Spacer(modifier = Modifier.height(header.Gap))
                 Text(
@@ -158,7 +161,10 @@ fun DiscoverScreen(
 
             // Search bar
             Surface(
-                modifier = Modifier.width(search.Width).height(search.Height),
+                modifier = Modifier
+                    .width(search.Width)
+                    .height(search.Height)
+                    .border(DesignTokens.Border.Width, DesignTokens.Border.SecondaryColor, RoundedCornerShape(search.Radius)),
                 shape = RoundedCornerShape(search.Radius),
                 color = colors.surface
             ) {
@@ -173,7 +179,7 @@ fun DiscoverScreen(
                         modifier = Modifier.size(search.IconSize)
                     )
                     Spacer(modifier = Modifier.width(search.Gap))
-                    Box(modifier = Modifier.weight(1f)) {
+                    Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
                         if (searchQuery.isEmpty()) {
                             Text(
                                 text = "Search podcasts, episodes, topics...",
@@ -213,7 +219,7 @@ fun DiscoverScreen(
                         color = colors.elevated
                     ) {
                         Text(
-                            text = "\u2318K",
+                            text = "Ctrl+K",
                             modifier = Modifier.padding(horizontal = search.ShortcutPaddingH, vertical = search.ShortcutPaddingV),
                             color = colors.textMuted,
                             fontSize = search.ShortcutTextSize
@@ -316,12 +322,14 @@ fun DiscoverScreen(
 
                         val listItems = if (searchQuery.isEmpty()) podcasts.drop(1) else podcasts
                         items(listItems) { podcast ->
-                            EpisodeRow(
-                                podcast = podcast,
-                                isSubscribed = podcast.fetchUrl in subscribedOrigins,
-                                isSubscribing = podcast.fetchUrl in subscribingOrigins,
-                                onSubscribe = { subscribe(podcast) }
-                            )
+                            Box(modifier = Modifier.padding(horizontal = DesignTokens.SectionHeader.PaddingHorizontal, vertical = 5.dp)) {
+                                EpisodeRow(
+                                    podcast = podcast,
+                                    isSubscribed = podcast.fetchUrl in subscribedOrigins,
+                                    isSubscribing = podcast.fetchUrl in subscribingOrigins,
+                                    onSubscribe = { subscribe(podcast) }
+                                )
+                            }
                         }
                     }
                 }
@@ -422,31 +430,42 @@ private fun FeaturedCard(
                     modifier = Modifier.weight(1f),
                     verticalArrangement = Arrangement.Center
                 ) {
+                    Spacer(modifier = Modifier.height(8.dp))
                     Text(
                         text = "FEATURED",
                         color = colors.accent,
-                        fontSize = 11.sp,
+                        fontSize = 12.sp,
                         fontWeight = FontWeight.SemiBold,
                         letterSpacing = 1.5.sp
                     )
                     Spacer(modifier = Modifier.height(card.TextGap))
-                    Text(
-                        text = podcast.title,
-                        color = colors.textPrimary,
-                        fontSize = 26.sp,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 2
-                    )
-                    Spacer(modifier = Modifier.height(card.TextGap))
-                    if (podcast.description.isNotEmpty()) {
+                    Box(modifier = Modifier.height(36.dp)) {
                         Text(
-                            text = podcast.description,
-                            color = colors.textSecondary,
-                            fontSize = 13.sp,
-                            maxLines = 3,
-                            lineHeight = 19.sp
+                            text = podcast.title,
+                            color = colors.textPrimary,
+                            fontSize = 30.sp,
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = FontFamily.Serif,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.align(Alignment.CenterStart)
                         )
                     }
+                    Spacer(modifier = Modifier.height(card.TextGap))
+                    if (podcast.description.isNotEmpty()) {
+                        Box(modifier = Modifier.height(40.dp)) {
+                            Text(
+                                text = podcast.description,
+                                color = colors.textSecondary,
+                                fontSize = 15.sp,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis,
+                                lineHeight = 20.sp,
+                                modifier = Modifier.align(Alignment.CenterStart)
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
 
                     Spacer(modifier = Modifier.height(card.ButtonGap))
 
@@ -527,7 +546,8 @@ private fun SectionHeader(title: String) {
             text = title,
             color = colors.textPrimary,
             fontSize = sh.TitleSize,
-            fontWeight = FontWeight.SemiBold
+            fontWeight = FontWeight.SemiBold,
+            fontFamily = FontFamily.Serif
         )
         Text(
             text = "Show All",
@@ -546,35 +566,42 @@ private fun PodcastCard(
 ) {
     val colors = PodiumTheme.colors
     val pc = DesignTokens.PodcastCard
-    Column(
+    Surface(
         modifier = Modifier
             .width(pc.Width)
+            .shadow(8.dp, RoundedCornerShape(pc.ImageRadius), ambientColor = Color.Black.copy(alpha = 0.4f), spotColor = Color.Black.copy(alpha = 0.4f))
+            .clip(RoundedCornerShape(pc.ImageRadius))
+            .background(DesignTokens.Card.Gradient)
             .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
-            .clickable(onClick = onClick)
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(pc.ImageRadius),
+        color = Color.Transparent
     ) {
-        AsyncImage(
-            model = podcast.imageUrl,
-            contentDescription = podcast.title,
-            contentScale = ContentScale.Crop,
-            modifier = Modifier
-                .size(pc.ImageSize)
-                .clip(RoundedCornerShape(pc.ImageRadius))
-        )
-        Spacer(modifier = Modifier.height(pc.Spacing))
-        Text(
-            text = podcast.title,
-            color = colors.textPrimary,
-            fontSize = pc.TitleSize,
-            maxLines = 1,
-            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-        )
-        Text(
-            text = podcast.author,
-            color = colors.textMuted,
-            fontSize = pc.AuthorSize,
-            maxLines = 1,
-            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-        )
+        Column(modifier = Modifier.padding(8.dp)) {
+            AsyncImage(
+                model = podcast.imageUrl,
+                contentDescription = podcast.title,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .size(pc.ImageSize)
+                    .clip(RoundedCornerShape(pc.ImageRadius))
+            )
+            Spacer(modifier = Modifier.height(pc.Spacing))
+            Text(
+                text = podcast.title,
+                color = colors.textPrimary,
+                fontSize = pc.TitleSize,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                text = podcast.author,
+                color = colors.textMuted,
+                fontSize = pc.AuthorSize,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
     }
 }
 
@@ -588,76 +615,83 @@ private fun EpisodeRow(
 ) {
     val colors = PodiumTheme.colors
     val er = DesignTokens.EpisodeRow
-    Row(
+    Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .height(er.Height)
-            .padding(horizontal = er.PaddingHorizontal, vertical = er.PaddingVertical),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(er.Spacing)
+            .shadow(8.dp, RoundedCornerShape(er.CoverRadius), ambientColor = Color.Black.copy(alpha = 0.4f), spotColor = Color.Black.copy(alpha = 0.4f))
+            .clip(RoundedCornerShape(er.CoverRadius))
+            .background(DesignTokens.Card.Gradient),
+        shape = RoundedCornerShape(er.CoverRadius),
+        color = Color.Transparent
     ) {
-        AsyncImage(
-            model = podcast.imageUrl,
-            contentDescription = podcast.title,
-            contentScale = ContentScale.Crop,
+        Row(
             modifier = Modifier
-                .size(er.CoverSize)
-                .clip(RoundedCornerShape(er.CoverRadius))
-        )
-
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = podcast.title,
-                color = colors.textPrimary,
-                fontSize = er.TitleSize,
-                fontWeight = FontWeight.Medium,
-                maxLines = 1,
-                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                .fillMaxWidth()
+                .height(er.Height)
+                .padding(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(er.Spacing)
+        ) {
+            AsyncImage(
+                model = podcast.imageUrl,
+                contentDescription = podcast.title,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .size(er.CoverSize)
+                    .clip(RoundedCornerShape(er.CoverRadius))
             )
-            Spacer(modifier = Modifier.height(2.dp))
-            Text(
-                text = podcast.author,
-                color = colors.textSecondary,
-                fontSize = er.AuthorSize,
-                maxLines = 1
-            )
-            if (podcast.description.isNotEmpty()) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = podcast.title,
+                    color = colors.textPrimary,
+                    fontSize = er.TitleSize,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
-                    text = podcast.description,
-                    color = colors.textMuted,
-                    fontSize = 11.sp,
-                    maxLines = 1,
-                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                    text = podcast.author,
+                    color = colors.textSecondary,
+                    fontSize = er.AuthorSize,
+                    maxLines = 1
                 )
+                if (podcast.description.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = podcast.description,
+                        color = colors.textMuted,
+                        fontSize = 11.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
             }
-        }
-
-        // Subscribe button
-        when {
-            isSubscribed -> {
-                Icon(
-                    Icons.Default.Check,
-                    contentDescription = Strings["discover_added"],
-                    tint = colors.accent,
-                    modifier = Modifier.size(20.dp)
-                )
-            }
-            isSubscribing -> {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(20.dp),
-                    strokeWidth = 2.dp,
-                    color = colors.accent
-                )
-            }
-            else -> {
-                IconButton(onClick = onSubscribe, modifier = Modifier.size(32.dp)) {
+            when {
+                isSubscribed -> {
                     Icon(
-                        Icons.Default.Add,
-                        contentDescription = Strings["discover_add"],
-                        tint = colors.textSecondary,
+                        Icons.Default.Check,
+                        contentDescription = Strings["discover_added"],
+                        tint = colors.accent,
                         modifier = Modifier.size(20.dp)
                     )
+                }
+                isSubscribing -> {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        strokeWidth = 2.dp,
+                        color = colors.accent
+                    )
+                }
+                else -> {
+                    IconButton(onClick = onSubscribe, modifier = Modifier.size(32.dp)) {
+                        Icon(
+                            Icons.Default.Add,
+                            contentDescription = Strings["discover_add"],
+                            tint = colors.textSecondary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
                 }
             }
         }

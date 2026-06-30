@@ -27,6 +27,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.sp
 import app.podiumpodcasts.podium.ui.theme.PodiumTheme
 import app.podiumpodcasts.podium.utils.Strings
@@ -46,7 +47,12 @@ private val PrimaryButtonGradient = Brush.verticalGradient(
 private val PrimaryButtonBorder = Color(0x14FFFFFF)
 private val PrimaryButtonText = Color(0xFFFFF8F3)
 private val PrimaryButtonIcon = Color.White
+private val PrimaryButtonInnerHighlight = Brush.verticalGradient(
+    colors = listOf(Color.White.copy(alpha = 0.12f), Color.Transparent),
+    startY = 0f, endY = 56f
+)
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MiniPlayer(
     state: MediaPlayerState,
@@ -98,7 +104,6 @@ fun MiniPlayer(
                         overflow = TextOverflow.Ellipsis
                     )
                     if (state.currentUrl != null) {
-                        // podcast name placeholder — same as title for now
                         Text(
                             text = "",
                             color = colors.textMuted,
@@ -114,7 +119,6 @@ fun MiniPlayer(
                 horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterHorizontally),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Speed
                 Box {
                     TextButton(
                         onClick = { showSpeedMenu = true },
@@ -143,7 +147,6 @@ fun MiniPlayer(
                     }
                 }
 
-                // Rewind 15s
                 IconButton(
                     onClick = { state.seekBack(15000L) },
                     modifier = Modifier.size(40.dp)
@@ -156,46 +159,26 @@ fun MiniPlayer(
                     )
                 }
 
-                    // Play/Pause — design token button
-                    Box(
-                        modifier = Modifier
-                            .size(56.dp)
-                            .clip(CircleShape)
-                            .shadow(
-                                elevation = 10.dp,
-                                shape = CircleShape,
-                                ambientColor = Color.Black.copy(alpha = 0.25f),
-                                spotColor = Color.Black.copy(alpha = 0.25f)
-                            )
-                            .border(1.dp, PrimaryButtonBorder, CircleShape)
-                            .background(PrimaryButtonGradient)
-                            .clickable { state.togglePlayPause() },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        // Inner highlight
-                        Box(
-                            modifier = Modifier
-                                .matchParentSize()
-                                .background(
-                                    Brush.verticalGradient(
-                                        colors = listOf(
-                                            Color.White.copy(alpha = 0.12f),
-                                            Color.Transparent
-                                        ),
-                                        startY = 0f,
-                                        endY = 56f
-                                    )
-                                )
-                        )
-                        Icon(
-                            if (state.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                            contentDescription = if (state.isPlaying) Strings["player_pause"] else Strings["player_play"],
-                            tint = PrimaryButtonIcon,
-                            modifier = Modifier.size(26.dp)
-                        )
-                    }
+                Box(
+                    modifier = Modifier
+                        .size(56.dp)
+                        .clip(CircleShape)
+                        .shadow(10.dp, CircleShape, ambientColor = Color.Black.copy(alpha = 0.25f), spotColor = Color.Black.copy(alpha = 0.25f))
+                        .border(1.dp, PrimaryButtonBorder, CircleShape)
+                        .background(PrimaryButtonGradient)
+                        .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
+                        .clickable { state.togglePlayPause() },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Box(modifier = Modifier.matchParentSize().background(PrimaryButtonInnerHighlight))
+                    Icon(
+                        if (state.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                        contentDescription = if (state.isPlaying) Strings["player_pause"] else Strings["player_play"],
+                        tint = PrimaryButtonIcon,
+                        modifier = Modifier.size(26.dp)
+                    )
+                }
 
-                // Forward 30s
                 IconButton(
                     onClick = { state.seekForward(30000L) },
                     modifier = Modifier.size(40.dp)
@@ -215,14 +198,12 @@ fun MiniPlayer(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                // Current time
                 Text(
                     text = formatTime(state.currentPosition),
                     color = colors.textMuted,
                     fontSize = 12.sp
                 )
 
-                // Slider progress
                 Slider(
                     value = sliderPosition,
                     onValueChange = { sliderPosition = it },
@@ -231,22 +212,39 @@ fun MiniPlayer(
                         state.seek(pos)
                     },
                     modifier = Modifier.weight(1f).height(20.dp),
+                    thumb = {
+                        SliderDefaults.Thumb(
+                            interactionSource = interactionSource,
+                            colors = SliderDefaults.colors(thumbColor = Color.White),
+                            thumbSize = DpSize(12.dp, 12.dp),
+                            modifier = Modifier.offset(y = 2.dp)
+                        )
+                    },
+                    track = { sliderState ->
+                        SliderDefaults.Track(
+                            sliderState = sliderState,
+                            modifier = Modifier.height(6.dp),
+                            thumbTrackGapSize = 0.dp,
+                            colors = SliderDefaults.colors(
+                                activeTrackColor = colors.accent,
+                                inactiveTrackColor = colors.elevated
+                            )
+                        )
+                    },
                     colors = SliderDefaults.colors(
-                        thumbColor = colors.accent,
+                        thumbColor = Color.White,
                         activeTrackColor = colors.accent,
                         inactiveTrackColor = colors.elevated
                     ),
                     interactionSource = interactionSource
                 )
 
-                // Duration
                 Text(
                     text = formatTime(state.duration),
                     color = colors.textMuted,
                     fontSize = 12.sp
                 )
 
-                // Volume
                 Icon(
                     if (state.volume > 0) Icons.Default.VolumeUp else Icons.Default.VolumeOff,
                     contentDescription = if (state.volume > 0) Strings["player_mute"] else Strings["player_unmute"],
@@ -257,7 +255,6 @@ fun MiniPlayer(
                         .clickable { state.toggleMute() }
                 )
 
-                // Queue
                 IconButton(
                     onClick = onShowQueue,
                     modifier = Modifier.size(32.dp)
@@ -270,7 +267,6 @@ fun MiniPlayer(
                     )
                 }
 
-                // Fullscreen
                 IconButton(
                     onClick = onExpand,
                     modifier = Modifier.size(32.dp)
