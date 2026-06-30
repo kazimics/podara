@@ -5,6 +5,7 @@ build/
 # IDE
 .idea/
 *.iml
+.history/
 
 # OS
 .DS_Store
