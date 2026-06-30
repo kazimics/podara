@@ -49,7 +49,7 @@ kotlin {
 }
 
 tasks.withType<Test>().configureEach {
-    maxParallelForks = (Runtime.getRuntime().availableProcessors() / 2).coerceAtLeast(1)
+    maxParallelForks = 1
 }
 
 compose.desktop {
