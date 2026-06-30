@@ -1,4 +1,5 @@
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
+import org.gradle.api.tasks.testing.Test
 import java.io.File
 
 plugins {
@@ -46,7 +47,7 @@ kotlin {
     }
 }
 
-tasks.withType<AbstractTestTask>().configureEach {
+tasks.withType<Test>().configureEach {
     maxParallelForks = (Runtime.getRuntime().availableProcessors() / 2).coerceAtLeast(1)
 }
 
