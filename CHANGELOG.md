@@ -18,6 +18,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - MiniPlayer 剧集标题下方显示播客名称（新增 `currentSubtitle` 字段）
 - `QueueItem` 数据类新增 `subtitle` 字段
 - `MediaPlayerState.play()` 新增 `subtitle` 参数
+- 搜索交互重新设计：搜索图标可点击触发搜索、Enter 键触发搜索、移除冗余的"搜索"按钮和 Ctrl+K 徽章
+- 搜索结果仅在用户主动触发搜索后显示，未搜索时保持 Top Podcasts 视图
 
 ## [0.1.0] - 2026-06-30
 

@@ -25,6 +25,11 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -74,6 +79,7 @@ fun DiscoverScreen(
 
     var searchQuery by remember { mutableStateOf("") }
     var searchResults by remember { mutableStateOf(emptyList<PodcastPreviewModel>()) }
+    var hasSearched by remember { mutableStateOf(false) }
     var topPodcasts by remember { mutableStateOf(emptyList<PodcastPreviewModel>()) }
     var isLoading by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
@@ -103,16 +109,19 @@ fun DiscoverScreen(
     }
 
     val doSearch: () -> Unit = {
-        scope.launch {
-            isLoading = true
-            errorMessage = null
-            try {
-                searchResults = appleClient.search.search(searchQuery)
-            } catch (e: Exception) {
-                Logger.e(TAG, "Search failed", e)
-                errorMessage = "Search failed: ${e.message}"
+        if (searchQuery.isNotBlank()) {
+            hasSearched = true
+            scope.launch {
+                isLoading = true
+                errorMessage = null
+                try {
+                    searchResults = appleClient.search.search(searchQuery)
+                } catch (e: Exception) {
+                    Logger.e(TAG, "Search failed", e)
+                    errorMessage = "Search failed: ${e.message}"
+                }
+                isLoading = false
             }
-            isLoading = false
         }
     }
 
@@ -174,9 +183,12 @@ fun DiscoverScreen(
                 ) {
                     Icon(
                         Icons.Default.Search,
-                        contentDescription = null,
-                        tint = colors.textMuted,
-                        modifier = Modifier.size(search.IconSize)
+                        contentDescription = Strings["discover_search"],
+                        tint = colors.accent,
+                        modifier = Modifier
+                            .size(search.IconSize)
+                            .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
+                            .clickable { doSearch() }
                     )
                     Spacer(modifier = Modifier.width(search.Gap))
                     Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
@@ -190,7 +202,14 @@ fun DiscoverScreen(
                         BasicTextField(
                             value = searchQuery,
                             onValueChange = { searchQuery = it },
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .onKeyEvent { event ->
+                                    if (event.key == Key.Enter && event.type == KeyEventType.KeyUp && searchQuery.isNotBlank()) {
+                                        doSearch()
+                                        true
+                                    } else false
+                                },
                             textStyle = androidx.compose.ui.text.TextStyle(
                                 color = colors.textPrimary,
                                 fontSize = search.TextSize
@@ -210,36 +229,16 @@ fun DiscoverScreen(
                                 .clickable {
                                     searchQuery = ""
                                     searchResults = emptyList()
+                                    hasSearched = false
                                 }
                         )
                         Spacer(modifier = Modifier.width(8.dp))
-                    }
-                    Surface(
-                        shape = RoundedCornerShape(search.ShortcutRadius),
-                        color = colors.elevated
-                    ) {
-                        Text(
-                            text = "Ctrl+K",
-                            modifier = Modifier.padding(horizontal = search.ShortcutPaddingH, vertical = search.ShortcutPaddingV),
-                            color = colors.textMuted,
-                            fontSize = search.ShortcutTextSize
-                        )
                     }
                 }
             }
         }
 
         Spacer(modifier = Modifier.height(8.dp))
-
-        // ── Search button ──
-        if (searchQuery.isNotEmpty()) {
-            TextButton(
-                onClick = { doSearch() },
-                modifier = Modifier.padding(start = 32.dp)
-            ) {
-                Text(Strings["discover_search"], color = colors.accent)
-            }
-        }
 
         // ── Content ──
         when {
@@ -254,7 +253,7 @@ fun DiscoverScreen(
                 }
             }
             else -> {
-                val podcasts = if (searchQuery.isNotEmpty()) searchResults else topPodcasts
+                val podcasts = if (hasSearched) searchResults else topPodcasts
                 if (podcasts.isEmpty()) {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         Text(Strings["discover_search_hint"], color = colors.textMuted)
@@ -265,7 +264,7 @@ fun DiscoverScreen(
                         contentPadding = PaddingValues(bottom = 24.dp)
                     ) {
                         // ── Featured card (first podcast) ──
-                        if (searchQuery.isEmpty() && podcasts.isNotEmpty()) {
+                        if (!hasSearched && podcasts.isNotEmpty()) {
                             item {
                                 var featuredIndex by remember { mutableIntStateOf(0) }
                                 val featured = podcasts[featuredIndex % podcasts.size]
@@ -287,7 +286,7 @@ fun DiscoverScreen(
                         }
 
                         // ── Trending This Week ──
-                        if (searchQuery.isEmpty() && podcasts.size > 1) {
+                        if (!hasSearched && podcasts.size > 1) {
                             item {
                                 Spacer(modifier = Modifier.height(24.dp))
                                 SectionHeader(title = "Trending This Week")
@@ -315,12 +314,12 @@ fun DiscoverScreen(
                         item {
                             Spacer(modifier = Modifier.height(24.dp))
                             SectionHeader(
-                                title = if (searchQuery.isEmpty()) "New Episodes" else "Results"
+                                title = if (hasSearched) "Results" else "New Episodes"
                             )
         Spacer(modifier = Modifier.height(DesignTokens.Spacing.sm))
                         }
 
-                        val listItems = if (searchQuery.isEmpty()) podcasts.drop(1) else podcasts
+                        val listItems = if (hasSearched) podcasts else podcasts.drop(1)
                         items(listItems) { podcast ->
                             Box(modifier = Modifier.padding(horizontal = DesignTokens.SectionHeader.PaddingHorizontal, vertical = 5.dp)) {
                                 EpisodeRow(
