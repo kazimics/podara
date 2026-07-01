@@ -4,6 +4,21 @@ All notable changes to podium-windows will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.1] - 2026-07-01
+
+### Fixed
+- MiniPlayer 快进/快退步长与 FullPlayer 不一致 (MiniPlayer 15s/30s → 统一为 10s)
+- MiniPlayer 无节目时播放按钮可点击，现已禁用
+- FullPlayer 背景不填满内容区域，改用 PodiumTheme 深色背景修复颜色冲突
+- FullPlayer 展开时侧边栏导航无法切换页面，点击导航项自动关闭 FullPlayer
+- FullPlayer 文字和图标颜色未使用深色主题色系
+
+### Changed
+- 音量按钮从 `Icon.clickable` 改为 `IconButton`，hover 形状与队列/展开按钮一致（圆形），图标尺寸从 22dp 减小至 18dp
+- MiniPlayer 剧集标题下方显示播客名称（新增 `currentSubtitle` 字段）
+- `QueueItem` 数据类新增 `subtitle` 字段
+- `MediaPlayerState.play()` 新增 `subtitle` 参数
+
 ## [0.1.0] - 2026-06-30
 
 ### Added

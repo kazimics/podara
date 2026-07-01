@@ -104,6 +104,7 @@ fun HistoryScreen(
                                     playerState.play(
                                         url = episode.audioUrl,
                                         title = episode.title,
+                                        subtitle = episode.podcastTitle,
                                         artworkUrl = episode.imageUrl,
                                         durationMs = episode.duration * 1000L
                                     )

@@ -16,6 +16,7 @@ private const val TAG = "MediaPlayerState"
 data class QueueItem(
     val url: String,
     val title: String,
+    val subtitle: String? = null,
     val artworkUrl: String? = null,
     val episodeId: String? = null,
     val isDownloaded: Boolean = false
@@ -47,6 +48,8 @@ class MediaPlayerState(
     var currentUrl by mutableStateOf<String?>(null)
         private set
     var currentTitle by mutableStateOf<String?>(null)
+        private set
+    var currentSubtitle by mutableStateOf<String?>(null)
         private set
     var currentArtworkUrl by mutableStateOf<String?>(null)
         private set
@@ -81,10 +84,11 @@ class MediaPlayerState(
         }
     }
 
-    fun play(url: String, title: String? = null, artworkUrl: String? = null, durationMs: Long = 0L) {
+    fun play(url: String, title: String? = null, subtitle: String? = null, artworkUrl: String? = null, durationMs: Long = 0L) {
         Logger.i(TAG, "play() title=$title, url=$url, durationMs=$durationMs")
         currentUrl = url
         currentTitle = title
+        currentSubtitle = subtitle
         currentArtworkUrl = artworkUrl
         isLoading = true
         error = null
@@ -94,7 +98,7 @@ class MediaPlayerState(
         if (existingIndex >= 0) {
             queueIndex = existingIndex
         } else {
-            queue.add(QueueItem(url, title ?: "Unknown", artworkUrl))
+            queue.add(QueueItem(url, title ?: "Unknown", subtitle = subtitle, artworkUrl = artworkUrl))
             queueIndex = queue.size - 1
         }
 
@@ -109,7 +113,7 @@ class MediaPlayerState(
         queueIndex = index
         val item = queue[index]
         Logger.i(TAG, "playFromQueue: index=$index, title=${item.title}")
-        play(item.url, item.title, item.artworkUrl)
+        play(item.url, item.title, item.subtitle, item.artworkUrl)
     }
 
     fun addToQueue(
@@ -120,7 +124,7 @@ class MediaPlayerState(
         isDownloaded: Boolean = false
     ) {
         Logger.d(TAG, "addToQueue: title=$title")
-        queue.add(QueueItem(url, title, artworkUrl, episodeId, isDownloaded))
+        queue.add(QueueItem(url, title, artworkUrl = artworkUrl, episodeId = episodeId, isDownloaded = isDownloaded))
     }
 
     fun removeFromQueue(index: Int) {

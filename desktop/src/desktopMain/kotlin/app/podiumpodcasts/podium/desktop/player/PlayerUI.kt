@@ -135,11 +135,13 @@ fun MiniPlayer(
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
-                            if (state.currentUrl != null) {
+                            if (state.currentSubtitle != null) {
                                 Text(
-                                    text = "",
+                                    text = state.currentSubtitle!!,
                                     color = colors.textMuted,
-                                    fontSize = 11.sp
+                                    fontSize = 11.sp,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
                                 )
                             }
                         }
@@ -183,7 +185,7 @@ fun MiniPlayer(
                         }
 
                         IconButton(
-                            onClick = { state.seekBack(15000L) },
+                            onClick = { state.seekBack() },
                             modifier = Modifier.size(48.dp)
                         ) {
                             Icon(
@@ -201,8 +203,8 @@ fun MiniPlayer(
                                 .shadow(10.dp, CircleShape, ambientColor = Color.Black.copy(alpha = 0.25f), spotColor = Color.Black.copy(alpha = 0.25f))
                                 .border(1.dp, PrimaryButtonBorder, CircleShape)
                                 .background(PrimaryButtonGradient)
-                                .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
-                                .clickable { state.togglePlayPause() },
+                                .pointerHoverIcon(if (state.currentUrl != null) PointerIcon(Cursor(Cursor.HAND_CURSOR)) else PointerIcon.Default)
+                                .clickable(enabled = state.currentUrl != null) { state.togglePlayPause() },
                             contentAlignment = Alignment.Center
                         ) {
                             Box(modifier = Modifier.matchParentSize().background(PrimaryButtonInnerHighlight))
@@ -215,7 +217,7 @@ fun MiniPlayer(
                         }
 
                         IconButton(
-                            onClick = { state.seekForward(30000L) },
+                            onClick = { state.seekForward() },
                             modifier = Modifier.size(40.dp)
                         ) {
                             Icon(
@@ -280,15 +282,17 @@ fun MiniPlayer(
                             fontSize = 12.sp
                         )
 
-                        Icon(
-                            if (state.volume > 0) Icons.Default.VolumeUp else Icons.Default.VolumeOff,
-                            contentDescription = if (state.volume > 0) Strings["player_mute"] else Strings["player_unmute"],
-                            tint = colors.textMuted,
-                            modifier = Modifier
-                                .size(22.dp)
-                                .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
-                                .clickable { state.toggleMute() }
-                        )
+                        IconButton(
+                            onClick = { state.toggleMute() },
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            Icon(
+                                if (state.volume > 0) Icons.Default.VolumeUp else Icons.Default.VolumeOff,
+                                contentDescription = if (state.volume > 0) Strings["player_mute"] else Strings["player_unmute"],
+                                tint = colors.textMuted,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
 
                         IconButton(
                             onClick = onShowQueue,
@@ -339,10 +343,12 @@ fun FullPlayer(
         }
     }
 
+    val colors = PodiumTheme.colors
+
     Column(
         modifier = modifier
-            .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surface)
+            .fillMaxSize()
+            .background(colors.background)
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -352,18 +358,19 @@ fun FullPlayer(
             verticalAlignment = Alignment.CenterVertically
         ) {
             IconButton(onClick = onClose) {
-                Icon(Icons.Default.KeyboardArrowDown, contentDescription = Strings["player_close"])
+                Icon(Icons.Default.KeyboardArrowDown, contentDescription = Strings["player_close"], tint = colors.textMuted)
             }
 
             Text(
                 text = state.currentTitle ?: Strings["player_now_playing"],
                 style = MaterialTheme.typography.titleMedium,
+                color = colors.textPrimary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f).padding(horizontal = 8.dp)
             )
             IconButton(onClick = { showQueue = true }) {
-                Icon(Icons.Default.QueueMusic, contentDescription = Strings["player_queue"])
+                Icon(Icons.Default.QueueMusic, contentDescription = Strings["player_queue"], tint = colors.textMuted)
             }
         }
 
@@ -389,11 +396,13 @@ fun FullPlayer(
         ) {
             Text(
                 text = formatTime(state.currentPosition),
-                style = MaterialTheme.typography.bodySmall
+                style = MaterialTheme.typography.bodySmall,
+                color = colors.textMuted
             )
             Text(
                 text = formatTime(state.duration),
-                style = MaterialTheme.typography.bodySmall
+                style = MaterialTheme.typography.bodySmall,
+                color = colors.textMuted
             )
         }
 
@@ -408,6 +417,7 @@ fun FullPlayer(
                 Icon(
                     Icons.Default.SkipPrevious,
                     contentDescription = Strings["player_previous"],
+                    tint = colors.textMuted,
                     modifier = Modifier.size(32.dp)
                 )
             }
@@ -416,6 +426,7 @@ fun FullPlayer(
                 Icon(
                     Icons.Default.Replay10,
                     contentDescription = Strings["player_seek_back"],
+                    tint = colors.textMuted,
                     modifier = Modifier.size(32.dp)
                 )
             }
@@ -427,6 +438,7 @@ fun FullPlayer(
                 Icon(
                     if (state.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
                     contentDescription = if (state.isPlaying) Strings["player_pause"] else Strings["player_play"],
+                    tint = if (state.isPlaying) colors.textPrimary else colors.textPrimary,
                     modifier = Modifier.size(32.dp)
                 )
             }
@@ -435,6 +447,7 @@ fun FullPlayer(
                 Icon(
                     Icons.Default.Forward10,
                     contentDescription = Strings["player_seek_forward"],
+                    tint = colors.textMuted,
                     modifier = Modifier.size(32.dp)
                 )
             }
@@ -443,6 +456,7 @@ fun FullPlayer(
                 Icon(
                     Icons.Default.SkipNext,
                     contentDescription = Strings["player_next"],
+                    tint = colors.textMuted,
                     modifier = Modifier.size(32.dp)
                 )
             }

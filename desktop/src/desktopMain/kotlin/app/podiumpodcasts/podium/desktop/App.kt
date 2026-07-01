@@ -212,6 +212,7 @@ private suspend fun playAndRecordHistory(
         playerState.play(
             url = episode.audioUrl,
             title = episode.title,
+            subtitle = episode.podcastTitle,
             artworkUrl = episode.imageUrl,
             durationMs = episode.duration * 1000L
         )
@@ -386,10 +387,10 @@ fun WindowScope.App(windowState: androidx.compose.ui.window.WindowState, awtWind
             Row(modifier = Modifier.weight(1f).fillMaxWidth()) {
                 Sidebar(
                     currentScreen = currentScreen,
-                    onDiscover = { currentScreen = "discover" },
-                    onShows = { currentScreen = "home" },
-                    onHistory = { currentScreen = "history" },
-                    onSettings = { currentScreen = "settings" }
+                    onDiscover = { currentScreen = "discover"; showFullPlayer = false },
+                    onShows = { currentScreen = "home"; showFullPlayer = false },
+                    onHistory = { currentScreen = "history"; showFullPlayer = false },
+                    onSettings = { currentScreen = "settings"; showFullPlayer = false }
                 )
 
                 Box(modifier = Modifier.weight(1f)) {
