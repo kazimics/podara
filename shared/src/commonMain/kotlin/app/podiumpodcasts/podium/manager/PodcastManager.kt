@@ -1,6 +1,7 @@
 package app.podiumpodcasts.podium.manager
 
 import app.podiumpodcasts.podium.api.apple.ApplePodcastClient
+import app.podiumpodcasts.podium.api.model.PodcastPreviewModel
 import app.podiumpodcasts.podium.api.rss.FetchPodcastClient
 import app.podiumpodcasts.podium.api.rss.FetchPodcastClientResult
 import app.podiumpodcasts.podium.data.AppDatabase
@@ -61,6 +62,45 @@ class PodcastManager(
         Logger.i(TAG, "Parsed podcast: ${podcast.title}, ${episodes.size} episodes")
 
         return addPodcast(podcast, episodes, seedColor, false)
+    }
+
+    suspend fun addPodcastFromPreview(preview: PodcastPreviewModel, seedColor: Int?): AddPodcastResult {
+        // Resolve iTunes lookup URLs to actual RSS feed URLs
+        val origin = if (preview.fetchUrl.startsWith("itunes-lookup:")) {
+            val idStr = preview.fetchUrl.removePrefix("itunes-lookup:")
+            val id = idStr.toLongOrNull()
+                ?: throw IllegalArgumentException("Invalid iTunes ID: $idStr")
+            Logger.d(TAG, "Resolving iTunes ID: $id")
+            val resolved = appleClient.lookup.lookupById(id)
+                ?: throw Exception("iTunes lookup failed for ID: $id")
+            Logger.d(TAG, "Resolved to RSS feed: ${resolved.fetchUrl}")
+            resolved.fetchUrl
+        } else {
+            preview.fetchUrl
+        }
+
+        Logger.i(TAG, "addPodcastFromPreview: origin=$origin, title=${preview.title}")
+
+        db.podcasts.getByOrigin(origin)?.let {
+            Logger.d(TAG, "Podcast already exists: ${it.title}")
+            return AddPodcastResult.Duplicate(it)
+        }
+
+        val podcast = Podcast(
+            origin = origin,
+            link = preview.link,
+            title = preview.title,
+            description = preview.description,
+            author = preview.author,
+            imageUrl = preview.imageUrl,
+            imageSeedColor = seedColor ?: 0,
+            languageCode = preview.languageCode,
+            fileSize = 0
+        )
+
+        db.podcasts.insert(podcast)
+        Logger.i(TAG, "Podcast saved from preview: ${podcast.title}")
+        return AddPodcastResult.Created(podcast)
     }
 
     suspend fun addPodcast(podcast: Podcast, episodes: List<PodcastEpisode>, seedColor: Int?, duplicateCheck: Boolean = true): AddPodcastResult {

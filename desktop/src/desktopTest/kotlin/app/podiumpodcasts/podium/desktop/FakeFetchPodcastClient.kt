@@ -8,8 +8,8 @@ class FakeFetchPodcastClient : FetchPodcastClient() {
 
     private val rssParser = RssParser()
 
-    override suspend fun fetchNoCache(origin: String): FetchPodcastClientResult {
-        val xml = """
+    private val fakeXml: String
+        get() = """
             <?xml version="1.0" encoding="UTF-8"?>
             <rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd">
               <channel>
@@ -38,10 +38,27 @@ class FakeFetchPodcastClient : FetchPodcastClient() {
             </rss>
         """.trimIndent()
 
-        val channel = rssParser.parse(xml)
+    override suspend fun fetchNoCache(origin: String): FetchPodcastClientResult {
+        val channel = rssParser.parse(fakeXml)
         return FetchPodcastClientResult.Success(
             rssChannel = channel,
-            fileSize = xml.toByteArray().size.toLong(),
+            fileSize = fakeXml.toByteArray().size.toLong(),
+            lastModified = "",
+            eTag = "",
+            contentLength = ""
+        )
+    }
+
+    override suspend fun fetch(
+        origin: String,
+        lastModified: String,
+        eTag: String,
+        contentLength: String
+    ): FetchPodcastClientResult {
+        val channel = rssParser.parse(fakeXml)
+        return FetchPodcastClientResult.Success(
+            rssChannel = channel,
+            fileSize = fakeXml.toByteArray().size.toLong(),
             lastModified = "",
             eTag = "",
             contentLength = ""

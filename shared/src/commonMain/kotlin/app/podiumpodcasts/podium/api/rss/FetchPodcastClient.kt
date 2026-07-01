@@ -30,7 +30,7 @@ open class FetchPodcastClient(
 ) {
     private val rssParser = RssParser()
 
-    suspend fun fetch(
+    open suspend fun fetch(
         origin: String,
         lastModified: String,
         eTag: String,

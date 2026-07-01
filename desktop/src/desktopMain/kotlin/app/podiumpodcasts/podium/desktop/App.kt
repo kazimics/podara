@@ -40,6 +40,7 @@ import app.podiumpodcasts.podium.manager.AddPodcastResult
 import app.podiumpodcasts.podium.manager.DownloadManager
 import app.podiumpodcasts.podium.manager.PodcastManager
 import app.podiumpodcasts.podium.manager.SubscriptionManager
+import app.podiumpodcasts.podium.manager.UpdatePodcastResult
 import app.podiumpodcasts.podium.ui.theme.DesignTokens
 import app.podiumpodcasts.podium.ui.theme.PodiumTheme
 import app.podiumpodcasts.podium.utils.Logger
@@ -426,6 +427,10 @@ fun WindowScope.App(windowState: androidx.compose.ui.window.WindowState, awtWind
                         )
                         currentScreen == "discover" -> DiscoverScreen(
                             database = database,
+                            subscriptionManager = subscriptionManager,
+                            onSubscribed = {
+                                scope.launch { podcasts = database.podcasts.getAllSync() }
+                            },
                             onBack = {
                                 currentScreen = "home"
                                 scope.launch { podcasts = database.podcasts.getAllSync() }
@@ -711,11 +716,23 @@ private fun PodcastDetailScreen(
     onBack: () -> Unit
 ) {
     var episodes by remember { mutableStateOf(emptyList<PodcastEpisode>()) }
+    var isLoading by remember { mutableStateOf(true) }
     var showUnsubscribeDialog by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
     LaunchedEffect(podcast.origin) {
+        // 先从数据库加载（首次为空，展示 loading）
         episodes = database.episodes.getAllByOrigin(podcast.origin)
+        // 按需从 RSS 刷新（首次完整下载，后续利用 ETag 缓存快速返回）
+        try {
+            when (val result = subscriptionManager.updatePodcast(podcast.origin, podcast.imageSeedColor)) {
+                is UpdatePodcastResult.Updated -> {
+                    episodes = database.episodes.getAllByOrigin(podcast.origin)
+                }
+                else -> { /* 无变更或错误，维持已有数据 */ }
+            }
+        } catch (_: Exception) { /* 网络错误静默处理 */ }
+        isLoading = false
     }
 
     Scaffold(
@@ -735,14 +752,44 @@ private fun PodcastDetailScreen(
             )
         }
     ) { padding ->
-        if (episodes.isEmpty()) {
-            Box(
-                modifier = Modifier.fillMaxSize().padding(padding),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator()
+        when {
+            isLoading -> {
+                Box(
+                    modifier = Modifier.fillMaxSize().padding(padding),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
+                }
             }
-        } else {
+            episodes.isEmpty() -> {
+                Box(
+                    modifier = Modifier.fillMaxSize().padding(padding),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = "No episodes available",
+                            color = PodiumTheme.colors.textMuted
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        TextButton(onClick = {
+                            scope.launch {
+                                isLoading = true
+                                try {
+                                    val result = subscriptionManager.updatePodcast(podcast.origin, podcast.imageSeedColor)
+                                    if (result is UpdatePodcastResult.Updated) {
+                                        episodes = database.episodes.getAllByOrigin(podcast.origin)
+                                    }
+                                } catch (_: Exception) { }
+                                isLoading = false
+                            }
+                        }) {
+                            Text("Retry")
+                        }
+                    }
+                }
+            }
+            else -> {
             LazyColumn(modifier = Modifier.fillMaxSize().padding(padding)) {
                 items(episodes) { episode ->
                     val isDownloaded = episode.id in completedDownloads
@@ -851,6 +898,7 @@ private fun PodcastDetailScreen(
             }
         }
     }
+}
 
     if (showUnsubscribeDialog) {
         AlertDialog(

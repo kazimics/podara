@@ -4,6 +4,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -42,6 +44,7 @@ import app.podiumpodcasts.podium.api.model.PodcastPreviewModel
 import app.podiumpodcasts.podium.data.AppDatabase
 import app.podiumpodcasts.podium.manager.AddPodcastResult
 import app.podiumpodcasts.podium.manager.PodcastManager
+import app.podiumpodcasts.podium.manager.SubscriptionManager
 import app.podiumpodcasts.podium.utils.Logger
 import app.podiumpodcasts.podium.utils.Strings
 import app.podiumpodcasts.podium.ui.theme.DesignTokens
@@ -68,6 +71,8 @@ private const val TAG = "DiscoverScreen"
 @Composable
 fun DiscoverScreen(
     database: AppDatabase,
+    subscriptionManager: SubscriptionManager,
+    onSubscribed: () -> Unit,
     onBack: () -> Unit
 ) {
     val colors = PodiumTheme.colors
@@ -99,8 +104,11 @@ fun DiscoverScreen(
             val itunesIds = topPodcasts
                 .filter { it.fetchUrl.startsWith("itunes-lookup:") }
                 .mapNotNull { it.fetchUrl.removePrefix("itunes-lookup:").toLongOrNull() }
-            val resolvedUrls = appleClient.lookup.batchLookupFeedUrls(itunesIds).values.toSet()
-            subscribedOrigins = dbOrigins + resolvedUrls
+            val resolvedMap = appleClient.lookup.batchLookupFeedUrls(itunesIds)
+            val resolvedUrls = resolvedMap.values.toSet()
+            // 同时追踪 itunes-lookup:xxx 映射，使订阅状态检查正确
+            val itunesLookupOrigins = resolvedMap.entries.map { "itunes-lookup:${it.key}" }.toSet()
+            subscribedOrigins = dbOrigins + resolvedUrls + itunesLookupOrigins
         } catch (e: Exception) {
             Logger.e(TAG, "Failed to load data", e)
             errorMessage = "Failed to load: ${e.message}"
@@ -129,9 +137,16 @@ fun DiscoverScreen(
         scope.launch {
             subscribingOrigins = subscribingOrigins + preview.fetchUrl
             try {
-                val result = podcastManager.addPodcast(preview.fetchUrl, null)
+                val result = podcastManager.addPodcastFromPreview(preview, null)
                 if (result is AddPodcastResult.Created || result is AddPodcastResult.Duplicate) {
-                    subscribedOrigins = subscribedOrigins + preview.fetchUrl
+                    // 获取播客的实际 origin（itunes-lookup: 会被解析为真实 RSS URL）
+                    val podcastOrigin = when (result) {
+                        is AddPodcastResult.Created -> result.podcast.origin
+                        is AddPodcastResult.Duplicate -> result.duplicate.origin
+                    }
+                    subscriptionManager.subscribe(podcastOrigin)
+                    subscribedOrigins = subscribedOrigins + preview.fetchUrl + podcastOrigin
+                    onSubscribed()
                 }
             } catch (e: Exception) {
                 errorMessage = "Failed to add: ${e.message}"
@@ -370,14 +385,16 @@ private fun FeaturedCard(
                 modifier = Modifier.align(Alignment.TopEnd).padding(card.NavPadding),
                 horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
+                val prevInteractionSource = remember { MutableInteractionSource() }
+                val isPrevHovered by prevInteractionSource.collectIsHoveredAsState()
                 Box(
                     modifier = Modifier
                         .size(card.NavButtonSize)
                         .clip(CircleShape)
-                        .background(colors.surface.copy(alpha = 0.6f))
+                        .background(if (isPrevHovered) colors.elevated else colors.surface.copy(alpha = 0.6f))
                         .border(1.dp, colors.border, CircleShape)
                         .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
-                        .clickable { onPrevious() },
+                        .clickable(interactionSource = prevInteractionSource, indication = null) { onPrevious() },
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
@@ -387,14 +404,16 @@ private fun FeaturedCard(
                         modifier = Modifier.size(16.dp)
                     )
                 }
+                val nextInteractionSource = remember { MutableInteractionSource() }
+                val isNextHovered by nextInteractionSource.collectIsHoveredAsState()
                 Box(
                     modifier = Modifier
                         .size(32.dp)
                         .clip(CircleShape)
-                        .background(colors.surface.copy(alpha = 0.6f))
+                        .background(if (isNextHovered) colors.elevated else colors.surface.copy(alpha = 0.6f))
                         .border(1.dp, colors.border, CircleShape)
                         .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
-                        .clickable { onNext() },
+                        .clickable(interactionSource = nextInteractionSource, indication = null) { onNext() },
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
@@ -478,6 +497,7 @@ private fun FeaturedCard(
                                 .shadow(btn.ShadowElevation, RoundedCornerShape(btn.Radius), ambientColor = btn.ShadowColor, spotColor = btn.ShadowColor)
                                 .border(DesignTokens.Border.Width, DesignTokens.Border.SecondaryColor, RoundedCornerShape(btn.Radius))
                                 .background(btn.Gradient)
+                                .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
                                 .clickable { onSubscribe() },
                             contentAlignment = Alignment.Center
                         ) {
@@ -498,26 +518,32 @@ private fun FeaturedCard(
                         }
 
                         // Add to playlist
+                        val addInteractionSource = remember { MutableInteractionSource() }
+                        val isAddHovered by addInteractionSource.collectIsHoveredAsState()
                         Box(
                             modifier = Modifier
                                 .size(DesignTokens.IconButton.Size)
                                 .clip(CircleShape)
                                 .border(DesignTokens.Border.Width, DesignTokens.Border.SecondaryColor, CircleShape)
-                                .background(colors.surface)
-                                .clickable { onSubscribe() },
+                                .background(if (isAddHovered) colors.elevated else colors.surface)
+                                .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
+                                .clickable(interactionSource = addInteractionSource, indication = null) { onSubscribe() },
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(Icons.Default.Add, contentDescription = "Add", tint = colors.textSecondary, modifier = Modifier.size(DesignTokens.IconButton.IconSize))
                         }
 
                         // More / Detail
+                        val moreInteractionSource = remember { MutableInteractionSource() }
+                        val isMoreHovered by moreInteractionSource.collectIsHoveredAsState()
                         Box(
                             modifier = Modifier
                                 .size(DesignTokens.IconButton.Size)
                                 .clip(CircleShape)
                                 .border(DesignTokens.Border.Width, DesignTokens.Border.SecondaryColor, CircleShape)
-                                .background(colors.surface)
-                                .clickable { onShowDetail() },
+                                .background(if (isMoreHovered) colors.elevated else colors.surface)
+                                .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
+                                .clickable(interactionSource = moreInteractionSource, indication = null) { onShowDetail() },
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(Icons.Default.MoreHoriz, contentDescription = "More", tint = colors.textSecondary, modifier = Modifier.size(DesignTokens.IconButton.IconSize))
@@ -668,22 +694,26 @@ private fun EpisodeRow(
             }
             when {
                 isSubscribed -> {
-                    Icon(
-                        Icons.Default.Check,
-                        contentDescription = Strings["discover_added"],
-                        tint = colors.accent,
-                        modifier = Modifier.size(20.dp)
-                    )
+                    Box(modifier = Modifier.size(32.dp), contentAlignment = Alignment.Center) {
+                        Icon(
+                            Icons.Default.Check,
+                            contentDescription = Strings["discover_added"],
+                            tint = colors.accent,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
                 }
                 isSubscribing -> {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(20.dp),
-                        strokeWidth = 2.dp,
-                        color = colors.accent
-                    )
+                    Box(modifier = Modifier.size(32.dp), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(20.dp),
+                            strokeWidth = 2.dp,
+                            color = colors.accent
+                        )
+                    }
                 }
                 else -> {
-                    IconButton(onClick = onSubscribe, modifier = Modifier.size(32.dp)) {
+                    IconButton(onClick = onSubscribe, modifier = Modifier.size(32.dp).pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))) {
                         Icon(
                             Icons.Default.Add,
                             contentDescription = Strings["discover_add"],

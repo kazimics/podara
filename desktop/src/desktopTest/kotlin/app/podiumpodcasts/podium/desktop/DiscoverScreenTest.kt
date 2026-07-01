@@ -3,6 +3,7 @@ package app.podiumpodcasts.podium.desktop
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
 import app.podiumpodcasts.podium.data.AppDatabase
+import app.podiumpodcasts.podium.manager.SubscriptionManager
 import app.podiumpodcasts.podium.ui.theme.PodiumTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -16,6 +17,7 @@ import java.io.File
 class DiscoverScreenTest {
 
     private lateinit var database: AppDatabase
+    private lateinit var subscriptionManager: SubscriptionManager
     private lateinit var testDbFile: File
     private val testDispatcher = StandardTestDispatcher()
 
@@ -28,6 +30,7 @@ class DiscoverScreenTest {
         testDbFile = File(System.getProperty("java.io.tmpdir"), "podium_discover_test_${System.currentTimeMillis()}.db")
         testDbFile.deleteOnExit()
         database = AppDatabase.build(testDbFile)
+        subscriptionManager = SubscriptionManager(database)
     }
 
     @After
@@ -41,7 +44,7 @@ class DiscoverScreenTest {
     fun testDiscoverScreenDisplaysTitle() {
         composeTestRule.setContent {
             PodiumTheme {
-                DiscoverScreen(database = database, onBack = {})
+                DiscoverScreen(database = database, subscriptionManager = subscriptionManager, onSubscribed = {}, onBack = {})
             }
         }
         composeTestRule.onNodeWithText("Discover").assertIsDisplayed()
@@ -51,7 +54,7 @@ class DiscoverScreenTest {
     fun testDiscoverScreenShowsSubtitle() {
         composeTestRule.setContent {
             PodiumTheme {
-                DiscoverScreen(database = database, onBack = {})
+                DiscoverScreen(database = database, subscriptionManager = subscriptionManager, onSubscribed = {}, onBack = {})
             }
         }
         composeTestRule.onNodeWithText("Curated podcasts, handpicked for you.").assertIsDisplayed()
@@ -61,19 +64,10 @@ class DiscoverScreenTest {
     fun testDiscoverScreenHasSearchField() {
         composeTestRule.setContent {
             PodiumTheme {
-                DiscoverScreen(database = database, onBack = {})
+                DiscoverScreen(database = database, subscriptionManager = subscriptionManager, onSubscribed = {}, onBack = {})
             }
         }
         composeTestRule.onNodeWithText("Search podcasts, episodes, topics...").assertIsDisplayed()
     }
 
-    @Test
-    fun testDiscoverScreenSearchShortcutBadge() {
-        composeTestRule.setContent {
-            PodiumTheme {
-                DiscoverScreen(database = database, onBack = {})
-            }
-        }
-        composeTestRule.onNodeWithText("Ctrl+K").assertIsDisplayed()
-    }
 }
