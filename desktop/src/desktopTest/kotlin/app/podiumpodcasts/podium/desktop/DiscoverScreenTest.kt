@@ -74,6 +74,6 @@ class DiscoverScreenTest {
                 DiscoverScreen(database = database, onBack = {})
             }
         }
-        composeTestRule.onNodeWithText("\u2318K").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Ctrl+K").assertIsDisplayed()
     }
 }
