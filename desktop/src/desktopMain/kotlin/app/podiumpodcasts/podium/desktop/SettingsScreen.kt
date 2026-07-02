@@ -191,7 +191,7 @@ fun SettingsScreen(
 
             Text(Strings["settings_about"], style = MaterialTheme.typography.titleMedium)
             Spacer(modifier = Modifier.height(8.dp))
-            Text("Podium - Podcast Player", style = MaterialTheme.typography.bodyMedium)
+            Text(Strings["settings_about_desc"], style = MaterialTheme.typography.bodyMedium)
             Text(Strings.get("settings_version", "0.1.0"), style = MaterialTheme.typography.bodySmall)
         }
     }

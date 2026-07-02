@@ -58,7 +58,7 @@ class UpdatePodcastTest {
         val episodes = database.episodes.getAllByOrigin(origin)
         assertTrue(episodes.isNotEmpty(), "Episodes should exist")
 
-        // 直接查询 play state 表验证每个节目都有播放状态记录
+        // Directly query the play state table to verify each episode has a play state record
         val stateCount = countPlayStates()
         assertEquals(episodes.size, stateCount,
             "Each episode should have a play state entry after updatePodcast")
@@ -68,12 +68,12 @@ class UpdatePodcastTest {
     fun testUpdatePodcastHandlesDuplicateEpisodes() = runBlocking {
         subscriptionManager.subscribe(origin)
 
-        // 第一次调用插入节目
+        // First call inserts episodes
         val firstResult = subscriptionManager.updatePodcast(origin, null)
         assertTrue(firstResult is UpdatePodcastResult.Updated)
         assertEquals(2, (firstResult as UpdatePodcastResult.Updated).newEpisodesCount)
 
-        // 第二次调用不应重复插入
+        // Second call should not insert duplicates
         val secondResult = subscriptionManager.updatePodcast(origin, null)
         assertTrue(secondResult is UpdatePodcastResult.Updated)
         assertEquals(0, (secondResult as UpdatePodcastResult.Updated).newEpisodesCount,
@@ -88,7 +88,7 @@ class UpdatePodcastTest {
         subscriptionManager.subscribe(origin)
         subscriptionManager.updatePodcast(origin, null)
 
-        // 重复刷新
+        // Repeated refresh
         subscriptionManager.updatePodcast(origin, null)
 
         val episodes = database.episodes.getAllByOrigin(origin)

@@ -137,7 +137,7 @@ fun HistoryScreen(
                                             historyItems = database.history.getAllWithEpisode()
                                         }
                                     }) {
-                                        Icon(Icons.Default.Close, contentDescription = "Remove")
+                                        Icon(Icons.Default.Close, contentDescription = Strings["player_remove"])
                                     }
                                 }
                             },

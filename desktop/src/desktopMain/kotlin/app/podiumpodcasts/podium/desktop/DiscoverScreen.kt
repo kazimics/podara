@@ -106,12 +106,12 @@ fun DiscoverScreen(
                 .mapNotNull { it.fetchUrl.removePrefix("itunes-lookup:").toLongOrNull() }
             val resolvedMap = appleClient.lookup.batchLookupFeedUrls(itunesIds)
             val resolvedUrls = resolvedMap.values.toSet()
-            // 同时追踪 itunes-lookup:xxx 映射，使订阅状态检查正确
+            // Also track itunes-lookup:xxx mapping so subscription status check is correct
             val itunesLookupOrigins = resolvedMap.entries.map { "itunes-lookup:${it.key}" }.toSet()
             subscribedOrigins = dbOrigins + resolvedUrls + itunesLookupOrigins
         } catch (e: Exception) {
             Logger.e(TAG, "Failed to load data", e)
-            errorMessage = "Failed to load: ${e.message}"
+            errorMessage = Strings.get("error_loading", e.message ?: "")
         }
         isLoading = false
     }
@@ -126,7 +126,7 @@ fun DiscoverScreen(
                     searchResults = appleClient.search.search(searchQuery)
                 } catch (e: Exception) {
                     Logger.e(TAG, "Search failed", e)
-                    errorMessage = "Search failed: ${e.message}"
+                    errorMessage = Strings.get("search_failed", e.message ?: "")
                 }
                 isLoading = false
             }
@@ -139,7 +139,7 @@ fun DiscoverScreen(
             try {
                 val result = podcastManager.addPodcastFromPreview(preview, null)
                 if (result is AddPodcastResult.Created || result is AddPodcastResult.Duplicate) {
-                    // 获取播客的实际 origin（itunes-lookup: 会被解析为真实 RSS URL）
+                    // Get the podcast's actual origin (itunes-lookup: is resolved to real RSS URL)
                     val podcastOrigin = when (result) {
                         is AddPodcastResult.Created -> result.podcast.origin
                         is AddPodcastResult.Duplicate -> result.duplicate.origin
@@ -149,7 +149,7 @@ fun DiscoverScreen(
                     onSubscribed()
                 }
             } catch (e: Exception) {
-                errorMessage = "Failed to add: ${e.message}"
+                errorMessage = Strings.get("error_adding_podcast", e.message ?: "")
             } finally {
                 subscribingOrigins = subscribingOrigins - preview.fetchUrl
             }
@@ -169,7 +169,7 @@ fun DiscoverScreen(
         ) {
             Column {
                 Text(
-                    text = "Discover",
+                    text = Strings["nav_discover"],
                     color = colors.textPrimary,
                     fontSize = header.TitleSize,
                     fontWeight = FontWeight.Bold,
@@ -177,7 +177,7 @@ fun DiscoverScreen(
                 )
                 Spacer(modifier = Modifier.height(header.Gap))
                 Text(
-                    text = "Curated podcasts, handpicked for you.",
+                    text = Strings["discover_subtitle"],
                     color = colors.textMuted,
                     fontSize = header.SubtitleSize
                 )
@@ -209,7 +209,7 @@ fun DiscoverScreen(
                     Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
                         if (searchQuery.isEmpty()) {
                             Text(
-                                text = "Search podcasts, episodes, topics...",
+                                text = Strings["discover_search_placeholder"],
                                 color = colors.textDisabled,
                                 fontSize = search.TextSize
                             )
@@ -236,7 +236,7 @@ fun DiscoverScreen(
                     if (searchQuery.isNotEmpty()) {
                         Icon(
                             Icons.Default.Clear,
-                            contentDescription = "Clear",
+                            contentDescription = Strings["discover_search_clear"],
                             tint = colors.textMuted,
                             modifier = Modifier
                                 .size(search.ClearIconSize)
@@ -304,7 +304,7 @@ fun DiscoverScreen(
                         if (!hasSearched && podcasts.size > 1) {
                             item {
                                 Spacer(modifier = Modifier.height(24.dp))
-                                SectionHeader(title = "Trending This Week")
+                                SectionHeader(title = Strings["discover_trending"])
                                 Spacer(modifier = Modifier.height(12.dp))
                             }
                             item {
@@ -329,7 +329,7 @@ fun DiscoverScreen(
                         item {
                             Spacer(modifier = Modifier.height(24.dp))
                             SectionHeader(
-                                title = if (hasSearched) "Results" else "New Episodes"
+                                title = if (hasSearched) Strings["discover_results"] else Strings["discover_new_episodes"]
                             )
         Spacer(modifier = Modifier.height(DesignTokens.Spacing.sm))
                         }
@@ -399,7 +399,7 @@ private fun FeaturedCard(
                 ) {
                     Icon(
                         Icons.Default.ChevronLeft,
-                        contentDescription = "Previous",
+                        contentDescription = Strings["discover_previous"],
                         tint = colors.textPrimary,
                         modifier = Modifier.size(16.dp)
                     )
@@ -418,7 +418,7 @@ private fun FeaturedCard(
                 ) {
                     Icon(
                         Icons.Default.ChevronRight,
-                        contentDescription = "Next",
+                        contentDescription = Strings["discover_next"],
                         tint = colors.textPrimary,
                         modifier = Modifier.size(16.dp)
                     )
@@ -450,7 +450,7 @@ private fun FeaturedCard(
                 ) {
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "FEATURED",
+                        text = Strings["discover_featured"],
                         color = colors.accent,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.SemiBold,
@@ -509,7 +509,7 @@ private fun FeaturedCard(
                                 Icon(Icons.Default.PlayArrow, contentDescription = null, tint = btn.IconColor, modifier = Modifier.size(btn.IconSize))
                                 Spacer(Modifier.width(DesignTokens.Spacing.sm))
                                 Text(
-                                    text = "Latest Episode",
+                                    text = Strings["discover_latest_episode"],
                                     color = btn.TextColor,
                                     fontSize = btn.TextSize,
                                     fontWeight = FontWeight.Medium
@@ -530,7 +530,7 @@ private fun FeaturedCard(
                                 .clickable(interactionSource = addInteractionSource, indication = null) { onSubscribe() },
                             contentAlignment = Alignment.Center
                         ) {
-                            Icon(Icons.Default.Add, contentDescription = "Add", tint = colors.textSecondary, modifier = Modifier.size(DesignTokens.IconButton.IconSize))
+                            Icon(Icons.Default.Add, contentDescription = Strings["discover_add"], tint = colors.textSecondary, modifier = Modifier.size(DesignTokens.IconButton.IconSize))
                         }
 
                         // More / Detail
@@ -546,7 +546,7 @@ private fun FeaturedCard(
                                 .clickable(interactionSource = moreInteractionSource, indication = null) { onShowDetail() },
                             contentAlignment = Alignment.Center
                         ) {
-                            Icon(Icons.Default.MoreHoriz, contentDescription = "More", tint = colors.textSecondary, modifier = Modifier.size(DesignTokens.IconButton.IconSize))
+                            Icon(Icons.Default.MoreHoriz, contentDescription = Strings["discover_more"], tint = colors.textSecondary, modifier = Modifier.size(DesignTokens.IconButton.IconSize))
                         }
                     }
                 }
@@ -575,7 +575,7 @@ private fun SectionHeader(title: String) {
             fontFamily = FontFamily.Serif
         )
         Text(
-            text = "Show All",
+            text = Strings["discover_show_all"],
             color = colors.accent,
             fontSize = sh.LinkSize,
             modifier = Modifier.pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))

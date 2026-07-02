@@ -62,13 +62,13 @@ private fun Sidebar(
     onHistory: () -> Unit,
     onSettings: () -> Unit
 ) {
-    data class NavItem(val icon: androidx.compose.ui.graphics.vector.ImageVector, val label: String, val screen: String)
+    data class NavItem(val icon: androidx.compose.ui.graphics.vector.ImageVector, val labelKey: String, val screen: String)
 
     val navItems = listOf(
-        NavItem(Icons.Default.Explore, "Discover", "discover"),
-        NavItem(Icons.Default.LibraryMusic, "Shows", "home"),
-        NavItem(Icons.Default.QueueMusic, "Episodes", "history"),
-        NavItem(Icons.Default.Folder, "Downloads", "home")
+        NavItem(Icons.Default.Explore, "nav_discover", "discover"),
+        NavItem(Icons.Default.LibraryMusic, "nav_shows", "home"),
+        NavItem(Icons.Default.QueueMusic, "nav_episodes", "history"),
+        NavItem(Icons.Default.Folder, "nav_downloads", "home")
     )
 
     val colors = PodiumTheme.colors
@@ -142,9 +142,9 @@ private fun Sidebar(
                             horizontalArrangement = Arrangement.spacedBy(10.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Icon(item.icon, contentDescription = item.label, tint = iconTint, modifier = Modifier.size(sidebar.NavIconSize))
+                            Icon(item.icon, contentDescription = Strings[item.labelKey], tint = iconTint, modifier = Modifier.size(sidebar.NavIconSize))
                             Text(
-                                text = item.label,
+                                text = Strings[item.labelKey],
                                 color = if (isActive) colors.textPrimary else colors.textSecondary,
                                 fontSize = sidebar.NavTextSize
                             )
@@ -178,9 +178,9 @@ private fun Sidebar(
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(Icons.Default.Settings, contentDescription = "Settings", tint = if (settingsActive) colors.accent else colors.textSecondary, modifier = Modifier.size(sidebar.NavIconSize))
+                    Icon(Icons.Default.Settings, contentDescription = Strings["nav_settings"], tint = if (settingsActive) colors.accent else colors.textSecondary, modifier = Modifier.size(sidebar.NavIconSize))
                     Text(
-                        text = "Settings",
+                        text = Strings["nav_settings"],
                         color = if (settingsActive) colors.textPrimary else colors.textSecondary,
                         fontSize = sidebar.NavTextSize
                     )
@@ -351,7 +351,7 @@ fun WindowScope.App(windowState: androidx.compose.ui.window.WindowState, awtWind
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "Podium",
+                        text = Strings["app_name"],
                         color = titleBarColors.textMuted,
                         fontSize = 12.sp
                     )
@@ -359,7 +359,7 @@ fun WindowScope.App(windowState: androidx.compose.ui.window.WindowState, awtWind
                     // Minimize
                     WindowControlButton(
                         onClick = { windowState.isMinimized = true },
-                        icon = { tint -> Icon(Icons.Default.Remove, contentDescription = "Minimize", tint = tint, modifier = Modifier.size(14.dp)) }
+                        icon = { tint -> Icon(Icons.Default.Remove, contentDescription = Strings["titlebar_minimize"], tint = tint, modifier = Modifier.size(14.dp)) }
                     )
                     // Maximize
                     WindowControlButton(
@@ -370,7 +370,7 @@ fun WindowScope.App(windowState: androidx.compose.ui.window.WindowState, awtWind
                         icon = { tint ->
                             Icon(
                                 if (windowState.placement == WindowPlacement.Maximized) Icons.Default.FilterNone else Icons.Default.CropSquare,
-                                contentDescription = "Maximize",
+                                contentDescription = Strings["titlebar_maximize"],
                                 tint = tint,
                                 modifier = Modifier.size(14.dp)
                             )
@@ -379,7 +379,7 @@ fun WindowScope.App(windowState: androidx.compose.ui.window.WindowState, awtWind
                     // Close
                     WindowControlButton(
                         onClick = { awtWindow.dispose(); System.exit(0) },
-                        icon = { tint -> Icon(Icons.Default.Close, contentDescription = "Close", tint = tint, modifier = Modifier.size(14.dp)) },
+                        icon = { tint -> Icon(Icons.Default.Close, contentDescription = Strings["titlebar_close"], tint = tint, modifier = Modifier.size(14.dp)) },
                         isClose = true
                     )
                 }
@@ -481,12 +481,12 @@ fun WindowScope.App(windowState: androidx.compose.ui.window.WindowState, awtWind
                                 podcasts = database.podcasts.getAllSync()
                             }
                             is AddPodcastResult.Duplicate -> {
-                                addError = "Podcast already exists: ${result.duplicate.title}"
+                                addError = Strings.get("podcast_already_exists", result.duplicate.title)
                                 showAddDialog = true
                             }
                         }
                     } catch (e: Exception) {
-                        addError = "Failed to add podcast: ${e.message}"
+                        addError = Strings.get("error_adding_podcast", e.message ?: "")
                         showAddDialog = true
                     }
                 }
@@ -721,17 +721,17 @@ private fun PodcastDetailScreen(
     val scope = rememberCoroutineScope()
 
     LaunchedEffect(podcast.origin) {
-        // 先从数据库加载（首次为空，展示 loading）
+        // First load from database (initially empty, show loading)
         episodes = database.episodes.getAllByOrigin(podcast.origin)
-        // 按需从 RSS 刷新（首次完整下载，后续利用 ETag 缓存快速返回）
+        // Refresh from RSS on demand (initial full download, subsequent fast via ETag cache)
         try {
             when (val result = subscriptionManager.updatePodcast(podcast.origin, podcast.imageSeedColor)) {
                 is UpdatePodcastResult.Updated -> {
                     episodes = database.episodes.getAllByOrigin(podcast.origin)
                 }
-                else -> { /* 无变更或错误，维持已有数据 */ }
+                else -> { /* No change or error, keep existing data */ }
             }
-        } catch (_: Exception) { /* 网络错误静默处理 */ }
+        } catch (_: Exception) { /* Network error silently handled */ }
         isLoading = false
     }
 
@@ -768,7 +768,7 @@ private fun PodcastDetailScreen(
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
-                            text = "No episodes available",
+                            text = Strings["podcast_no_episodes"],
                             color = PodiumTheme.colors.textMuted
                         )
                         Spacer(modifier = Modifier.height(8.dp))
@@ -784,7 +784,7 @@ private fun PodcastDetailScreen(
                                 isLoading = false
                             }
                         }) {
-                            Text("Retry")
+                            Text(Strings["podcast_retry"])
                         }
                     }
                 }
@@ -943,8 +943,8 @@ private fun AddPodcastDialog(
                 OutlinedTextField(
                     value = url,
                     onValueChange = { url = it },
-                    label = { Text("RSS Feed URL") },
-                    placeholder = { Text("https://example.com/feed.xml") },
+                    label = { Text(Strings["add_podcast_rss_label"]) },
+                    placeholder = { Text(Strings["add_podcast_rss_placeholder"]) },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true
                 )

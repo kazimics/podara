@@ -313,7 +313,7 @@ fun MiniPlayer(
                         ) {
                             Icon(
                                 Icons.Default.Fullscreen,
-                                contentDescription = "Expand",
+                                contentDescription = Strings["player_expand"],
                                 tint = colors.textMuted,
                                 modifier = Modifier.size(20.dp)
                             )
@@ -542,7 +542,7 @@ fun QueueDrawer(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Up Next",
+                        text = Strings["queue_title"],
                         color = colors.textPrimary,
                         fontSize = 18.sp,
                         fontWeight = FontWeight.SemiBold
@@ -554,7 +554,7 @@ fun QueueDrawer(
                         contentPadding = PaddingValues(0.dp)
                     ) {
                         Text(
-                            text = "Clear",
+                            text = Strings["queue_clear"],
                             color = colors.accent,
                             fontSize = 13.sp
                         )

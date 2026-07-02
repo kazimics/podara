@@ -74,7 +74,7 @@ class AddPodcastFromPreviewTest {
     fun testAddPodcastFromPreviewDoesNotDownloadEpisodes() = runBlocking {
         podcastManager.addPodcastFromPreview(preview, null)
 
-        // 关键：预览订阅不应下载任何节目（RSS 请求被跳过）
+        // Key: preview subscription should NOT download any episodes (RSS request is skipped)
         val episodes = database.episodes.getAllByOrigin("https://example.com/feed.xml")
         assertEquals(0, episodes.size, "Preview subscription should not fetch any episodes")
     }

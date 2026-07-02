@@ -7,6 +7,7 @@ import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.WindowPosition
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
+import app.podiumpodcasts.podium.utils.Strings
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
@@ -24,7 +25,7 @@ fun main() {
             Window(
                 onCloseRequest = ::exitApplication,
                 state = windowState,
-                title = "Podium",
+                title = Strings["app_name"],
                 undecorated = true,
                 transparent = false
             ) {

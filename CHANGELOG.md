@@ -7,6 +7,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [0.1.0] - 2026-07-02
 
 ### Added
+- New i18n string keys for sidebar, title bar, discover screen, player, settings, and error messages
+- Chinese translations (zh) for all previously missing UI strings
+- `Strings.get()` format-parameter usage for error messages in DiscoverScreen and AddPodcastDialog
 - Lightweight subscribe via `PodcastManager.addPodcastFromPreview()` — podcast created from Apple Podcast preview data without downloading RSS feed (instant subscribe)
 - `onSubscribed` callback in DiscoverScreen to refresh subscription list immediately
 - Retry button on podcast detail screen when episode loading fails
@@ -21,6 +24,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - DiscoverScreen subscription status incorrect for iTunes-sourced podcasts after refresh
 
 ### Changed
+- Migrated all hardcoded English UI strings to `Strings["key"]` localization system (App, Discover, Player, Settings, History screens)
+- Sidebar nav items now use string keys instead of literals for full i18n support
+- Error messages in DiscoverScreen and AddPodcastDialog use `Strings.get()` with format parameters
+- Window title in Main.kt uses `Strings["app_name"]` instead of hardcoded "Podium"
+- All Chinese code comments translated to English
 - `FetchPodcastClient.fetch()` made `open` for testability
 
 ### Removed
