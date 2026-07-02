@@ -215,11 +215,13 @@ private suspend fun playAndRecordHistory(
 ) {
     Logger.i(TAG, "playAndRecordHistory: title=${episode.title}, url=${episode.audioUrl}")
     try {
+        val podcast = database.podcasts.getByOrigin(episode.origin)
         playerState.play(
             url = episode.audioUrl,
             title = episode.title,
             subtitle = episode.podcastTitle,
             artworkUrl = episode.imageUrl,
+            podcastArtworkUrl = podcast?.imageUrl,
             durationMs = episode.duration * 1000L
         )
         database.history.insert(episode.origin, episode.id)
@@ -361,6 +363,7 @@ fun WindowScope.App(windowState: androidx.compose.ui.window.WindowState, awtWind
                     title = episode.trackName ?: "",
                     subtitle = episode.collectionName,
                     artworkUrl = episode.artworkUrl600,
+                    podcastArtworkUrl = preview.imageUrl,
                     durationMs = episode.trackTimeMillis ?: 0L
                 )
                 database.history.insert(
@@ -940,6 +943,7 @@ private fun PodcastDetailScreen(
                                             url = url,
                                             title = episode.title,
                                             artworkUrl = episode.imageUrl,
+                                            podcastArtworkUrl = podcast.imageUrl,
                                             episodeId = episode.id,
                                             isDownloaded = episode.id in completedDownloads
                                         )

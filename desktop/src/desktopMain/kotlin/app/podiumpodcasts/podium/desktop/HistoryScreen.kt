@@ -101,13 +101,17 @@ fun HistoryScreen(
                             },
                             leadingContent = {
                                 IconButton(onClick = {
-                                    playerState.play(
-                                        url = episode.audioUrl,
-                                        title = episode.title,
-                                        subtitle = episode.podcastTitle,
-                                        artworkUrl = episode.imageUrl,
-                                        durationMs = episode.duration * 1000L
-                                    )
+                                    scope.launch {
+                                        val podcast = database.podcasts.getByOrigin(episode.origin)
+                                        playerState.play(
+                                            url = episode.audioUrl,
+                                            title = episode.title,
+                                            subtitle = episode.podcastTitle,
+                                            artworkUrl = episode.imageUrl,
+                                            podcastArtworkUrl = podcast?.imageUrl,
+                                            durationMs = episode.duration * 1000L
+                                        )
+                                    }
                                 }) {
                                     AsyncImage(
                                         model = episode.imageUrl,
@@ -122,12 +126,16 @@ fun HistoryScreen(
                             trailingContent = {
                                 Row {
                                     IconButton(onClick = {
-                                        playerState.addToQueue(
-                                            url = episode.audioUrl,
-                                            title = episode.title,
-                                            artworkUrl = episode.imageUrl,
-                                            episodeId = episode.id
-                                        )
+                                        scope.launch {
+                                            val podcast = database.podcasts.getByOrigin(episode.origin)
+                                            playerState.addToQueue(
+                                                url = episode.audioUrl,
+                                                title = episode.title,
+                                                artworkUrl = episode.imageUrl,
+                                                podcastArtworkUrl = podcast?.imageUrl,
+                                                episodeId = episode.id
+                                            )
+                                        }
                                     }) {
                                         Icon(Icons.Default.PlaylistAdd, contentDescription = Strings["episode_add_to_queue"])
                                     }
@@ -142,12 +150,16 @@ fun HistoryScreen(
                                 }
                             },
                             modifier = Modifier.clickable {
-                                playerState.play(
-                                    url = episode.audioUrl,
-                                    title = episode.title,
-                                    artworkUrl = episode.imageUrl,
-                                    durationMs = episode.duration * 1000L
-                                )
+                                scope.launch {
+                                    val podcast = database.podcasts.getByOrigin(episode.origin)
+                                    playerState.play(
+                                        url = episode.audioUrl,
+                                        title = episode.title,
+                                        artworkUrl = episode.imageUrl,
+                                        podcastArtworkUrl = podcast?.imageUrl,
+                                        durationMs = episode.duration * 1000L
+                                    )
+                                }
                             }
                         )
                         HorizontalDivider()
