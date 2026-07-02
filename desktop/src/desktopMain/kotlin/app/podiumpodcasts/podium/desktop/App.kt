@@ -1,6 +1,7 @@
 package app.podiumpodcasts.podium.desktop
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
@@ -8,6 +9,7 @@ import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -16,11 +18,13 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.window.WindowDraggableArea
 import androidx.compose.ui.unit.sp
@@ -300,6 +304,7 @@ fun WindowScope.App(windowState: androidx.compose.ui.window.WindowState, awtWind
     var podcasts by remember { mutableStateOf(emptyList<Podcast>()) }
     var currentScreen by remember { mutableStateOf("discover") }
     var selectedPodcast by remember { mutableStateOf<Podcast?>(null) }
+    var discoverRefreshKey by remember { mutableStateOf(0) }
     var showFullPlayer by remember { mutableStateOf(false) }
     var showQueueFromMini by remember { mutableStateOf(false) }
     var showAddDialog by remember { mutableStateOf(false) }
@@ -380,11 +385,15 @@ fun WindowScope.App(windowState: androidx.compose.ui.window.WindowState, awtWind
     val onShowDetail: (PodcastPreviewModel) -> Unit = { preview ->
         scope.launch {
             try {
-                // 1. Resolve the RSS feed URL
+                // 1. Resolve the RSS feed URL and persist itunes-lookup mapping
                 val feedUrl = if (preview.fetchUrl.startsWith("itunes-lookup:")) {
                     val id = preview.fetchUrl.removePrefix("itunes-lookup:").toLongOrNull()
                         ?: return@launch
-                    appleClient.lookup.lookupById(id)?.fetchUrl ?: return@launch
+                    val lookupResult = appleClient.lookup.lookupById(id)
+                    val resolvedUrl = lookupResult?.fetchUrl ?: return@launch
+                    // Persist mapping so DiscoverScreen can check subscription status later
+                    database.itunesLookup.insert(preview.fetchUrl, resolvedUrl)
+                    resolvedUrl
                 } else {
                     preview.fetchUrl
                 }
@@ -490,9 +499,16 @@ fun WindowScope.App(windowState: androidx.compose.ui.window.WindowState, awtWind
                             downloadVersion = downloadVersion,
                             completedDownloads = completedDownloads,
                             onStartDownload = startDownload,
-                            onBack = { selectedPodcast = null },
+                            onBack = {
+                                selectedPodcast = null
+                                discoverRefreshKey++
+                            },
                             onUnsubscribed = {
                                 podcasts = database.podcasts.getAllSync()
+                            },
+                            onSubscribed = {
+                                podcasts = database.podcasts.getAllSync()
+                                discoverRefreshKey++
                             }
                         )
                         currentScreen == "home" -> HomeScreen(
@@ -510,6 +526,7 @@ fun WindowScope.App(windowState: androidx.compose.ui.window.WindowState, awtWind
                         currentScreen == "discover" -> DiscoverScreen(
                             database = database,
                             subscriptionManager = subscriptionManager,
+                            discoverRefreshKey = discoverRefreshKey,
                             onSubscribed = {
                                 scope.launch { podcasts = database.podcasts.getAllSync() }
                             },
@@ -651,7 +668,8 @@ private fun HomeScreen(
                             Icon(Icons.Default.Edit, contentDescription = Strings["home_edit"])
                         }
                     }
-                }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
             )
         }
     ) { padding ->
@@ -799,7 +817,8 @@ private fun PodcastDetailScreen(
     completedDownloads: Set<String>,
     onStartDownload: (PodcastEpisode, String) -> Unit,
     onBack: () -> Unit,
-    onUnsubscribed: suspend () -> Unit = { }
+    onUnsubscribed: suspend () -> Unit = { },
+    onSubscribed: suspend () -> Unit = { }
 ) {
     var episodes by remember { mutableStateOf(emptyList<PodcastEpisode>()) }
     var isLoading by remember { mutableStateOf(true) }
@@ -839,20 +858,22 @@ private fun PodcastDetailScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(podcast.title) },
+                title = {
+                    Text(
+                        text = podcast.fetchTitle(),
+                        maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.Default.ArrowBack, contentDescription = Strings["nav_back"])
                     }
                 },
-                actions = {
-                    // Only show unsubscribe button for subscribed podcasts
-                    if (isSubscribed) {
-                        IconButton(onClick = { showUnsubscribeDialog = true }) {
-                            Icon(Icons.Default.Delete, contentDescription = Strings["unsubscribe"])
-                        }
-                    }
-                }
+                actions = { },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color.Transparent
+                )
             )
         }
     ) { padding ->
@@ -894,47 +915,268 @@ private fun PodcastDetailScreen(
                 }
             }
             else -> {
-            LazyColumn(modifier = Modifier.fillMaxSize().padding(padding)) {
-                items(episodes) { episode ->
-                    val isDownloaded = episode.id in completedDownloads
-
-                    ListItem(
-                        headlineContent = { Text(episode.title) },
-                        supportingContent = {
-                            Text(
-                                text = formatDuration(episode.duration),
-                                style = MaterialTheme.typography.bodySmall
+                val colors = PodiumTheme.colors
+                LazyColumn(modifier = Modifier.fillMaxSize().padding(padding)) {
+                // ── Header: Cover + Title + Author + Description + Action Buttons ──
+                    item {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 24.dp, vertical = 16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            // Cover — left side, square with rounded corners (like FeaturedCard)
+                            AsyncImage(
+                                model = podcast.imageUrl,
+                                contentDescription = podcast.title,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier
+                                    .size(180.dp)
+                                    .clip(RoundedCornerShape(12.dp))
                             )
-                        },
-                        leadingContent = {
-                            IconButton(onClick = {
-                                scope.launch {
-                                    val downloadRecord = database.downloads.getByEpisodeId(episode.id)
-                                    val url = if (downloadRecord != null && File(downloadRecord.filePath).exists()) {
-                                        downloadRecord.filePath
-                                    } else {
-                                        episode.audioUrl
-                                    }
-                                    val epWithUrl = episode.copy(audioUrl = url)
-                                    playAndRecordHistory(database, playerState, epWithUrl)
-                                }
-                            }) {
-                                AsyncImage(
-                                    model = episode.imageUrl ?: podcast.imageUrl,
-                                    contentDescription = episode.title,
-                                    contentScale = ContentScale.Crop,
-                                    modifier = Modifier
-                                        .size(48.dp)
-                                        .clip(RoundedCornerShape(8.dp))
-                                )
-                            }
-                        },
-                        trailingContent = {
-                            val isDownloaded = episode.id in completedDownloads
-                            val isDownloading = episode.id in downloadingEpisodes
-                            val progress = downloadProgress[episode.id]
 
+                            Spacer(modifier = Modifier.width(20.dp))
+
+                            // Content — right side
+                            Column(modifier = Modifier.weight(1f)) {
+                                // Title
+                                Text(
+                                    text = podcast.fetchTitle(),
+                                    color = colors.textPrimary,
+                                    fontSize = 22.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 2,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+
+                                // Author
+                                if (podcast.author.isNotEmpty()) {
+                                    Text(
+                                        text = podcast.author,
+                                        color = colors.textSecondary,
+                                        fontSize = 14.sp
+                                    )
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                }
+
+                                // Description (max 2 lines)
+                                if (podcast.description.isNotEmpty()) {
+                                    Text(
+                                        text = stripHtml(podcast.description),
+                                        color = colors.textMuted,
+                                        fontSize = 12.sp,
+                                        maxLines = 2,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                    Spacer(modifier = Modifier.height(12.dp))
+                                } else {
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                }
+
+                                // ── Three action buttons ──
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    // 1. Play Latest (reuse DesignTokens.Button from FeaturedCard)
+                                    val btn = DesignTokens.Button
+                                    Box(
+                                        modifier = Modifier
+                                            .height(btn.Height)
+                                            .clip(RoundedCornerShape(btn.Radius))
+                                            .shadow(btn.ShadowElevation, RoundedCornerShape(btn.Radius), ambientColor = btn.ShadowColor, spotColor = btn.ShadowColor)
+                                            .border(DesignTokens.Border.Width, DesignTokens.Border.SecondaryColor, RoundedCornerShape(btn.Radius))
+                                            .background(btn.Gradient)
+                                            .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
+                                            .clickable {
+                                                scope.launch {
+                                                    val latest = episodes.maxByOrNull { it.pubDate }
+                                                    if (latest != null) {
+                                                        playAndRecordHistory(database, playerState, latest)
+                                                    }
+                                                }
+                                            },
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Box(modifier = Modifier.matchParentSize().background(btn.InnerHighlight))
+                                        Row(
+                                            modifier = Modifier.padding(horizontal = btn.PaddingHorizontal),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Icon(Icons.Default.PlayArrow, contentDescription = null, tint = btn.IconColor, modifier = Modifier.size(btn.IconSize))
+                                            Spacer(Modifier.width(DesignTokens.Spacing.sm))
+                                            Text(
+                                                text = Strings["discover_latest_episode"],
+                                                color = btn.TextColor,
+                                                fontSize = btn.TextSize,
+                                                fontWeight = FontWeight.Medium
+                                            )
+                                        }
+                                    }
+
+                                    // 2. Subscribe / Unsubscribe (reuse FeaturedCard circular icon button)
+                                    val subInteractionSource = remember { MutableInteractionSource() }
+                                    val isSubHovered by subInteractionSource.collectIsHoveredAsState()
+                                    Box(
+                                        modifier = Modifier
+                                            .size(DesignTokens.IconButton.Size)
+                                            .clip(CircleShape)
+                                            .border(DesignTokens.Border.Width, DesignTokens.Border.SecondaryColor, CircleShape)
+                                            .background(
+                                                when {
+                                                    isSubscribed -> colors.accent.copy(alpha = 0.15f)
+                                                    isSubHovered -> colors.elevated
+                                                    else -> colors.surface
+                                                }
+                                            )
+                                            .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
+                                            .clickable(interactionSource = subInteractionSource, indication = null) {
+                                                if (isSubscribed) {
+                                                    showUnsubscribeDialog = true
+                                                } else {
+                                                    scope.launch {
+                                                        // Save podcast record in DB first, then subscribe
+                                                        database.podcasts.insert(podcast)
+                                                        subscriptionManager.subscribe(podcast.origin)
+                                                        isSubscribed = true
+                                                        onSubscribed()
+                                                        // Refresh episodes via RSS
+                                                        try {
+                                                            when (val result = subscriptionManager.updatePodcast(podcast.origin, podcast.imageSeedColor)) {
+                                                                is UpdatePodcastResult.Updated -> {
+                                                                    episodes = database.episodes.getAllByOrigin(podcast.origin)
+                                                                }
+                                                                else -> { }
+                                                            }
+                                                        } catch (_: Exception) { }
+                                                    }
+                                                }
+                                            },
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = if (isSubscribed) Icons.Default.Check else Icons.Default.Add,
+                                            contentDescription = if (isSubscribed) Strings["discover_added"] else Strings["discover_add"],
+                                            tint = if (isSubscribed) colors.accent else colors.textSecondary,
+                                            modifier = Modifier.size(DesignTokens.IconButton.IconSize)
+                                        )
+                                    }
+
+                                    // 3. More options — copy RSS URL (reuse FeaturedCard circular icon button)
+                                    val moreInteractionSource = remember { MutableInteractionSource() }
+                                    val isMoreHovered by moreInteractionSource.collectIsHoveredAsState()
+                                    var showPopup by remember { mutableStateOf(false) }
+                                    Box(
+                                        modifier = Modifier
+                                            .size(DesignTokens.IconButton.Size)
+                                            .clip(CircleShape)
+                                            .border(DesignTokens.Border.Width, DesignTokens.Border.SecondaryColor, CircleShape)
+                                            .background(if (isMoreHovered) colors.elevated else colors.surface)
+                                            .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
+                                            .clickable(interactionSource = moreInteractionSource, indication = null) { showPopup = true },
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(Icons.Default.MoreHoriz, contentDescription = Strings["discover_more"], tint = colors.textSecondary, modifier = Modifier.size(DesignTokens.IconButton.IconSize))
+
+                                        DropdownMenu(
+                                            expanded = showPopup,
+                                            onDismissRequest = { showPopup = false }
+                                        ) {
+                                            DropdownMenuItem(
+                                                text = { Text(Strings["dialog_copy_to_clipboard"]) },
+                                                onClick = {
+                                                    showPopup = false
+                                                    val clipboard = java.awt.Toolkit.getDefaultToolkit().systemClipboard
+                                                    val selection = java.awt.datatransfer.StringSelection(podcast.origin)
+                                                    clipboard.setContents(selection, null)
+                                                }
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // ── Divider after header ──
+                    item { HorizontalDivider(modifier = Modifier.padding(horizontal = 24.dp)) }
+
+                    // ── Episode list ──
+                    items(episodes) { episode ->
+                        val isDownloading = episode.id in downloadingEpisodes
+                        val progress = downloadProgress[episode.id]
+
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 24.dp, vertical = 8.dp)
+                                .clickable {
+                                    scope.launch {
+                                        val downloadRecord = database.downloads.getByEpisodeId(episode.id)
+                                        val url = if (downloadRecord != null && File(downloadRecord.filePath).exists()) {
+                                            downloadRecord.filePath
+                                        } else {
+                                            episode.audioUrl
+                                        }
+                                        val epWithUrl = episode.copy(audioUrl = url)
+                                        playAndRecordHistory(database, playerState, epWithUrl)
+                                    }
+                                },
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            // Cover — match text content height
+                            AsyncImage(
+                                model = episode.imageUrl ?: podcast.imageUrl,
+                                contentDescription = episode.title,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier
+                                    .size(72.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+
+                            // Content
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = episode.title,
+                                    color = colors.textPrimary,
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    maxLines = 2,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    val dateStr = formatDate(episode.pubDate)
+                                    if (dateStr.isNotEmpty()) {
+                                        Text(
+                                            text = dateStr,
+                                            color = colors.textMuted,
+                                            fontSize = 12.sp
+                                        )
+                                        Text(text = " · ", color = colors.textMuted, fontSize = 12.sp)
+                                    }
+                                    Text(
+                                        text = formatDuration(episode.duration),
+                                        color = colors.textMuted,
+                                        fontSize = 12.sp
+                                    )
+                                }
+                                if (episode.description.isNotEmpty()) {
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text(
+                                        text = stripHtml(episode.description),
+                                        color = colors.textMuted,
+                                        fontSize = 11.sp,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.width(8.dp))
+
+                            // Action buttons
                             Row(verticalAlignment = Alignment.CenterVertically) {
+                                // Add to queue
                                 IconButton(onClick = {
                                     scope.launch {
                                         val downloadRecord = database.downloads.getByEpisodeId(episode.id)
@@ -956,11 +1198,9 @@ private fun PodcastDetailScreen(
                                     Icon(Icons.Default.PlaylistAdd, contentDescription = Strings["episode_add_to_queue"])
                                 }
 
-                                Box(
-                                    modifier = Modifier.size(48.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    if (isDownloaded) {
+                                // Download / Downloaded / Downloading
+                                Box(modifier = Modifier.size(40.dp), contentAlignment = Alignment.Center) {
+                                    if (episode.id in completedDownloads) {
                                         Icon(
                                             Icons.Default.CheckCircle,
                                             contentDescription = Strings["episode_downloaded"],
@@ -972,38 +1212,23 @@ private fun PodcastDetailScreen(
                                         } else 0f
                                         CircularProgressIndicator(
                                             progress = { fraction },
-                                            modifier = Modifier.size(24.dp),
+                                            modifier = Modifier.size(20.dp),
                                             strokeWidth = 2.dp
                                         )
                                     } else {
-                                        IconButton(onClick = {
-                                            onStartDownload(episode, podcast.title)
-                                        }) {
+                                        IconButton(onClick = { onStartDownload(episode, podcast.title) }) {
                                             Icon(Icons.Default.Download, contentDescription = Strings["episode_download"])
                                         }
                                     }
                                 }
                             }
-                        },
-                        modifier = Modifier.clickable {
-                            scope.launch {
-                                val downloadRecord = database.downloads.getByEpisodeId(episode.id)
-                                val url = if (downloadRecord != null && File(downloadRecord.filePath).exists()) {
-                                    downloadRecord.filePath
-                                } else {
-                                    episode.audioUrl
-                                }
-                                val epWithUrl = episode.copy(audioUrl = url)
-                                playAndRecordHistory(database, playerState, epWithUrl)
-                            }
                         }
-                    )
-                    HorizontalDivider()
+                        HorizontalDivider(modifier = Modifier.padding(horizontal = 24.dp))
+                    }
                 }
             }
         }
     }
-}
 
     if (showUnsubscribeDialog) {
         AlertDialog(
@@ -1081,6 +1306,18 @@ private fun AddPodcastDialog(
             }
         }
     )
+}
+
+private fun stripHtml(html: String): String {
+    return html.replace(Regex("<[^>]*>"), " ")
+        .replace(Regex("\\s+"), " ")
+        .trim()
+}
+
+private fun formatDate(timestamp: Long): String {
+    if (timestamp <= 0) return ""
+    val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+    return sdf.format(Date(timestamp))
 }
 
 private fun formatDuration(seconds: Int): String {

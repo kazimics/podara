@@ -7,6 +7,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [0.1.0] - 2026-07-02
 
 ### Added
+- Podcast detail page header with large cover (180dp), title, author, description, and three action buttons (Play Latest, Subscribe, More with "Copy RSS URL")
+- Improved episode list layout: publication date, description text, 72dp cover filling row height
+- `formatDate()` utility for formatting episode publication dates
+- `stripHtml()` utility for cleaning HTML tags from RSS descriptions
+- `onSubscribed` callback for PodcastDetailScreen to sync subscription state across screens
+- `discoverRefreshKey` mechanism to reload DiscoverScreen subscription status on return
+- EpisodeRow click navigation to podcast detail page (Trending Podcasts + search results)
+- TopAppBar `containerColor = Color.Transparent` for consistent background across all screens
+
+### Added
 - Tests for `SectionHeader` `showAll` parameter behavior
 - Language-aware country code selection for Top Podcasts feed (CN for zh, US for en)
 - New i18n string keys for sidebar, title bar, discover screen, player, settings, and error messages
@@ -67,6 +77,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Podcast detail screen now handles unsubscribed (preview) mode — fetches RSS directly, hides unsubscribe button
 - Subscribed podcast status lost after re-entering DiscoverScreen — now also checks via RSS URL cache
 - Subscribed podcast status lost after app restart — now persists iTunes URL → RSS URL mapping in database
+- Subscription status not synced when subscribing from podcast detail page (missing `podcast` record in DB, missing itunes-lookup mapping, missing `onSubscribed` callback)
+- Subscription status not refreshed when returning to DiscoverScreen from podcast detail page (`discoverRefreshKey` mechanism now triggers reload)
 
 ## [0.1.0] - 2026-07-01
 

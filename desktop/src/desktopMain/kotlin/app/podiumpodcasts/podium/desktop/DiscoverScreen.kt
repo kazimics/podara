@@ -77,6 +77,7 @@ private val itunesToRssCache = mutableMapOf<String, String>()
 fun DiscoverScreen(
     database: AppDatabase,
     subscriptionManager: SubscriptionManager,
+    discoverRefreshKey: Int = 0,
     onSubscribed: () -> Unit,
     onBack: () -> Unit,
     onPlayLatestEpisode: (PodcastPreviewModel) -> Unit,
@@ -102,7 +103,7 @@ fun DiscoverScreen(
         onDispose { appleClient.close() }
     }
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(discoverRefreshKey) {
         isLoading = true
         Logger.i(TAG, "Loading top podcasts and subscriptions")
         try {
@@ -368,7 +369,8 @@ fun DiscoverScreen(
                                     isSubscribed = podcast.fetchUrl in subscribedOrigins
                                         || itunesToRssCache[podcast.fetchUrl] in subscribedOrigins,
                                     isSubscribing = podcast.fetchUrl in subscribingOrigins,
-                                    onSubscribe = { subscribe(podcast) }
+                                    onSubscribe = { subscribe(podcast) },
+                                    onShowDetail = { onShowDetail(podcast) }
                                 )
                             }
                         }
@@ -702,7 +704,8 @@ private fun EpisodeRow(
     podcast: PodcastPreviewModel,
     isSubscribed: Boolean,
     isSubscribing: Boolean,
-    onSubscribe: () -> Unit
+    onSubscribe: () -> Unit,
+    onShowDetail: () -> Unit = {}
 ) {
     val colors = PodiumTheme.colors
     val er = DesignTokens.EpisodeRow
@@ -711,7 +714,9 @@ private fun EpisodeRow(
             .fillMaxWidth()
             .shadow(8.dp, RoundedCornerShape(er.CoverRadius), ambientColor = Color.Black.copy(alpha = 0.4f), spotColor = Color.Black.copy(alpha = 0.4f))
             .clip(RoundedCornerShape(er.CoverRadius))
-            .background(DesignTokens.Card.Gradient),
+            .background(DesignTokens.Card.Gradient)
+            .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
+            .clickable { onShowDetail() },
         shape = RoundedCornerShape(er.CoverRadius),
         color = Color.Transparent
     ) {
