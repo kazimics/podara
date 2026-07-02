@@ -1,5 +1,6 @@
 package app.podiumpodcasts.podium.utils
 
+import app.podiumpodcasts.podium.api.rss.FetchPodcastClientResult
 import app.podiumpodcasts.podium.data.model.Podcast
 import app.podiumpodcasts.podium.data.model.PodcastEpisode
 import com.prof18.rssparser.model.RssChannel
@@ -72,6 +73,20 @@ object RssConverter {
         } catch (e: Exception) {
             0
         }
+    }
+
+    /**
+     * Parse a FetchPodcastClientResult.Success into a Podcast and its episodes.
+     * Used by desktop module to preview episodes without subscribing (no DB writes).
+     */
+    fun parseFetchResult(
+        result: FetchPodcastClientResult.Success,
+        origin: String,
+        seedColor: Int? = null
+    ): Pair<Podcast, List<PodcastEpisode>> {
+        val podcast = toPodcast(result.rssChannel, origin, result.fileSize, seedColor)
+        val episodes = result.rssChannel.items.map { toPodcastEpisode(it, podcast) }
+        return podcast to episodes
     }
 }
 

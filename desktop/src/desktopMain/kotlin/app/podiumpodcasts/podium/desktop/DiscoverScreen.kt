@@ -68,12 +68,18 @@ private val PrimaryButtonIcon = Color.White
 
 private const val TAG = "DiscoverScreen"
 
+// Persists itunes-lookup:xxx → RSS feed URL mapping across composition boundaries
+// so that subscription status can be checked correctly after re-entering DiscoverScreen.
+private val itunesToRssCache = mutableMapOf<String, String>()
+
 @Composable
 fun DiscoverScreen(
     database: AppDatabase,
     subscriptionManager: SubscriptionManager,
     onSubscribed: () -> Unit,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onPlayLatestEpisode: (PodcastPreviewModel) -> Unit,
+    onShowDetail: (PodcastPreviewModel) -> Unit
 ) {
     val colors = PodiumTheme.colors
     val header = DesignTokens.PageHeader
@@ -100,12 +106,19 @@ fun DiscoverScreen(
         Logger.i(TAG, "Loading top podcasts and subscriptions")
         try {
             val dbOrigins = database.podcasts.getAllOrigins()
+            // Restore persisted itunes-lookup → RSS URL mappings from database
+            itunesToRssCache.clear()
+            itunesToRssCache.putAll(database.itunesLookup.getAll())
             topPodcasts = appleClient.topPodcasts.load()
             val itunesIds = topPodcasts
                 .filter { it.fetchUrl.startsWith("itunes-lookup:") }
                 .mapNotNull { it.fetchUrl.removePrefix("itunes-lookup:").toLongOrNull() }
             val resolvedMap = appleClient.lookup.batchLookupFeedUrls(itunesIds)
             val resolvedUrls = resolvedMap.values.toSet()
+            // Cache itunes-lookup:xxx → RSS URL mapping for subscription status checks
+            resolvedMap.forEach { (id, rssUrl) ->
+                itunesToRssCache["itunes-lookup:$id"] = rssUrl
+            }
             // Also track itunes-lookup:xxx mapping so subscription status check is correct
             val itunesLookupOrigins = resolvedMap.entries.map { "itunes-lookup:${it.key}" }.toSet()
             subscribedOrigins = dbOrigins + resolvedUrls + itunesLookupOrigins
@@ -145,6 +158,10 @@ fun DiscoverScreen(
                         is AddPodcastResult.Duplicate -> result.duplicate.origin
                     }
                     subscriptionManager.subscribe(podcastOrigin)
+                    // Persist itunes-lookup → RSS URL mapping in database
+                    database.itunesLookup.insert(preview.fetchUrl, podcastOrigin)
+                    // Also cache in memory for the current session
+                    itunesToRssCache[preview.fetchUrl] = podcastOrigin
                     subscribedOrigins = subscribedOrigins + preview.fetchUrl + podcastOrigin
                     onSubscribed()
                 }
@@ -292,8 +309,12 @@ fun DiscoverScreen(
                                 }
                                 FeaturedCard(
                                     podcast = featured,
-                                    isSubscribed = featured.fetchUrl in subscribedOrigins,
+                                    isSubscribed = featured.fetchUrl in subscribedOrigins
+                                        || itunesToRssCache[featured.fetchUrl] in subscribedOrigins,
+                                    isSubscribing = featured.fetchUrl in subscribingOrigins,
                                     onSubscribe = { subscribe(featured) },
+                                    onPlayLatestEpisode = { onPlayLatestEpisode(featured) },
+                                    onShowDetail = { onShowDetail(featured) },
                                     onPrevious = { featuredIndex = if (featuredIndex > 0) featuredIndex - 1 else podcasts.size - 1 },
                                     onNext = { featuredIndex = (featuredIndex + 1) % podcasts.size }
                                 )
@@ -339,7 +360,8 @@ fun DiscoverScreen(
                             Box(modifier = Modifier.padding(horizontal = DesignTokens.SectionHeader.PaddingHorizontal, vertical = 5.dp)) {
                                 EpisodeRow(
                                     podcast = podcast,
-                                    isSubscribed = podcast.fetchUrl in subscribedOrigins,
+                                    isSubscribed = podcast.fetchUrl in subscribedOrigins
+                                        || itunesToRssCache[podcast.fetchUrl] in subscribedOrigins,
                                     isSubscribing = podcast.fetchUrl in subscribingOrigins,
                                     onSubscribe = { subscribe(podcast) }
                                 )
@@ -357,8 +379,10 @@ fun DiscoverScreen(
 private fun FeaturedCard(
     podcast: PodcastPreviewModel,
     isSubscribed: Boolean,
+    isSubscribing: Boolean,
     onSubscribe: () -> Unit,
-    onShowDetail: () -> Unit = {},
+    onPlayLatestEpisode: () -> Unit,
+    onShowDetail: () -> Unit,
     onPrevious: () -> Unit = {},
     onNext: () -> Unit = {}
 ) {
@@ -380,54 +404,16 @@ private fun FeaturedCard(
                 .clip(RoundedCornerShape(card.Radius))
                 .background(DesignTokens.Card.Gradient)
         ) {
-            // Navigation arrows — top right, inside card
-            Row(
-                modifier = Modifier.align(Alignment.TopEnd).padding(card.NavPadding),
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                val prevInteractionSource = remember { MutableInteractionSource() }
-                val isPrevHovered by prevInteractionSource.collectIsHoveredAsState()
-                Box(
-                    modifier = Modifier
-                        .size(card.NavButtonSize)
-                        .clip(CircleShape)
-                        .background(if (isPrevHovered) colors.elevated else colors.surface.copy(alpha = 0.6f))
-                        .border(1.dp, colors.border, CircleShape)
-                        .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
-                        .clickable(interactionSource = prevInteractionSource, indication = null) { onPrevious() },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        Icons.Default.ChevronLeft,
-                        contentDescription = Strings["discover_previous"],
-                        tint = colors.textPrimary,
-                        modifier = Modifier.size(16.dp)
-                    )
-                }
-                val nextInteractionSource = remember { MutableInteractionSource() }
-                val isNextHovered by nextInteractionSource.collectIsHoveredAsState()
-                Box(
-                    modifier = Modifier
-                        .size(32.dp)
-                        .clip(CircleShape)
-                        .background(if (isNextHovered) colors.elevated else colors.surface.copy(alpha = 0.6f))
-                        .border(1.dp, colors.border, CircleShape)
-                        .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
-                        .clickable(interactionSource = nextInteractionSource, indication = null) { onNext() },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        Icons.Default.ChevronRight,
-                        contentDescription = Strings["discover_next"],
-                        tint = colors.textPrimary,
-                        modifier = Modifier.size(16.dp)
-                    )
-                }
-            }
+            // ── Navigation arrows in the top-right area, BEFORE content so they get correct layout
+            //     but they render on TOP because they use TopEnd alignment and we layer them last ──
 
-            // Content: Cover + Text
+            // Content: Cover + Text (whole area clickable → navigate to detail)
             Row(
-                modifier = Modifier.fillMaxSize().padding(card.Padding),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(card.Padding)
+                    .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
+                    .clickable { onShowDetail() },
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 // Cover
@@ -498,7 +484,7 @@ private fun FeaturedCard(
                                 .border(DesignTokens.Border.Width, DesignTokens.Border.SecondaryColor, RoundedCornerShape(btn.Radius))
                                 .background(btn.Gradient)
                                 .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
-                                .clickable { onSubscribe() },
+                                .clickable { onPlayLatestEpisode() },
                             contentAlignment = Alignment.Center
                         ) {
                             Box(modifier = Modifier.matchParentSize().background(btn.InnerHighlight))
@@ -517,7 +503,7 @@ private fun FeaturedCard(
                             }
                         }
 
-                        // Add to playlist
+                        // Add to playlist / Subscribe
                         val addInteractionSource = remember { MutableInteractionSource() }
                         val isAddHovered by addInteractionSource.collectIsHoveredAsState()
                         Box(
@@ -525,12 +511,38 @@ private fun FeaturedCard(
                                 .size(DesignTokens.IconButton.Size)
                                 .clip(CircleShape)
                                 .border(DesignTokens.Border.Width, DesignTokens.Border.SecondaryColor, CircleShape)
-                                .background(if (isAddHovered) colors.elevated else colors.surface)
+                                .background(
+                                    when {
+                                        isSubscribed -> colors.accent.copy(alpha = 0.15f)
+                                        isAddHovered -> colors.elevated
+                                        else -> colors.surface
+                                    }
+                                )
                                 .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
-                                .clickable(interactionSource = addInteractionSource, indication = null) { onSubscribe() },
+                                .clickable(interactionSource = addInteractionSource, indication = null) {
+                                    if (!isSubscribed) onSubscribe()
+                                },
                             contentAlignment = Alignment.Center
                         ) {
-                            Icon(Icons.Default.Add, contentDescription = Strings["discover_add"], tint = colors.textSecondary, modifier = Modifier.size(DesignTokens.IconButton.IconSize))
+                            when {
+                                isSubscribing -> CircularProgressIndicator(
+                                    modifier = Modifier.size(DesignTokens.IconButton.IconSize),
+                                    strokeWidth = 2.dp,
+                                    color = colors.accent
+                                )
+                                isSubscribed -> Icon(
+                                    Icons.Default.Check,
+                                    contentDescription = Strings["discover_added"],
+                                    tint = colors.accent,
+                                    modifier = Modifier.size(DesignTokens.IconButton.IconSize)
+                                )
+                                else -> Icon(
+                                    Icons.Default.Add,
+                                    contentDescription = Strings["discover_add"],
+                                    tint = colors.textSecondary,
+                                    modifier = Modifier.size(DesignTokens.IconButton.IconSize)
+                                )
+                            }
                         }
 
                         // More / Detail
@@ -549,6 +561,51 @@ private fun FeaturedCard(
                             Icon(Icons.Default.MoreHoriz, contentDescription = Strings["discover_more"], tint = colors.textSecondary, modifier = Modifier.size(DesignTokens.IconButton.IconSize))
                         }
                     }
+                }
+            }
+
+            // Navigation arrows — top right, layered ON TOP of the content
+            Row(
+                modifier = Modifier.align(Alignment.TopEnd).padding(card.NavPadding),
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                val prevInteractionSource = remember { MutableInteractionSource() }
+                val isPrevHovered by prevInteractionSource.collectIsHoveredAsState()
+                Box(
+                    modifier = Modifier
+                        .size(card.NavButtonSize)
+                        .clip(CircleShape)
+                        .background(if (isPrevHovered) colors.elevated else colors.surface.copy(alpha = 0.6f))
+                        .border(1.dp, colors.border, CircleShape)
+                        .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
+                        .clickable(interactionSource = prevInteractionSource, indication = null) { onPrevious() },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        Icons.Default.ChevronLeft,
+                        contentDescription = Strings["discover_previous"],
+                        tint = colors.textPrimary,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+                val nextInteractionSource = remember { MutableInteractionSource() }
+                val isNextHovered by nextInteractionSource.collectIsHoveredAsState()
+                Box(
+                    modifier = Modifier
+                        .size(32.dp)
+                        .clip(CircleShape)
+                        .background(if (isNextHovered) colors.elevated else colors.surface.copy(alpha = 0.6f))
+                        .border(1.dp, colors.border, CircleShape)
+                        .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
+                        .clickable(interactionSource = nextInteractionSource, indication = null) { onNext() },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        Icons.Default.ChevronRight,
+                        contentDescription = Strings["discover_next"],
+                        tint = colors.textPrimary,
+                        modifier = Modifier.size(16.dp)
+                    )
                 }
             }
         }

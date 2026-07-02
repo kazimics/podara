@@ -16,12 +16,28 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Automatic RSS refresh when entering podcast detail screen (deferred episode loading)
 - Play state initialization in `SubscriptionManager.updatePodcast()` for newly fetched episodes
 - Hover cursor pointer for MiniPlayer controls (speed selector, seek, play, volume, queue, expand)
+- iTunes episode lookup API (`entity=podcastEpisode`) — lightweight episode metadata fetch without full RSS download
+- `PodcastEpisodeLookupResult` model and `lookupLatestEpisodes()` method on `ApplePodcastClient.Lookup`
+- `RssConverter.parseFetchResult()` — shared helper for parsing RSS fetch results without exposing rssparser types
+- `podcastItunesLookup` database table for persistent `itunes-lookup:xxx → RSS URL` mapping across restarts
+- `ItunesLookupDao` for CRUD on the iTunes URL mapping table
+- `loading_episodes` i18n string (EN/ZH)
+- "Play Latest Episode" button on FeaturedCard — plays via iTunes API, no subscription required
+- Entire FeaturedCard cover + text area clickable → navigates to episode list
+- Subscription state feedback on FeaturedCard: spinner during subscribing, check icon when subscribed
+- In-memory + persistent cache for `itunes-lookup:xxx` subscription status check across sessions
 
 ### Fixed
 - Navigate to other sidebar tabs no longer blocked when inside podcast episode list
 - Infinite loading spinner when RSS fetch fails in PodcastDetailScreen
 - iTunes lookup URL (`itunes-lookup:`) causing HTTP error during episode refresh — now resolved to real feed URL at subscribe time
 - DiscoverScreen subscription status incorrect for iTunes-sourced podcasts after refresh
+- FeaturedCard "Latest Episode" button incorrectly called subscribe instead of playing the latest episode
+- FeaturedCard right/left navigation arrows blocked by content overlay (z-order issue)
+- `onShowDetail` previously auto-subscribed the podcast — now fetches RSS in preview mode only
+- Podcast detail screen now handles unsubscribed (preview) mode — fetches RSS directly, hides unsubscribe button
+- Subscribed podcast status lost after re-entering DiscoverScreen — now also checks via RSS URL cache
+- Subscribed podcast status lost after app restart — now persists iTunes URL → RSS URL mapping in database
 
 ### Changed
 - Migrated all hardcoded English UI strings to `Strings["key"]` localization system (App, Discover, Player, Settings, History screens)
@@ -30,9 +46,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Window title in Main.kt uses `Strings["app_name"]` instead of hardcoded "Podium"
 - All Chinese code comments translated to English
 - `FetchPodcastClient.fetch()` made `open` for testability
+- `SubscriptionManager.unsubscribe()` now also cleans up the iTunes lookup mapping
+- `PodcastDetailScreen` receives `FetchPodcastClient` for unsubscribed preview mode with built-in loading
+- FeaturedCard subscribe button now has three visual states: Add (unsubscribed), spinner (subscribing), Check (subscribed)
 
 ### Removed
 - Ctrl+K search shortcut badge test (UI element was removed in previous refactor)
+- Auto-subscribe side effect when navigating to podcast detail from FeaturedCard
 
 ## [0.1.0] - 2026-07-01
 

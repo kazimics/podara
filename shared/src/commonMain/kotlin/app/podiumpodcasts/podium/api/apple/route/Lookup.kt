@@ -25,6 +25,34 @@ data class LookupResult(
     val country: String,
 )
 
+// ── iTunes lookup with entity=podcastEpisode ──
+// Returns recent episode(s) for a podcast — fast (~10 KB), no full RSS download needed.
+
+@Serializable
+data class PodcastLookupEpisodeResponse(
+    val resultCount: Long,
+    val results: List<PodcastEpisodeLookupResult>,
+)
+
+@Serializable
+data class PodcastEpisodeLookupResult(
+    val kind: String? = null,
+    val trackId: Long? = null,
+    val trackName: String? = null,
+    val trackTimeMillis: Long? = null,
+    val episodeUrl: String? = null,
+    val previewUrl: String? = null,
+    val releaseDate: String? = null,
+    val description: String? = null,
+    val shortDescription: String? = null,
+    val episodeGuid: String? = null,
+    val artworkUrl600: String? = null,
+    val feedUrl: String? = null,
+    val collectionId: Long? = null,
+    val collectionName: String? = null,
+    val country: String? = null,
+)
+
 class Lookup(
     val client: ApplePodcastClient
 ) {
@@ -57,6 +85,24 @@ class Lookup(
                 ?: return@mapNotNull null
             id to feedUrl
         }.toMap()
+    }
+
+    /**
+     * Fetches recent episodes for a podcast via the iTunes Lookup API.
+     * Uses the semi-undocumented `entity=podcastEpisode` parameter which returns
+     * up to ~200 recent episodes without needing to download the full RSS feed.
+     *
+     * Response is lightweight (~10 KB) compared to downloading the full RSS XML
+     * (which can be multiple MB for podcasts with hundreds of episodes).
+     *
+     * Results are ordered by releaseDate descending (newest first).
+     */
+    suspend fun lookupLatestEpisodes(id: Long, limit: Int = 1): List<PodcastEpisodeLookupResult> {
+        val body = client.httpClient.get(
+            "https://itunes.apple.com/lookup?id=$id&country=US&media=podcast&entity=podcastEpisode&limit=$limit"
+        ).body<String>()
+        val response = json.decodeFromString<PodcastLookupEpisodeResponse>(body)
+        return response.results.filter { it.kind == "podcast-episode" }
     }
 
 }

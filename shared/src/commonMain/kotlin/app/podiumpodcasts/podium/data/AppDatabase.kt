@@ -103,6 +103,12 @@ class AppDatabase private constructor(private val connection: Connection) {
                     timestamp INTEGER NOT NULL
                 )
             """)
+            stmt.executeUpdate("""
+                CREATE TABLE IF NOT EXISTS podcastItunesLookup (
+                    itunesUrl TEXT NOT NULL PRIMARY KEY,
+                    rssUrl TEXT NOT NULL
+                )
+            """)
         }
     }
 
@@ -113,6 +119,7 @@ class AppDatabase private constructor(private val connection: Connection) {
     val subscriptions = SubscriptionDao(connection)
     val syncActions = SyncActionDao(connection)
     val downloads = DownloadDao(connection)
+    val itunesLookup = ItunesLookupDao(connection)
 
     fun close() { connection.close() }
 }
@@ -459,6 +466,33 @@ class DownloadDao(private val conn: Connection) {
     suspend fun delete(episodeId: String) = withContext(Dispatchers.IO) {
         conn.prepareStatement("DELETE FROM podcastDownload WHERE episodeId = ?").apply {
             setString(1, episodeId); executeUpdate()
+        }
+    }
+}
+
+class ItunesLookupDao(private val conn: Connection) {
+    suspend fun getAll(): Map<String, String> = withContext(Dispatchers.IO) {
+        val rs = conn.createStatement().executeQuery("SELECT itunesUrl, rssUrl FROM podcastItunesLookup")
+        val map = mutableMapOf<String, String>()
+        while (rs.next()) map[rs.getString("itunesUrl")] = rs.getString("rssUrl")
+        map
+    }
+
+    suspend fun insert(itunesUrl: String, rssUrl: String) = withContext(Dispatchers.IO) {
+        conn.prepareStatement("INSERT OR REPLACE INTO podcastItunesLookup (itunesUrl, rssUrl) VALUES (?, ?)").apply {
+            setString(1, itunesUrl); setString(2, rssUrl); executeUpdate()
+        }
+    }
+
+    suspend fun delete(itunesUrl: String) = withContext(Dispatchers.IO) {
+        conn.prepareStatement("DELETE FROM podcastItunesLookup WHERE itunesUrl = ?").apply {
+            setString(1, itunesUrl); executeUpdate()
+        }
+    }
+
+    suspend fun deleteByRssUrl(rssUrl: String) = withContext(Dispatchers.IO) {
+        conn.prepareStatement("DELETE FROM podcastItunesLookup WHERE rssUrl = ?").apply {
+            setString(1, rssUrl); executeUpdate()
         }
     }
 }

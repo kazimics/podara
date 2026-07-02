@@ -17,6 +17,7 @@ class SubscriptionManager(
         db.episodes.deleteByOrigin(origin)
         db.podcasts.delete(origin)
         db.subscriptions.delete(origin)
+        db.itunesLookup.deleteByRssUrl(origin)
     }
 
     suspend fun isSubscribed(origin: String): Boolean {

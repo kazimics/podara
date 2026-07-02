@@ -29,6 +29,10 @@ import androidx.compose.ui.window.WindowPlacement
 import androidx.compose.ui.window.WindowScope
 import java.awt.Cursor
 import coil3.compose.AsyncImage
+import app.podiumpodcasts.podium.api.apple.ApplePodcastClient
+import app.podiumpodcasts.podium.api.model.PodcastPreviewModel
+import app.podiumpodcasts.podium.api.rss.FetchPodcastClient
+import app.podiumpodcasts.podium.api.rss.FetchPodcastClientResult
 import app.podiumpodcasts.podium.data.AppDatabase
 import app.podiumpodcasts.podium.data.model.Podcast
 import app.podiumpodcasts.podium.data.model.PodcastEpisode
@@ -44,6 +48,7 @@ import app.podiumpodcasts.podium.manager.UpdatePodcastResult
 import app.podiumpodcasts.podium.ui.theme.DesignTokens
 import app.podiumpodcasts.podium.ui.theme.PodiumTheme
 import app.podiumpodcasts.podium.utils.Logger
+import app.podiumpodcasts.podium.utils.RssConverter
 import app.podiumpodcasts.podium.utils.Settings
 import app.podiumpodcasts.podium.utils.Strings
 import kotlinx.coroutines.launch
@@ -273,6 +278,10 @@ fun WindowScope.App(windowState: androidx.compose.ui.window.WindowState, awtWind
 
     val podcastManager = remember { PodcastManager(database) }
     val subscriptionManager = remember { SubscriptionManager(database) }
+    val appleClient = remember { ApplePodcastClient() }
+    DisposableEffect(Unit) {
+        onDispose { appleClient.close() }
+    }
     var downloadPath by remember { mutableStateOf(Settings.getDownloadPath()) }
     val downloadManager = remember(downloadPath) {
         val downloadsDir = File(downloadPath)
@@ -280,6 +289,7 @@ fun WindowScope.App(windowState: androidx.compose.ui.window.WindowState, awtWind
         DownloadManager(database, downloadsDir)
     }
     val playerState = remember { MediaPlayerState() }
+    val fetchPodcastClient = remember { FetchPodcastClient() }
     DisposableEffect(Unit) {
         onDispose { playerState.release() }
     }
@@ -328,6 +338,71 @@ fun WindowScope.App(windowState: androidx.compose.ui.window.WindowState, awtWind
             }
         }
         Unit
+    }
+
+    // ── Play latest episode from FeaturedCard without subscribing ──
+    // Uses iTunes Lookup API (entity=podcastEpisode) for fast response.
+    val onPlayLatestEpisode: (PodcastPreviewModel) -> Unit = { preview ->
+        scope.launch {
+            try {
+                val collectionId = when {
+                    preview.fetchUrl.startsWith("itunes-lookup:") ->
+                        preview.fetchUrl.removePrefix("itunes-lookup:").toLongOrNull()
+                    else -> null
+                } ?: return@launch
+
+                val episodes = appleClient.lookup.lookupLatestEpisodes(collectionId, 1)
+                val episode = episodes.firstOrNull() ?: return@launch
+                val audioUrl = episode.episodeUrl ?: episode.previewUrl ?: return@launch
+
+                Logger.i(TAG, "onPlayLatestEpisode: playing ${episode.trackName} from ${episode.collectionName}")
+                playerState.play(
+                    url = audioUrl,
+                    title = episode.trackName ?: "",
+                    subtitle = episode.collectionName,
+                    artworkUrl = episode.artworkUrl600,
+                    durationMs = episode.trackTimeMillis ?: 0L
+                )
+                database.history.insert(
+                    origin = episode.feedUrl ?: preview.fetchUrl,
+                    episodeId = episode.episodeGuid ?: episode.trackId?.toString() ?: ""
+                )
+            } catch (e: Exception) {
+                Logger.e(TAG, "onPlayLatestEpisode failed", e)
+            }
+        }
+    }
+
+    // ── Navigate to podcast detail (RSS fetch only, no subscribe) ──
+    val onShowDetail: (PodcastPreviewModel) -> Unit = { preview ->
+        scope.launch {
+            try {
+                // 1. Resolve the RSS feed URL
+                val feedUrl = if (preview.fetchUrl.startsWith("itunes-lookup:")) {
+                    val id = preview.fetchUrl.removePrefix("itunes-lookup:").toLongOrNull()
+                        ?: return@launch
+                    appleClient.lookup.lookupById(id)?.fetchUrl ?: return@launch
+                } else {
+                    preview.fetchUrl
+                }
+
+                // 2. Navigate immediately with a minimal Podcast
+                //    PodcastDetailScreen will fetch episodes from RSS on its own
+                selectedPodcast = Podcast(
+                    origin = feedUrl,
+                    link = preview.link,
+                    title = preview.title,
+                    description = preview.description,
+                    author = preview.author,
+                    imageUrl = preview.imageUrl,
+                    imageSeedColor = 0,
+                    languageCode = preview.languageCode,
+                    fileSize = 0
+                )
+            } catch (e: Exception) {
+                Logger.e(TAG, "onShowDetail failed", e)
+            }
+        }
     }
 
     PodiumTheme(darkTheme = true) {
@@ -404,6 +479,7 @@ fun WindowScope.App(windowState: androidx.compose.ui.window.WindowState, awtWind
                             podcast = selectedPodcast!!,
                             database = database,
                             subscriptionManager = subscriptionManager,
+                            fetchPodcastClient = fetchPodcastClient,
                             playerState = playerState,
                             downloadManager = downloadManager,
                             downloadingEpisodes = downloadingEpisodes,
@@ -434,7 +510,9 @@ fun WindowScope.App(windowState: androidx.compose.ui.window.WindowState, awtWind
                             onBack = {
                                 currentScreen = "home"
                                 scope.launch { podcasts = database.podcasts.getAllSync() }
-                            }
+                            },
+                            onPlayLatestEpisode = onPlayLatestEpisode,
+                            onShowDetail = onShowDetail
                         )
                         currentScreen == "settings" -> SettingsScreen(
                             database = database,
@@ -706,6 +784,7 @@ private fun PodcastDetailScreen(
     podcast: Podcast,
     database: AppDatabase,
     subscriptionManager: SubscriptionManager,
+    fetchPodcastClient: FetchPodcastClient,
     playerState: MediaPlayerState,
     downloadManager: DownloadManager,
     downloadingEpisodes: Set<String>,
@@ -717,22 +796,37 @@ private fun PodcastDetailScreen(
 ) {
     var episodes by remember { mutableStateOf(emptyList<PodcastEpisode>()) }
     var isLoading by remember { mutableStateOf(true) }
+    var isSubscribed by remember { mutableStateOf(false) }
     var showUnsubscribeDialog by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
     LaunchedEffect(podcast.origin) {
-        // First load from database (initially empty, show loading)
-        episodes = database.episodes.getAllByOrigin(podcast.origin)
-        // Refresh from RSS on demand (initial full download, subsequent fast via ETag cache)
-        try {
-            when (val result = subscriptionManager.updatePodcast(podcast.origin, podcast.imageSeedColor)) {
-                is UpdatePodcastResult.Updated -> {
-                    episodes = database.episodes.getAllByOrigin(podcast.origin)
+        val subscription = database.subscriptions.getByOriginSync(podcast.origin)
+        isSubscribed = subscription != null
+
+        if (subscription != null) {
+            // Subscribed: load from DB, then refresh via RSS
+            episodes = database.episodes.getAllByOrigin(podcast.origin)
+            try {
+                when (val result = subscriptionManager.updatePodcast(podcast.origin, podcast.imageSeedColor)) {
+                    is UpdatePodcastResult.Updated -> {
+                        episodes = database.episodes.getAllByOrigin(podcast.origin)
+                    }
+                    else -> { }
                 }
-                else -> { /* No change or error, keep existing data */ }
-            }
-        } catch (_: Exception) { /* Network error silently handled */ }
-        isLoading = false
+            } catch (_: Exception) { }
+            isLoading = false
+        } else {
+            // Not subscribed: preview mode — fetch RSS directly, no DB writes
+            try {
+                val result = fetchPodcastClient.fetchNoCache(podcast.origin)
+                if (result is FetchPodcastClientResult.Success) {
+                    val (_, parsedEpisodes) = RssConverter.parseFetchResult(result, podcast.origin)
+                    episodes = parsedEpisodes
+                }
+            } catch (_: Exception) { }
+            isLoading = false
+        }
     }
 
     Scaffold(
@@ -745,8 +839,11 @@ private fun PodcastDetailScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = { showUnsubscribeDialog = true }) {
-                        Icon(Icons.Default.Delete, contentDescription = Strings["unsubscribe"])
+                    // Only show unsubscribe button for subscribed podcasts
+                    if (isSubscribed) {
+                        IconButton(onClick = { showUnsubscribeDialog = true }) {
+                            Icon(Icons.Default.Delete, contentDescription = Strings["unsubscribe"])
+                        }
                     }
                 }
             )
