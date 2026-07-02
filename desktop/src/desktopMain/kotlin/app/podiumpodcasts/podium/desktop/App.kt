@@ -490,7 +490,10 @@ fun WindowScope.App(windowState: androidx.compose.ui.window.WindowState, awtWind
                             downloadVersion = downloadVersion,
                             completedDownloads = completedDownloads,
                             onStartDownload = startDownload,
-                            onBack = { selectedPodcast = null }
+                            onBack = { selectedPodcast = null },
+                            onUnsubscribed = {
+                                podcasts = database.podcasts.getAllSync()
+                            }
                         )
                         currentScreen == "home" -> HomeScreen(
                             podcasts = podcasts,
@@ -795,7 +798,8 @@ private fun PodcastDetailScreen(
     downloadVersion: Int,
     completedDownloads: Set<String>,
     onStartDownload: (PodcastEpisode, String) -> Unit,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onUnsubscribed: suspend () -> Unit = { }
 ) {
     var episodes by remember { mutableStateOf(emptyList<PodcastEpisode>()) }
     var isLoading by remember { mutableStateOf(true) }
@@ -1010,6 +1014,7 @@ private fun PodcastDetailScreen(
                 TextButton(onClick = {
                     scope.launch {
                         subscriptionManager.unsubscribe(podcast.origin)
+                        onUnsubscribed()
                         onBack()
                         showUnsubscribeDialog = false
                     }
