@@ -388,10 +388,10 @@ fun WindowScope.App(windowState: androidx.compose.ui.window.WindowState, awtWind
             Row(modifier = Modifier.weight(1f).fillMaxWidth()) {
                 Sidebar(
                     currentScreen = currentScreen,
-                    onDiscover = { currentScreen = "discover"; showFullPlayer = false },
-                    onShows = { currentScreen = "home"; showFullPlayer = false },
-                    onHistory = { currentScreen = "history"; showFullPlayer = false },
-                    onSettings = { currentScreen = "settings"; showFullPlayer = false }
+                    onDiscover = { currentScreen = "discover"; showFullPlayer = false; selectedPodcast = null },
+                    onShows = { currentScreen = "home"; showFullPlayer = false; selectedPodcast = null },
+                    onHistory = { currentScreen = "history"; showFullPlayer = false; selectedPodcast = null },
+                    onSettings = { currentScreen = "settings"; showFullPlayer = false; selectedPodcast = null }
                 )
 
                 Box(modifier = Modifier.weight(1f)) {

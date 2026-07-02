@@ -18,7 +18,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Hover cursor pointer for MiniPlayer controls (speed selector, seek, play, volume, queue, expand)
 
 ### Fixed
-- Subscription list not updating after subscribing from New Episodes (DiscoverScreen)
+- Navigate to other sidebar tabs no longer blocked when inside podcast episode list
 - Infinite loading spinner when RSS fetch fails in PodcastDetailScreen
 - iTunes lookup URL (`itunes-lookup:`) causing HTTP error during episode refresh — now resolved to real feed URL at subscribe time
 - DiscoverScreen subscription status incorrect for iTunes-sourced podcasts after refresh
