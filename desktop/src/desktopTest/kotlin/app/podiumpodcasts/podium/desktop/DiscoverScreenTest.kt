@@ -2,6 +2,7 @@ package app.podiumpodcasts.podium.desktop
 
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
+import app.podiumpodcasts.podium.api.model.PodcastPreviewModel
 import app.podiumpodcasts.podium.data.AppDatabase
 import app.podiumpodcasts.podium.manager.SubscriptionManager
 import app.podiumpodcasts.podium.ui.theme.PodiumTheme
@@ -69,6 +70,44 @@ class DiscoverScreenTest {
             }
         }
         composeTestRule.onNodeWithText(Strings["discover_search_placeholder"]).assertIsDisplayed()
+    }
+
+    @Test
+    fun testDiscoverScreenAcceptsRefreshKey() {
+        composeTestRule.setContent {
+            PodiumTheme {
+                DiscoverScreen(database = database, subscriptionManager = subscriptionManager, discoverRefreshKey = 42, onSubscribed = {}, onBack = {}, onPlayLatestEpisode = {}, onShowDetail = {})
+            }
+        }
+        composeTestRule.onNodeWithText(Strings["discover_title"]).assertIsDisplayed()
+    }
+
+    @Test
+    fun testEpisodeRowFiresOnShowDetailWhenClicked() {
+        val podcast = PodcastPreviewModel(
+            fetchUrl = "https://example.com/feed.xml",
+            link = "https://example.com",
+            title = "Test Podcast",
+            description = "A test podcast description",
+            author = "Test Author",
+            imageUrl = "https://example.com/image.jpg",
+            languageCode = "en"
+        )
+        var detailClicked = false
+        composeTestRule.setContent {
+            PodiumTheme {
+                EpisodeRow(
+                    podcast = podcast,
+                    isSubscribed = false,
+                    isSubscribing = false,
+                    onSubscribe = {},
+                    onShowDetail = { detailClicked = true }
+                )
+            }
+        }
+        composeTestRule.onNodeWithText("Test Podcast").performClick()
+        composeTestRule.waitForIdle()
+        assert(detailClicked) { "onShowDetail should have been called when clicking the episode row" }
     }
 
     // ── SectionHeader ──

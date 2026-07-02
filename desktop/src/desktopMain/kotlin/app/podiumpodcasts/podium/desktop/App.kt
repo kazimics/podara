@@ -1308,13 +1308,13 @@ private fun AddPodcastDialog(
     )
 }
 
-private fun stripHtml(html: String): String {
+internal fun stripHtml(html: String): String {
     return html.replace(Regex("<[^>]*>"), " ")
         .replace(Regex("\\s+"), " ")
         .trim()
 }
 
-private fun formatDate(timestamp: Long): String {
+internal fun formatDate(timestamp: Long): String {
     if (timestamp <= 0) return ""
     val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
     return sdf.format(Date(timestamp))

@@ -16,6 +16,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - EpisodeRow click navigation to podcast detail page (Trending Podcasts + search results)
 - TopAppBar `containerColor = Color.Transparent` for consistent background across all screens
 
+### Tests
+- `PodcastDetailUtilTest` — unit tests for `stripHtml()` (plain text, nested tags, whitespace, empty input) and `formatDate()` (zero/negative, format pattern)
+- `DiscoverScreenTest.testDiscoverScreenAcceptsRefreshKey` — verifies DiscoverScreen renders with `discoverRefreshKey` parameter
+- `DiscoverScreenTest.testEpisodeRowFiresOnShowDetailWhenClicked` — verifies clicking EpisodeRow triggers the detail navigation callback
+
 ### Added
 - Tests for `SectionHeader` `showAll` parameter behavior
 - Language-aware country code selection for Top Podcasts feed (CN for zh, US for en)

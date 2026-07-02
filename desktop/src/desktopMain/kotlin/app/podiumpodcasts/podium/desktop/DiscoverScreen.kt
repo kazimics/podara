@@ -700,7 +700,7 @@ internal fun SectionHeader(title: String, showAll: Boolean = true) {
 
 // ── Episode Row ──
 @Composable
-private fun EpisodeRow(
+internal fun EpisodeRow(
     podcast: PodcastPreviewModel,
     isSubscribed: Boolean,
     isSubscribing: Boolean,
