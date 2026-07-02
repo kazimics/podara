@@ -46,6 +46,7 @@ import app.podiumpodcasts.podium.manager.AddPodcastResult
 import app.podiumpodcasts.podium.manager.PodcastManager
 import app.podiumpodcasts.podium.manager.SubscriptionManager
 import app.podiumpodcasts.podium.utils.Logger
+import app.podiumpodcasts.podium.utils.Settings
 import app.podiumpodcasts.podium.utils.Strings
 import app.podiumpodcasts.podium.ui.theme.DesignTokens
 import app.podiumpodcasts.podium.ui.theme.PodiumTheme
@@ -109,7 +110,8 @@ fun DiscoverScreen(
             // Restore persisted itunes-lookup → RSS URL mappings from database
             itunesToRssCache.clear()
             itunesToRssCache.putAll(database.itunesLookup.getAll())
-            topPodcasts = appleClient.topPodcasts.load()
+            val countryCode = if (Settings.getLanguage() == "zh") "CN" else "US"
+            topPodcasts = appleClient.topPodcasts.load(countryCode = countryCode)
             val itunesIds = topPodcasts
                 .filter { it.fetchUrl.startsWith("itunes-lookup:") }
                 .mapNotNull { it.fetchUrl.removePrefix("itunes-lookup:").toLongOrNull() }
@@ -299,7 +301,7 @@ fun DiscoverScreen(
                         if (!hasSearched && podcasts.isNotEmpty()) {
                             item {
                                 var featuredIndex by remember { mutableIntStateOf(0) }
-                                val featured = podcasts[featuredIndex % podcasts.size]
+                                val featured = podcasts[featuredIndex % 5]
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.End,
@@ -322,40 +324,43 @@ fun DiscoverScreen(
                         }
 
                         // ── Trending This Week ──
-                        if (!hasSearched && podcasts.size > 1) {
-                            item {
-                                Spacer(modifier = Modifier.height(24.dp))
-                                SectionHeader(title = Strings["discover_trending"])
-                                Spacer(modifier = Modifier.height(12.dp))
-                            }
-                            item {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(horizontal = DesignTokens.SectionHeader.PaddingHorizontal)
-                                        .horizontalScroll(rememberScrollState()),
-                                    horizontalArrangement = Arrangement.spacedBy(DesignTokens.PodcastCard.Gap)
-                                ) {
-                                    podcasts.drop(1).take(10).forEach { podcast ->
-                                        PodcastCard(
-                                            podcast = podcast,
-                                            onClick = { /* TODO */ }
-                                        )
-                                    }
-                                }
-                            }
-                        }
+                        // NOTE: commented out because no public API provides real trending data
+                        // See .claude/plans/discover-trending-this-week-api-exa-cont-radiant-dragon.md
+//                        if (!hasSearched && podcasts.size > 1) {
+//                            item {
+//                                Spacer(modifier = Modifier.height(24.dp))
+//                                SectionHeader(title = Strings["discover_trending"])
+//                                Spacer(modifier = Modifier.height(12.dp))
+//                            }
+//                            item {
+//                                Row(
+//                                    modifier = Modifier
+//                                        .fillMaxWidth()
+//                                        .padding(horizontal = DesignTokens.SectionHeader.PaddingHorizontal)
+//                                        .horizontalScroll(rememberScrollState()),
+//                                    horizontalArrangement = Arrangement.spacedBy(DesignTokens.PodcastCard.Gap)
+//                                ) {
+//                                    podcasts.drop(1).take(10).forEach { podcast ->
+//                                        PodcastCard(
+//                                            podcast = podcast,
+//                                            onClick = { /* TODO */ }
+//                                        )
+//                                    }
+//                                }
+//                            }
+//                        }
 
                         // ── New Episodes / All results ──
                         item {
                             Spacer(modifier = Modifier.height(24.dp))
                             SectionHeader(
-                                title = if (hasSearched) Strings["discover_results"] else Strings["discover_new_episodes"]
+                                title = if (hasSearched) Strings["discover_results"] else Strings["discover_new_episodes"],
+                                showAll = false
                             )
         Spacer(modifier = Modifier.height(DesignTokens.Spacing.sm))
                         }
 
-                        val listItems = if (hasSearched) podcasts else podcasts.drop(1)
+                        val listItems = if (hasSearched) podcasts else podcasts.drop(5)
                         items(listItems) { podcast ->
                             Box(modifier = Modifier.padding(horizontal = DesignTokens.SectionHeader.PaddingHorizontal, vertical = 5.dp)) {
                                 EpisodeRow(
@@ -614,7 +619,7 @@ private fun FeaturedCard(
 
 // ── Section Header ──
 @Composable
-private fun SectionHeader(title: String) {
+internal fun SectionHeader(title: String, showAll: Boolean = true) {
     val colors = PodiumTheme.colors
     val sh = DesignTokens.SectionHeader
     Row(
@@ -631,61 +636,65 @@ private fun SectionHeader(title: String) {
             fontWeight = FontWeight.SemiBold,
             fontFamily = FontFamily.Serif
         )
-        Text(
-            text = Strings["discover_show_all"],
-            color = colors.accent,
-            fontSize = sh.LinkSize,
-            modifier = Modifier.pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
-        )
-    }
-}
-
-// ── Podcast Card (horizontal scroll) ──
-@Composable
-private fun PodcastCard(
-    podcast: PodcastPreviewModel,
-    onClick: () -> Unit
-) {
-    val colors = PodiumTheme.colors
-    val pc = DesignTokens.PodcastCard
-    Surface(
-        modifier = Modifier
-            .width(pc.Width)
-            .shadow(8.dp, RoundedCornerShape(pc.ImageRadius), ambientColor = Color.Black.copy(alpha = 0.4f), spotColor = Color.Black.copy(alpha = 0.4f))
-            .clip(RoundedCornerShape(pc.ImageRadius))
-            .background(DesignTokens.Card.Gradient)
-            .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
-            .clickable(onClick = onClick),
-        shape = RoundedCornerShape(pc.ImageRadius),
-        color = Color.Transparent
-    ) {
-        Column(modifier = Modifier.padding(8.dp)) {
-            AsyncImage(
-                model = podcast.imageUrl,
-                contentDescription = podcast.title,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .size(pc.ImageSize)
-                    .clip(RoundedCornerShape(pc.ImageRadius))
-            )
-            Spacer(modifier = Modifier.height(pc.Spacing))
+        if (showAll) {
             Text(
-                text = podcast.title,
-                color = colors.textPrimary,
-                fontSize = pc.TitleSize,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            Text(
-                text = podcast.author,
-                color = colors.textMuted,
-                fontSize = pc.AuthorSize,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+                text = Strings["discover_show_all"],
+                color = colors.accent,
+                fontSize = sh.LinkSize,
+                modifier = Modifier.pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
             )
         }
     }
 }
+
+// ── Podcast Card (horizontal scroll) ──
+// NOTE: commented out with Trending This Week — kept for reference in case the
+// section is re-enabled with a real trending API.
+//@Composable
+//private fun PodcastCard(
+//    podcast: PodcastPreviewModel,
+//    onClick: () -> Unit
+//) {
+//    val colors = PodiumTheme.colors
+//    val pc = DesignTokens.PodcastCard
+//    Surface(
+//        modifier = Modifier
+//            .width(pc.Width)
+//            .shadow(8.dp, RoundedCornerShape(pc.ImageRadius), ambientColor = Color.Black.copy(alpha = 0.4f), spotColor = Color.Black.copy(alpha = 0.4f))
+//            .clip(RoundedCornerShape(pc.ImageRadius))
+//            .background(DesignTokens.Card.Gradient)
+//            .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
+//            .clickable(onClick = onClick),
+//        shape = RoundedCornerShape(pc.ImageRadius),
+//        color = Color.Transparent
+//    ) {
+//        Column(modifier = Modifier.padding(8.dp)) {
+//            AsyncImage(
+//                model = podcast.imageUrl,
+//                contentDescription = podcast.title,
+//                contentScale = ContentScale.Crop,
+//                modifier = Modifier
+//                    .size(pc.ImageSize)
+//                    .clip(RoundedCornerShape(pc.ImageRadius))
+//            )
+//            Spacer(modifier = Modifier.height(pc.Spacing))
+//            Text(
+//                text = podcast.title,
+//                color = colors.textPrimary,
+//                fontSize = pc.TitleSize,
+//                maxLines = 1,
+//                overflow = TextOverflow.Ellipsis
+//            )
+//            Text(
+//                text = podcast.author,
+//                color = colors.textMuted,
+//                fontSize = pc.AuthorSize,
+//                maxLines = 1,
+//                overflow = TextOverflow.Ellipsis
+//            )
+//        }
+//    }
+//}
 
 // ── Episode Row ──
 @Composable

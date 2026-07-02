@@ -71,4 +71,26 @@ class DiscoverScreenTest {
         composeTestRule.onNodeWithText(Strings["discover_search_placeholder"]).assertIsDisplayed()
     }
 
+    // ── SectionHeader ──
+
+    @Test
+    fun testSectionHeaderShowsShowAllByDefault() {
+        composeTestRule.setContent {
+            PodiumTheme {
+                SectionHeader(title = "Test")
+            }
+        }
+        composeTestRule.onNodeWithText(Strings["discover_show_all"]).assertIsDisplayed()
+    }
+
+    @Test
+    fun testSectionHeaderHidesShowAllWhenFalse() {
+        composeTestRule.setContent {
+            PodiumTheme {
+                SectionHeader(title = "Test", showAll = false)
+            }
+        }
+        composeTestRule.onNodeWithText(Strings["discover_show_all"]).assertDoesNotExist()
+    }
+
 }

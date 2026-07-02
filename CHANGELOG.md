@@ -7,6 +7,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [0.1.0] - 2026-07-02
 
 ### Added
+- Tests for `SectionHeader` `showAll` parameter behavior
+- Language-aware country code selection for Top Podcasts feed (CN for zh, US for en)
 - New i18n string keys for sidebar, title bar, discover screen, player, settings, and error messages
 - Chinese translations (zh) for all previously missing UI strings
 - `Strings.get()` format-parameter usage for error messages in DiscoverScreen and AddPodcastDialog
@@ -28,6 +30,26 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - In-memory + persistent cache for `itunes-lookup:xxx` subscription status check across sessions
 - Podcast artwork fallback: MiniPlayer now shows podcast cover when the episode has no artwork
 
+### Changed
+- "New Episodes" section renamed to "Trending Podcasts" (EN) / "热门播客" (ZH) to reflect actual content (Apple Top Podcasts chart)
+- FeaturedCard now cycles through first 5 podcasts instead of the entire list
+- Trending Podcasts list starts from index 6 (podcasts.drop(5)) instead of index 2 (drop(1))
+- `SectionHeader` visibility changed from `private` to `internal` for testability
+- Migrated all hardcoded English UI strings to `Strings["key"]` localization system (App, Discover, Player, Settings, History screens)
+- Sidebar nav items now use string keys instead of literals for full i18n support
+- Error messages in DiscoverScreen and AddPodcastDialog use `Strings.get()` with format parameters
+- Window title in Main.kt uses `Strings["app_name"]` instead of hardcoded "Podium"
+- All Chinese code comments translated to English
+- `FetchPodcastClient.fetch()` made `open` for testability
+- `SubscriptionManager.unsubscribe()` now also cleans up the iTunes lookup mapping
+- `PodcastDetailScreen` receives `FetchPodcastClient` for unsubscribed preview mode with built-in loading
+- FeaturedCard subscribe button now has three visual states: Add (unsubscribed), spinner (subscribing), Check (subscribed)
+
+### Removed
+- "Show All" button from Trending Podcasts section header
+- Ctrl+K search shortcut badge test (UI element was removed in previous refactor)
+- Auto-subscribe side effect when navigating to podcast detail from FeaturedCard
+
 ### Fixed
 - DiscoverScreenTest compilation failure: missing `onPlayLatestEpisode` and `onShowDetail` parameters from FeaturedCard buttons rewrite
 - Tests now use `Strings[...]` instead of hardcoded English text, making them locale-independent (fixes failures when system language is set to Chinese)
@@ -45,21 +67,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Podcast detail screen now handles unsubscribed (preview) mode — fetches RSS directly, hides unsubscribe button
 - Subscribed podcast status lost after re-entering DiscoverScreen — now also checks via RSS URL cache
 - Subscribed podcast status lost after app restart — now persists iTunes URL → RSS URL mapping in database
-
-### Changed
-- Migrated all hardcoded English UI strings to `Strings["key"]` localization system (App, Discover, Player, Settings, History screens)
-- Sidebar nav items now use string keys instead of literals for full i18n support
-- Error messages in DiscoverScreen and AddPodcastDialog use `Strings.get()` with format parameters
-- Window title in Main.kt uses `Strings["app_name"]` instead of hardcoded "Podium"
-- All Chinese code comments translated to English
-- `FetchPodcastClient.fetch()` made `open` for testability
-- `SubscriptionManager.unsubscribe()` now also cleans up the iTunes lookup mapping
-- `PodcastDetailScreen` receives `FetchPodcastClient` for unsubscribed preview mode with built-in loading
-- FeaturedCard subscribe button now has three visual states: Add (unsubscribed), spinner (subscribing), Check (subscribed)
-
-### Removed
-- Ctrl+K search shortcut badge test (UI element was removed in previous refactor)
-- Auto-subscribe side effect when navigating to podcast detail from FeaturedCard
 
 ## [0.1.0] - 2026-07-01
 
