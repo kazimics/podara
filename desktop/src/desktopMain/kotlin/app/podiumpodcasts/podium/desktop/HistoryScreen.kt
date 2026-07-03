@@ -111,7 +111,8 @@ fun HistoryScreen(
                                             subtitle = episode.podcastTitle,
                                             artworkUrl = episode.imageUrl,
                                             podcastArtworkUrl = podcast?.imageUrl,
-                                            durationMs = episode.duration * 1000L
+                                            durationMs = episode.duration * 1000L,
+                                            episodeId = episode.id
                                         )
                                     }
                                 }) {
@@ -159,7 +160,8 @@ fun HistoryScreen(
                                         title = episode.title,
                                         artworkUrl = episode.imageUrl,
                                         podcastArtworkUrl = podcast?.imageUrl,
-                                        durationMs = episode.duration * 1000L
+                                        durationMs = episode.duration * 1000L,
+                                        episodeId = episode.id
                                     )
                                 }
                             }

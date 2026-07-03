@@ -55,6 +55,8 @@ class MediaPlayerState(
         private set
     var currentArtworkUrl by mutableStateOf<String?>(null)
         private set
+    var currentEpisodeId by mutableStateOf<String?>(null)
+        private set
 
     var sleepTimerTrigger by mutableStateOf<Long?>(null)
         private set
@@ -91,12 +93,13 @@ class MediaPlayerState(
         }
     }
 
-    fun play(url: String, title: String? = null, subtitle: String? = null, artworkUrl: String? = null, podcastArtworkUrl: String? = null, durationMs: Long = 0L) {
+    fun play(url: String, title: String? = null, subtitle: String? = null, artworkUrl: String? = null, podcastArtworkUrl: String? = null, durationMs: Long = 0L, episodeId: String? = null) {
         Logger.i(TAG, "play() title=$title, url=$url, durationMs=$durationMs")
         currentUrl = url
         currentTitle = title
         currentSubtitle = subtitle
         currentArtworkUrl = artworkUrl ?: podcastArtworkUrl
+        currentEpisodeId = episodeId
         isLoading = true
         error = null
         isUserPaused = false
@@ -121,7 +124,7 @@ class MediaPlayerState(
         queueIndex = index
         val item = queue[index]
         Logger.i(TAG, "playFromQueue: index=$index, title=${item.title}")
-        play(item.url, item.title, item.subtitle, item.artworkUrl, item.podcastArtworkUrl)
+        play(item.url, item.title, item.subtitle, item.artworkUrl, item.podcastArtworkUrl, episodeId = item.episodeId)
     }
 
     fun addToQueue(
@@ -146,7 +149,7 @@ class MediaPlayerState(
                 val nextIndex = index.coerceIn(0, queue.size - 1)
                 queueIndex = nextIndex
                 val item = queue[nextIndex]
-                play(item.url, item.title, item.artworkUrl)
+                play(item.url, item.title, item.artworkUrl, episodeId = item.episodeId)
             } else {
                 queueIndex = -1
                 stop()
@@ -176,7 +179,7 @@ class MediaPlayerState(
             if (queue.isNotEmpty()) {
                 queueIndex = queueIndex.coerceIn(0, queue.size - 1)
                 val item = queue[queueIndex]
-                play(item.url, item.title, item.artworkUrl)
+                play(item.url, item.title, item.artworkUrl, episodeId = item.episodeId)
             } else {
                 queueIndex = -1
                 stop()
@@ -227,6 +230,7 @@ class MediaPlayerState(
         currentUrl = null
         currentTitle = null
         currentArtworkUrl = null
+        currentEpisodeId = null
     }
 
     fun seek(positionMs: Long) {

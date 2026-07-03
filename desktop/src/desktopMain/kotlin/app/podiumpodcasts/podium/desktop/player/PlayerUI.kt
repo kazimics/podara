@@ -5,11 +5,14 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsDraggedAsState
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -24,17 +27,34 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.DpSize
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntRect
+import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Popup
+import androidx.compose.ui.window.PopupPositionProvider
+import androidx.compose.ui.window.PopupProperties
+import app.podiumpodcasts.podium.data.AppDatabase
+import app.podiumpodcasts.podium.data.model.PodcastEpisode
 import app.podiumpodcasts.podium.ui.theme.DesignTokens
 import app.podiumpodcasts.podium.ui.theme.PodiumBackground
 import app.podiumpodcasts.podium.ui.theme.PodiumTheme
 import app.podiumpodcasts.podium.utils.Strings
 import coil3.compose.AsyncImage
 import java.awt.Cursor
+import java.text.SimpleDateFormat
+import java.util.*
+import kotlinx.coroutines.launch
 
 // ── Design Tokens: button.primary ──
 private val PrimaryButtonGradient = Brush.verticalGradient(
@@ -59,6 +79,7 @@ private val PrimaryButtonInnerHighlight = Brush.verticalGradient(
 fun MiniPlayer(
     state: MediaPlayerState,
     onExpand: () -> Unit,
+    onBodyClick: () -> Unit,
     onShowQueue: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -108,6 +129,16 @@ fun MiniPlayer(
                     .border(DesignTokens.Border.Width, colors.border, RoundedCornerShape(18.dp))
                     .clip(RoundedCornerShape(18.dp))
                     .background(DesignTokens.Card.Gradient)
+                    .let { mod ->
+                        if (state.currentUrl != null) {
+                            val bodyInteractionSource = remember { MutableInteractionSource() }
+                            mod.pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
+                                .clickable(
+                                    interactionSource = bodyInteractionSource,
+                                    indication = null
+                                ) { onBodyClick() }
+                        } else mod
+                    }
             ) {
                 Row(
                     modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp),
@@ -308,8 +339,9 @@ fun MiniPlayer(
                         }
 
                         IconButton(
-                            onClick = onExpand,
-                            modifier = Modifier.size(32.dp).pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
+                            onClick = { if (state.currentUrl != null) onExpand() },
+                            modifier = Modifier.size(32.dp).pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR))),
+                            enabled = state.currentUrl != null
                         ) {
                             Icon(
                                 Icons.Default.Fullscreen,
@@ -330,13 +362,39 @@ fun MiniPlayer(
 @Composable
 fun FullPlayer(
     state: MediaPlayerState,
+    database: AppDatabase,
     onClose: () -> Unit,
+    onStartDownload: ((PodcastEpisode) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
+    val scope = rememberCoroutineScope()
+    val colors = PodiumTheme.colors
+
     var sliderPosition by remember { mutableFloatStateOf(0f) }
     var isDragging by remember { mutableStateOf(false) }
     var showQueue by remember { mutableStateOf(false) }
     var showSleepTimer by remember { mutableStateOf(false) }
+    var showSpeedMenu by remember { mutableStateOf(false) }
+    var notesExpanded by remember { mutableStateOf(false) }
+
+    // ── Episode data from DB ──
+    var currentEpisode by remember { mutableStateOf<PodcastEpisode?>(null) }
+    var recommendations by remember { mutableStateOf<List<PodcastEpisode>>(emptyList()) }
+    var currentOrigin by remember { mutableStateOf<String?>(null) }
+    var isDownloaded by remember { mutableStateOf(false) }
+
+    LaunchedEffect(state.currentEpisodeId) {
+        val episodeId = state.currentEpisodeId ?: return@LaunchedEffect
+        val ep = database.episodes.getById(episodeId)
+        currentEpisode = ep
+        if (ep != null) {
+            currentOrigin = ep.origin
+            val allEps = database.episodes.getAllByOrigin(ep.origin)
+            recommendations = allEps.filter { it.id != episodeId }.take(3)
+            val dl = database.downloads.getByEpisodeId(episodeId)
+            isDownloaded = dl != null
+        }
+    }
 
     LaunchedEffect(state.currentPosition, state.duration) {
         if (!isDragging && state.duration > 0) {
@@ -344,162 +402,589 @@ fun FullPlayer(
         }
     }
 
-    val colors = PodiumTheme.colors
-
-    Column(
+    Box(
         modifier = modifier
             .fillMaxSize()
             .background(colors.background)
-            .padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(top = 24.dp, start = 28.dp, end = 28.dp, bottom = 24.dp)
         ) {
-            IconButton(onClick = onClose) {
-                Icon(Icons.Default.KeyboardArrowDown, contentDescription = Strings["player_close"], tint = colors.textMuted)
-            }
-
-            Text(
-                text = state.currentTitle ?: Strings["player_now_playing"],
-                style = MaterialTheme.typography.titleMedium,
-                color = colors.textPrimary,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f).padding(horizontal = 8.dp)
-            )
-            IconButton(onClick = { showQueue = true }) {
-                Icon(Icons.Default.QueueMusic, contentDescription = Strings["player_queue"], tint = colors.textMuted)
-            }
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        Slider(
-            value = sliderPosition,
-            onValueChange = {
-                sliderPosition = it
-                isDragging = true
-            },
-            onValueChangeFinished = {
-                isDragging = false
-                val position = (sliderPosition * state.duration).toLong()
-                state.seek(position)
-            },
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Text(
-                text = formatTime(state.currentPosition),
-                style = MaterialTheme.typography.bodySmall,
-                color = colors.textMuted
-            )
-            Text(
-                text = formatTime(state.duration),
-                style = MaterialTheme.typography.bodySmall,
-                color = colors.textMuted
-            )
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceEvenly,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            IconButton(onClick = { state.playPrevious() }) {
-                Icon(
-                    Icons.Default.SkipPrevious,
-                    contentDescription = Strings["player_previous"],
-                    tint = colors.textMuted,
-                    modifier = Modifier.size(32.dp)
-                )
-            }
-
-            IconButton(onClick = { state.seekBack() }) {
-                Icon(
-                    Icons.Default.Replay10,
-                    contentDescription = Strings["player_seek_back"],
-                    tint = colors.textMuted,
-                    modifier = Modifier.size(32.dp)
-                )
-            }
-
-            FilledIconButton(
-                onClick = { state.togglePlayPause() },
-                modifier = Modifier.size(56.dp)
+            // ── Top bar: Close (left) + Queue (right) ──
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(
-                    if (state.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                    contentDescription = if (state.isPlaying) Strings["player_pause"] else Strings["player_play"],
-                    tint = if (state.isPlaying) colors.textPrimary else colors.textPrimary,
-                    modifier = Modifier.size(32.dp)
-                )
+                IconButton(onClick = onClose) {
+                    Icon(Icons.Default.KeyboardArrowDown, contentDescription = Strings["player_close"], tint = colors.textMuted)
+                }
+                IconButton(onClick = { showQueue = true }) {
+                    Icon(Icons.Default.QueueMusic, contentDescription = Strings["player_queue"], tint = colors.textMuted)
+                }
             }
 
-            IconButton(onClick = { state.seekForward() }) {
-                Icon(
-                    Icons.Default.Forward10,
-                    contentDescription = Strings["player_seek_forward"],
-                    tint = colors.textMuted,
-                    modifier = Modifier.size(32.dp)
-                )
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // ══════════════════════════════════════
+            // 1. HEADER: Cover + Episode Info
+            // ══════════════════════════════════════
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(24.dp),
+                verticalAlignment = Alignment.Top
+            ) {
+                // Cover 160dp radius:12
+                Box(modifier = Modifier.width(160.dp)) {
+                    Box(
+                        modifier = Modifier
+                            .size(160.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(colors.elevated)
+                    ) {
+                        AsyncImage(
+                            model = state.currentArtworkUrl,
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
+                }
+
+                // Episode Info
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    // Podcast Name
+                    if (state.currentSubtitle != null) {
+                        Text(
+                            text = state.currentSubtitle!!,
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = colors.textPrimary,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+
+                    // Episode Title
+                    Text(
+                        text = state.currentTitle ?: "",
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = colors.textPrimary,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        lineHeight = 30.sp
+                    )
+
+                    // Episode Description
+                    val episodeDesc = currentEpisode?.description
+                    if (!episodeDesc.isNullOrBlank()) {
+                        Text(
+                            text = stripHtml(episodeDesc),
+                            fontSize = 13.sp,
+                            lineHeight = 20.sp,
+                            color = colors.textSecondary,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.widthIn(max = 500.dp)
+                        )
+                    }
+
+                    // Metadata Row
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        val pubDate = currentEpisode?.pubDate ?: 0L
+                        if (pubDate > 0) {
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Icon(Icons.Default.CalendarToday, contentDescription = null, modifier = Modifier.size(14.dp), tint = colors.textMuted)
+                                Text(text = formatDate(pubDate), fontSize = 13.sp, color = colors.textMuted)
+                            }
+                        }
+
+                        val dur = currentEpisode?.duration ?: 0
+                        if (dur > 0) {
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Icon(Icons.Default.Schedule, contentDescription = null, modifier = Modifier.size(14.dp), tint = colors.textMuted)
+                                Text(text = formatDuration(dur), fontSize = 13.sp, color = colors.textMuted)
+                            }
+                        }
+                    }
+
+                    // Action Buttons
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        val epToDownload = currentEpisode
+                        if (epToDownload != null) {
+                            DownloadActionButton(
+                                isDownloaded = isDownloaded,
+                                onClick = { onStartDownload?.invoke(epToDownload); isDownloaded = true }
+                            )
+                        }
+
+                        // More Button (40dp circle)
+                        val origin = currentOrigin
+                        var showMore by remember { mutableStateOf(false) }
+                        val moreInteractionSource = remember { MutableInteractionSource() }
+                        val isMoreHovered by moreInteractionSource.collectIsHoveredAsState()
+                        Box(
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(CircleShape)
+                                .border(1.dp, colors.border, CircleShape)
+                                .background(if (isMoreHovered) colors.elevated else colors.surface)
+                                .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
+                                .clickable(interactionSource = moreInteractionSource, indication = null) { showMore = true },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(Icons.Default.MoreHoriz, contentDescription = Strings["discover_more"], tint = colors.textSecondary, modifier = Modifier.size(20.dp))
+                            DropdownMenu(expanded = showMore, onDismissRequest = { showMore = false }) {
+                                DropdownMenuItem(
+                                    text = { Text(Strings["dialog_copy_to_clipboard"]) },
+                                    onClick = {
+                                        showMore = false
+                                        val clipboard = java.awt.Toolkit.getDefaultToolkit().systemClipboard
+                                        val selection = java.awt.datatransfer.StringSelection(origin ?: "")
+                                        clipboard.setContents(selection, null)
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
             }
 
-            IconButton(onClick = { state.playNext() }) {
-                Icon(
-                    Icons.Default.SkipNext,
-                    contentDescription = Strings["player_next"],
-                    tint = colors.textMuted,
-                    modifier = Modifier.size(32.dp)
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // ══════════════════════════════════════
+            // 2. TIMELINE
+            // ══════════════════════════════════════
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Slider(
+                    value = sliderPosition,
+                    onValueChange = { sliderPosition = it; isDragging = true },
+                    onValueChangeFinished = { isDragging = false; state.seek((sliderPosition * state.duration).toLong()) },
+                    modifier = Modifier.fillMaxWidth().height(12.dp),
+                    colors = SliderDefaults.colors(
+                        thumbColor = Color.White,
+                        activeTrackColor = colors.accent,
+                        inactiveTrackColor = colors.elevated
+                    )
                 )
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text(text = formatTime(state.currentPosition), color = colors.textMuted, fontSize = 12.sp)
+                    Text(text = formatTime(state.duration), color = colors.textMuted, fontSize = 12.sp)
+                }
             }
-        }
 
-        Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(24.dp))
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceEvenly,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            SpeedSelector(
-                currentSpeed = state.playbackSpeed,
-                onSpeedSelected = { state.changePlaybackSpeed(it) }
-            )
+            // ══════════════════════════════════════
+            // 3. PLAYBACK CONTROLS
+            // ══════════════════════════════════════
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Speed selector — uses Popup for reliable positioning
+                Box {
+                    Box(
+                        modifier = Modifier
+                            .width(38.dp)
+                            .height(30.dp)
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(colors.elevated)
+                            .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
+                            .clickable { showSpeedMenu = true },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(text = "${state.playbackSpeed}x", color = colors.textSecondary, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                    }
 
-            SleepTimerButton(
-                state = state,
-                onClick = { showSleepTimer = true }
-            )
+                    if (showSpeedMenu) {
+                        Popup(
+                            popupPositionProvider = object : PopupPositionProvider {
+                                override fun calculatePosition(
+                                    anchorBounds: IntRect,
+                                    windowSize: IntSize,
+                                    layoutDirection: LayoutDirection,
+                                    popupContentSize: IntSize
+                                ): IntOffset {
+                                    return IntOffset(
+                                        x = anchorBounds.left,
+                                        y = anchorBounds.bottom
+                                    )
+                                }
+                            },
+                            onDismissRequest = { showSpeedMenu = false },
+                            properties = PopupProperties(focusable = true)
+                        ) {
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = colors.surface,
+                                shadowElevation = 8.dp,
+                                border = androidx.compose.foundation.BorderStroke(1.dp, colors.border)
+                            ) {
+                                Column(modifier = Modifier.width(IntrinsicSize.Min)) {
+                                    listOf(0.5f, 0.75f, 1.0f, 1.25f, 1.5f, 1.75f, 2.0f).forEach { speed ->
+                                        DropdownMenuItem(
+                                            text = { Text("${speed}x", color = colors.textPrimary) },
+                                            onClick = { state.changePlaybackSpeed(speed); showSpeedMenu = false }
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
 
-            VolumeControl(
-                currentVolume = state.volume,
-                onVolumeChange = { state.changeVolume(it) },
-                onToggleMute = { state.toggleMute() }
-            )
+                Spacer(modifier = Modifier.width(20.dp))
+
+                CircleControlButton(size = 40.dp, icon = Icons.Default.Replay10, contentDescription = Strings["player_seek_back"], tint = colors.textMuted, onClick = { state.seekBack() })
+
+                Spacer(modifier = Modifier.width(20.dp))
+
+                // Play/Pause 56dp (matching MiniPlayer)
+                Box(
+                    modifier = Modifier
+                        .size(56.dp)
+                        .clip(CircleShape)
+                        .shadow(10.dp, CircleShape, ambientColor = Color.Black.copy(alpha = 0.25f), spotColor = Color.Black.copy(alpha = 0.25f))
+                        .border(1.dp, PrimaryButtonBorder, CircleShape)
+                        .background(PrimaryButtonGradient)
+                        .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
+                        .clickable(enabled = state.currentUrl != null) { state.togglePlayPause() },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Box(modifier = Modifier.matchParentSize().background(PrimaryButtonInnerHighlight))
+                    Icon(
+                        if (state.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                        contentDescription = if (state.isPlaying) Strings["player_pause"] else Strings["player_play"],
+                        tint = PrimaryButtonIcon,
+                        modifier = Modifier.size(30.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(20.dp))
+
+                CircleControlButton(size = 40.dp, icon = Icons.Default.Forward10, contentDescription = Strings["player_seek_forward"], tint = colors.textMuted, onClick = { state.seekForward() })
+
+                Spacer(modifier = Modifier.width(20.dp))
+
+                CircleControlButton(size = 40.dp, icon = Icons.Default.Timer, contentDescription = Strings["player_sleep_timer"], tint = colors.textMuted, onClick = { showSleepTimer = true })
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // ══════════════════════════════════════
+            // 4. DIVIDER
+            // ══════════════════════════════════════
+            HorizontalDivider(color = colors.divider)
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // ══════════════════════════════════════
+            // 5. EPISODE NOTES
+            // ══════════════════════════════════════
+            val rawDesc = currentEpisode?.description
+            if (!rawDesc.isNullOrBlank()) {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text(
+                        text = Strings["player_episode_notes"],
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = colors.textPrimary
+                    )
+                    Text(
+                        text = parseSimpleHtml(rawDesc),
+                        fontSize = 13.sp,
+                        lineHeight = 20.sp,
+                        color = colors.textSecondary,
+                        maxLines = if (notesExpanded) Int.MAX_VALUE else 4,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    TextButton(onClick = { notesExpanded = !notesExpanded }) {
+                        Text(text = if (notesExpanded) Strings["player_show_less"] else Strings["player_show_more"], color = colors.accent)
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+                HorizontalDivider(color = colors.divider)
+                Spacer(modifier = Modifier.height(24.dp))
+            }
+
+            // ══════════════════════════════════════
+            // 6. RECOMMENDATIONS
+            // ══════════════════════════════════════
+            if (recommendations.isNotEmpty()) {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    Text(
+                        text = Strings["player_you_might_also_like"],
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = colors.textPrimary
+                    )
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        recommendations.forEach { ep ->
+                            RecommendationCard(
+                                title = ep.title,
+                                subtitle = ep.podcastTitle,
+                                duration = formatDuration(ep.duration),
+                                imageUrl = ep.imageUrl,
+                                onClick = {
+                                    scope.launch {
+                                        state.play(url = ep.audioUrl, title = ep.title, subtitle = ep.podcastTitle, artworkUrl = ep.imageUrl, durationMs = ep.duration * 1000L, episodeId = ep.id)
+                                    }
+                                }
+                            )
+                        }
+                    }
+                }
+            }
         }
     }
 
     if (showQueue) {
-        QueueDrawer(
-            state = state,
-            onDismiss = { showQueue = false }
+        QueueDrawer(state = state, onDismiss = { showQueue = false })
+    }
+    if (showSleepTimer) {
+        SleepTimerSheet(state = state, onDismiss = { showSleepTimer = false })
+    }
+}
+
+@Composable
+private fun DownloadActionButton(isDownloaded: Boolean, onClick: () -> Unit) {
+    val colors = PodiumTheme.colors
+    val interactionSource = remember { MutableInteractionSource() }
+    val isHovered by interactionSource.collectIsHoveredAsState()
+
+    Box(
+        modifier = Modifier
+            .width(108.dp).height(40.dp)
+            .clip(RoundedCornerShape(10.dp))
+            .border(1.dp, colors.border, RoundedCornerShape(10.dp))
+            .background(if (isHovered) colors.elevated else colors.surface)
+            .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
+            .clickable(interactionSource = interactionSource, indication = null) { if (!isDownloaded) onClick() },
+        contentAlignment = Alignment.Center
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Icon(if (isDownloaded) Icons.Default.CheckCircle else Icons.Default.Download, contentDescription = null,
+                tint = if (isDownloaded) colors.success else colors.textSecondary, modifier = Modifier.size(16.dp))
+            Text(text = if (isDownloaded) Strings["episode_downloaded"] else Strings["episode_download"],
+                fontSize = 13.sp, fontWeight = FontWeight.Medium, color = if (isDownloaded) colors.success else colors.textPrimary)
+        }
+    }
+}
+
+@Composable
+private fun RecommendationCard(title: String, subtitle: String, duration: String, imageUrl: String?, onClick: () -> Unit) {
+    val colors = PodiumTheme.colors
+    val interactionSource = remember { MutableInteractionSource() }
+    val isHovered by interactionSource.collectIsHoveredAsState()
+
+    Row(
+        modifier = Modifier
+            .width(200.dp).height(72.dp)
+            .clip(RoundedCornerShape(10.dp))
+            .background(if (isHovered) colors.elevated else colors.surface)
+            .border(1.dp, colors.border, RoundedCornerShape(10.dp))
+            .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
+            .clickable(interactionSource = interactionSource, indication = null) { onClick() }
+            .padding(10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Box(modifier = Modifier.size(52.dp).clip(RoundedCornerShape(8.dp)).background(colors.elevated)) {
+            AsyncImage(model = imageUrl, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+        }
+        Column(modifier = Modifier.weight(1f)) {
+            Text(text = title, color = colors.textPrimary, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(text = subtitle, color = colors.textMuted, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(text = duration, color = colors.textDisabled, fontSize = 11.sp)
+        }
+    }
+}
+
+@Composable
+private fun CircleControlButton(
+    size: androidx.compose.ui.unit.Dp,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    contentDescription: String?,
+    tint: Color,
+    onClick: () -> Unit
+) {
+    IconButton(
+        onClick = onClick,
+        modifier = Modifier
+            .size(size)
+            .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
+    ) {
+        Icon(
+            icon,
+            contentDescription = contentDescription,
+            tint = tint,
+            modifier = Modifier.size(size * 0.55f)
         )
     }
+}
 
-    if (showSleepTimer) {
-        SleepTimerSheet(
-            state = state,
-            onDismiss = { showSleepTimer = false }
-        )
+/**
+ * Simple HTML-to-AnnotatedString parser for RSS episode descriptions.
+ * Supports: <p> <br> <b>/<strong> <i>/<em> <a href="...">
+ */
+private fun parseSimpleHtml(html: String): AnnotatedString {
+    return buildAnnotatedString {
+        var pos = 0
+        val text = html.trim()
+
+        while (pos < text.length) {
+            val tagStart = text.indexOf('<', pos)
+            if (tagStart < 0) {
+                // No more tags — append remaining as plain text
+                append(text.substring(pos).replace("&amp;", "&").replace("&lt;", "<").replace("&gt;", ">").replace("&nbsp;", " "))
+                break
+            }
+
+            // Text before tag
+            if (tagStart > pos) {
+                append(text.substring(pos, tagStart).replace("&amp;", "&").replace("&lt;", "<").replace("&gt;", ">").replace("&nbsp;", " "))
+            }
+
+            val tagEnd = text.indexOf('>', tagStart)
+            if (tagEnd < 0) {
+                // Malformed — rest is plain text
+                append(text.substring(tagStart).replace("&amp;", "&"))
+                break
+            }
+
+            val tagContent = text.substring(tagStart + 1, tagEnd).trim().lowercase()
+            pos = tagEnd + 1
+
+            when {
+                // Line breaks
+                tagContent == "br" || tagContent == "br/" || tagContent == "/br" -> append("\n")
+
+                // Paragraph — opening adds double newline, closing is ignored
+                tagContent == "p" -> { /* opening p — text will follow */ }
+                tagContent == "/p" -> append("\n\n")
+
+                // Bold
+                tagContent == "b" || tagContent == "strong" -> {
+                    val inner = extractTagContent(text, pos, tagContent.first().toString())
+                    if (inner != null) {
+                        pushStyle(SpanStyle(fontWeight = FontWeight.Bold))
+                        append(parseSimpleHtml(inner.content))
+                        pop()
+                        pos = inner.endPos
+                    }
+                }
+                tagContent == "/b" || tagContent == "/strong" -> { /* handled */ }
+
+                // Italic
+                tagContent == "i" || tagContent == "em" -> {
+                    val inner = extractTagContent(text, pos, tagContent.first().toString())
+                    if (inner != null) {
+                        pushStyle(SpanStyle(fontStyle = FontStyle.Italic))
+                        append(parseSimpleHtml(inner.content))
+                        pop()
+                        pos = inner.endPos
+                    }
+                }
+                tagContent == "/i" || tagContent == "/em" -> { /* handled */ }
+
+                // Links
+                tagContent.startsWith("a ") -> {
+                    val href = extractAttribute(tagContent, "href")
+                    val inner = extractTagContent(text, pos, "a")
+                    if (inner != null) {
+                        pushStyle(SpanStyle(
+                            color = Color(0xFF409CFF),
+                            textDecoration = TextDecoration.Underline
+                        ))
+                        if (href != null) {
+                            pushStringAnnotation("URL", href)
+                        }
+                        append(parseSimpleHtml(inner.content))
+                        if (href != null) {
+                            pop()
+                        }
+                        pop()
+                        pos = inner.endPos
+                    }
+                }
+                tagContent == "/a" -> { /* handled by extractTagContent */ }
+
+                // Unordered list / list items
+                tagContent == "ul" -> { /* just let text flow */ }
+                tagContent == "/ul" -> append("\n")
+                tagContent == "li" -> append("\n  • ")
+                tagContent == "/li" -> { /* handled inline */ }
+
+                // Skip everything else (headings, divs, spans, images, etc.)
+            }
+        }
+    }
+}
+
+private data class TagInner(val content: String, val endPos: Int)
+
+private fun extractTagContent(text: String, startPos: Int, tagName: String): TagInner? {
+    val closeTag = "</$tagName>"
+    val closeIdx = text.indexOf(closeTag, startPos)
+    if (closeIdx < 0) return null
+    return TagInner(text.substring(startPos, closeIdx), closeIdx + closeTag.length)
+}
+
+private fun extractAttribute(tagContent: String, attrName: String): String? {
+    val regex = Regex("""${attrName}\s*=\s*["']([^"']*)["']""", RegexOption.IGNORE_CASE)
+    return regex.find(tagContent)?.groupValues?.getOrNull(1)
+}
+
+private fun stripHtml(html: String): String {
+    return html.replace(Regex("<[^>]*>"), " ")
+        .replace(Regex("\\s+"), " ")
+        .trim()
+}
+
+private fun formatDate(timestamp: Long): String {
+    if (timestamp <= 0) return ""
+    val sdf = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault())
+    return sdf.format(Date(timestamp))
+}
+
+private fun formatDuration(seconds: Int): String {
+    val hours = seconds / 3600
+    val minutes = (seconds % 3600) / 60
+    val secs = seconds % 60
+    return if (hours > 0) {
+        "%d:%02d:%02d".format(hours, minutes, secs)
+    } else {
+        "%d:%02d".format(minutes, secs)
     }
 }
 

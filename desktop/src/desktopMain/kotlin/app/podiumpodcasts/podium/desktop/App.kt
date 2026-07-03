@@ -215,18 +215,21 @@ private fun logError(e: Throwable) {
 private suspend fun playAndRecordHistory(
     database: AppDatabase,
     playerState: MediaPlayerState,
-    episode: PodcastEpisode
+    episode: PodcastEpisode,
+    podcastImageUrl: String? = null
 ) {
     Logger.i(TAG, "playAndRecordHistory: title=${episode.title}, url=${episode.audioUrl}")
     try {
         val podcast = database.podcasts.getByOrigin(episode.origin)
+        database.episodes.insert(episode)
         playerState.play(
             url = episode.audioUrl,
             title = episode.title,
             subtitle = episode.podcastTitle,
             artworkUrl = episode.imageUrl,
-            podcastArtworkUrl = podcast?.imageUrl,
-            durationMs = episode.duration * 1000L
+            podcastArtworkUrl = podcast?.imageUrl ?: podcastImageUrl,
+            durationMs = episode.duration * 1000L,
+            episodeId = episode.id
         )
         database.history.insert(episode.origin, episode.id)
         Logger.d(TAG, "History recorded for episode: ${episode.id}")
@@ -369,7 +372,8 @@ fun WindowScope.App(windowState: androidx.compose.ui.window.WindowState, awtWind
                     subtitle = episode.collectionName,
                     artworkUrl = episode.artworkUrl600,
                     podcastArtworkUrl = preview.imageUrl,
-                    durationMs = episode.trackTimeMillis ?: 0L
+                    durationMs = episode.trackTimeMillis ?: 0L,
+                    episodeId = episode.episodeGuid ?: episode.trackId?.toString() ?: ""
                 )
                 database.history.insert(
                     origin = episode.feedUrl ?: preview.fetchUrl,
@@ -485,6 +489,7 @@ fun WindowScope.App(windowState: androidx.compose.ui.window.WindowState, awtWind
                     when {
                         showFullPlayer -> FullPlayer(
                             state = playerState,
+                            database = database,
                             onClose = { showFullPlayer = false }
                         )
                         selectedPodcast != null -> PodcastDetailScreen(
@@ -555,6 +560,7 @@ fun WindowScope.App(windowState: androidx.compose.ui.window.WindowState, awtWind
             MiniPlayer(
                 state = playerState,
                 onExpand = { showFullPlayer = true },
+                onBodyClick = { showFullPlayer = !showFullPlayer },
                 onShowQueue = { showQueueFromMini = true }
             )
         }
@@ -990,7 +996,7 @@ private fun PodcastDetailScreen(
                                                 scope.launch {
                                                     val latest = episodes.maxByOrNull { it.pubDate }
                                                     if (latest != null) {
-                                                        playAndRecordHistory(database, playerState, latest)
+                                                        playAndRecordHistory(database, playerState, latest, podcast.imageUrl)
                                                     }
                                                 }
                                             },
@@ -1117,7 +1123,7 @@ private fun PodcastDetailScreen(
                                             episode.audioUrl
                                         }
                                         val epWithUrl = episode.copy(audioUrl = url)
-                                        playAndRecordHistory(database, playerState, epWithUrl)
+                                        playAndRecordHistory(database, playerState, epWithUrl, podcast.imageUrl)
                                     }
                                 },
                             verticalAlignment = Alignment.CenterVertically

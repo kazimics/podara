@@ -122,7 +122,15 @@ object Strings {
         "unsubscribe" to "Unsubscribe",
         "unsubscribe_confirm" to "Are you sure you want to unsubscribe from \"%1\$s\"?",
         "batch_unsubscribe" to "Batch Unsubscribe",
-        "batch_unsubscribe_confirm" to "Are you sure you want to unsubscribe from the selected %1\$d podcasts?"
+        "batch_unsubscribe_confirm" to "Are you sure you want to unsubscribe from the selected %1\$d podcasts?",
+        "player_follow" to "Follow",
+        "player_following" to "Following",
+        "player_episode_notes" to "Episode Notes",
+        "player_show_more" to "Show more",
+        "player_show_less" to "Show less",
+        "player_you_might_also_like" to "You might also like",
+        "player_rewind_15" to "Rewind 15s",
+        "player_forward_30" to "Forward 30s"
     )
 
     private val zh = mapOf(
@@ -240,7 +248,15 @@ object Strings {
         "unsubscribe" to "取消订阅",
         "unsubscribe_confirm" to "确定要取消订阅 \"%1\$s\" 吗？",
         "batch_unsubscribe" to "批量取消订阅",
-        "batch_unsubscribe_confirm" to "确定要取消订阅选中的 %1\$d 个播客吗？"
+        "batch_unsubscribe_confirm" to "确定要取消订阅选中的 %1\$d 个播客吗？",
+        "player_follow" to "关注",
+        "player_following" to "已关注",
+        "player_episode_notes" to "节目笔记",
+        "player_show_more" to "展开更多",
+        "player_show_less" to "收起",
+        "player_you_might_also_like" to "你可能也喜欢",
+        "player_rewind_15" to "后退15秒",
+        "player_forward_30" to "快进30秒"
     )
 
     private val maps = mapOf("en" to en, "zh" to zh)

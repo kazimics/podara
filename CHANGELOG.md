@@ -4,7 +4,41 @@ All notable changes to podium-windows will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [0.1.0] - 2026-07-02
+## [0.1.0] - 2026-07-03
+
+### Added
+- FullPlayer redesign: large cover (160dp), hero episode title (24sp), podcast name, description, metadata (date/duration), timeline slider, playback controls (speed/rewind-10s/play-pause-56dp/forward-10s/sleep-timer)
+- Episode Notes section with HTML rendering (`<b>`, `<i>`, `<a>`, `<p>`, `<br>` support via `parseSimpleHtml()`)
+- "You might also like" recommendations section (other episodes from same podcast)
+- Download action button and More dropdown in FullPlayer
+- MiniPlayer body click to toggle FullPlayer (with no hover/ripple effects)
+- `currentEpisodeId` tracking in `MediaPlayerState` — FullPlayer queries DB for full episode info
+- `playAndRecordHistory()` now accepts optional `podcastImageUrl` fallback for unsubscribed podcasts
+- Episode is inserted into database on play to ensure FullPlayer can retrieve metadata
+- `database` parameter in FullPlayer for episode/recommendation queries
+- 8 new i18n string keys: `player_follow`, `player_following`, `player_episode_notes`, `player_show_more`, `player_show_less`, `player_you_might_also_like`, `player_rewind_15`, `player_forward_30`
+
+### Changed
+- FullPlayer controls size reduced to match DesignTokens (cover 160dp, play 56dp, circle buttons 40dp, speed 38×30, gaps 20dp)
+- FullPlayer padding/spacing normalized (24dp between sections, 28dp horizontal padding)
+- Forward/rewind buttons unified with MiniPlayer (10s, `Replay10`/`Forward10` icons)
+- Speed selector uses `Popup` + custom `PopupPositionProvider` for reliable positioning below button
+- MiniPlayer expand button disabled when no track is loaded
+- HistoryScreen play calls now pass `episodeId` for FullPlayer lookup
+- Removed FollowingButton from FullPlayer (action buttons now only Download + More)
+
+### Tests
+- `testCurrentEpisodeIdIsNullByDefault` — verifies initial null state
+- `testCurrentEpisodeIdSetWhenPlaying` — verifies episodeId tracking after play
+- `testCurrentEpisodeIdClearedOnStop` — verifies cleanup on stop
+- `testMiniPlayerSeekButtonsDoNotTriggerBodyClick` — body toggle not triggered by controls
+- `testMiniPlayerPlayButtonDoesNotTriggerBodyClick` — body toggle not triggered by play/pause
+- `testMiniPlayerExpandButtonDisabledWhenNoPlayback` — expand disabled with no URL
+- `testFullPlayerShowsCloseButton`, `testFullPlayerShowsPodcastName` — basic rendering
+- `testFullPlayerShowsEpisodeNotesWithDataInDb` — notes section with DB data
+- `testFullPlayerShowsYouMightAlsoLikeWithRecommendations` — recs with DB data
+- `testNewStringKeysResolveToNonEmptyValues` — 4 new string keys verified
+- All FullPlayer tests updated to pass `database` parameter
 
 ### Added
 - Podcast detail page header with large cover (180dp), title, author, description, and three action buttons (Play Latest, Subscribe, More with "Copy RSS URL")
