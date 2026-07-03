@@ -38,6 +38,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `testMiniPlayerPlayButtonDoesNotTriggerBodyClick` — body toggle not triggered by play/pause
 - `testMiniPlayerExpandButtonDisabledWhenNoPlayback` — expand disabled with no URL
 - `testFullPlayerShowsCloseButton`, `testFullPlayerShowsPodcastName` — basic rendering
+
+## [0.2.0] - 2026-07-03
+
+### Added
+- Downloads placeholder page with empty state (navigated from sidebar)
+- List toolbar on Subscriptions page: subscription count, sort icon button, manage icon button
+- Horizontal divider above subscription list
+- `cursorBrush` on subscriptions search bar for visible blinking cursor
+- New i18n keys: `nav_subscriptions`, `home_subscription_count`, `home_sort`, `downloads_empty`, `downloads_empty_hint`
+
+### Changed
+- HomeScreen header redesigned to match Discover page: Serif title font, accent search icon, Surface+border search bar, top padding 28dp, removed count badge from title row
+- SubscriptionCard: removed fixed height constraint on description (was clipping text), added `lineHeight = 14.sp` to author text
+- EpisodeRow in DiscoverScreen: added `lineHeight = 14.sp` to author text for tighter vertical rhythm
+- Sidebar navigation: second item relabeled from "Shows" to "Subscriptions" (中文: 订阅), third item relabeled to "History" (中文: 历史), downloads now navigates to dedicated DownloadsScreen
+- Search bar Manage button removed from header (moved to list toolbar as icon)
+- Sort and Manage buttons changed from text to icon buttons (UnfoldMore / Edit)
 - `testFullPlayerShowsEpisodeNotesWithDataInDb` — notes section with DB data
 - `testFullPlayerShowsYouMightAlsoLikeWithRecommendations` — recs with DB data
 - `testNewStringKeysResolveToNonEmptyValues` — 4 new string keys verified

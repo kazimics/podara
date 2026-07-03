@@ -750,6 +750,7 @@ internal fun EpisodeRow(
                     text = podcast.author,
                     color = colors.textSecondary,
                     fontSize = er.AuthorSize,
+                    lineHeight = 14.sp,
                     maxLines = 1
                 )
                 if (podcast.description.isNotEmpty()) {

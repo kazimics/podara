@@ -20,10 +20,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -71,15 +73,16 @@ private fun Sidebar(
     onDiscover: () -> Unit,
     onShows: () -> Unit,
     onHistory: () -> Unit,
-    onSettings: () -> Unit
+    onSettings: () -> Unit,
+    onDownloads: () -> Unit = {}
 ) {
     data class NavItem(val icon: androidx.compose.ui.graphics.vector.ImageVector, val labelKey: String, val screen: String)
 
     val navItems = listOf(
         NavItem(Icons.Default.Explore, "nav_discover", "discover"),
-        NavItem(Icons.Default.LibraryMusic, "nav_shows", "home"),
-        NavItem(Icons.Default.QueueMusic, "nav_episodes", "history"),
-        NavItem(Icons.Default.Folder, "nav_downloads", "home")
+        NavItem(Icons.Default.LibraryMusic, "nav_subscriptions", "home"),
+        NavItem(Icons.Default.QueueMusic, "nav_history", "history"),
+        NavItem(Icons.Default.Folder, "nav_downloads", "downloads")
     )
 
     val colors = PodiumTheme.colors
@@ -144,6 +147,7 @@ private fun Sidebar(
                                     "home" -> onShows()
                                     "history" -> onHistory()
                                     "settings" -> onSettings()
+                                    "downloads" -> onDownloads()
                                 }
                             }
                             .padding(horizontal = 8.dp),
@@ -484,7 +488,8 @@ fun WindowScope.App(windowState: androidx.compose.ui.window.WindowState, awtWind
                     onDiscover = { currentScreen = "discover"; showFullPlayer = false; selectedPodcast = null },
                     onShows = { currentScreen = "home"; showFullPlayer = false; selectedPodcast = null },
                     onHistory = { currentScreen = "history"; showFullPlayer = false; selectedPodcast = null },
-                    onSettings = { currentScreen = "settings"; showFullPlayer = false; selectedPodcast = null }
+                    onSettings = { currentScreen = "settings"; showFullPlayer = false; selectedPodcast = null },
+                    onDownloads = { currentScreen = "downloads"; showFullPlayer = false; selectedPodcast = null }
                 )
 
                 Box(modifier = Modifier.weight(1f)) {
@@ -553,6 +558,10 @@ fun WindowScope.App(windowState: androidx.compose.ui.window.WindowState, awtWind
                         currentScreen == "history" -> HistoryScreen(
                             database = database,
                             playerState = playerState,
+                            onBack = { currentScreen = "home" }
+                        )
+                        currentScreen == "downloads" -> DownloadsScreen(
+                            database = database,
                             onBack = { currentScreen = "home" }
                         )
                     }
@@ -629,10 +638,11 @@ private fun HomeScreen(
     var subscriptionMap by remember { mutableStateOf(mapOf<String, app.podiumpodcasts.podium.data.model.PodcastSubscription>()) }
     var episodeCountMap by remember { mutableStateOf(mapOf<String, Int>()) }
 
-    LaunchedEffect(Unit) {
+    // Load subscription data and episode counts
+    LaunchedEffect(podcasts) {
+        if (podcasts.isEmpty()) return@LaunchedEffect
         val subs = database.subscriptions.getAllSync()
         subscriptionMap = subs.associateBy { it.origin }
-        // Episode counts for display
         val counts = mutableMapOf<String, Int>()
         podcasts.forEach { p ->
             counts[p.origin] = database.episodes.getEpisodeIds(p.origin).size
@@ -647,7 +657,7 @@ private fun HomeScreen(
 
     // ── Empty state ──
     if (podcasts.isEmpty()) {
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Box(modifier = Modifier.fillMaxSize().background(colors.background), contentAlignment = Alignment.Center) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Icon(Icons.Default.RssFeed, null, Modifier.size(64.dp), tint = colors.textMuted)
                 Spacer(modifier = Modifier.height(16.dp))
@@ -666,7 +676,7 @@ private fun HomeScreen(
     }
 
     Column(
-        modifier = Modifier.fillMaxSize().padding(top = 24.dp, start = 28.dp, end = 28.dp, bottom = 8.dp)
+        modifier = Modifier.fillMaxSize().background(colors.background).padding(top = 28.dp, start = 32.dp, end = 32.dp, bottom = 8.dp)
     ) {
         // ── Header (hidden in edit mode, replaced by selection bar) ──
         if (isEditing) {
@@ -692,44 +702,47 @@ private fun HomeScreen(
                 }
             }
         } else {
-            // Title row
+            val header = DesignTokens.PageHeader
+            val search = DesignTokens.SearchBar
+            // ── Header: Title + Subtitle + Toolbar (right-aligned) ──
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Top
             ) {
-                Text(Strings["home_subscriptions"], fontSize = 32.sp, fontWeight = FontWeight.Bold, color = colors.textPrimary)
-                Text(
-                    text = "(${podcasts.size})",
-                    fontSize = 16.sp,
-                    color = colors.textMuted,
-                    modifier = Modifier.padding(top = 6.dp)
-                )
-            }
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(Strings["home_subscriptions_desc"], fontSize = 14.sp, color = colors.textSecondary)
+                // Left: Title + Subtitle
+                Column {
+                    Text(
+                        text = Strings["home_subscriptions"],
+                        fontSize = header.TitleSize,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = FontFamily.Serif,
+                        color = colors.textPrimary
+                    )
+                    Spacer(modifier = Modifier.height(header.Gap))
+                    Text(Strings["home_subscriptions_desc"], fontSize = header.SubtitleSize, color = colors.textMuted)
+                }
 
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Toolbar: Search + Manage
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                // Search bar
-                val search = DesignTokens.SearchBar
-                Box(
+                // Right: Search bar
+                Surface(
                     modifier = Modifier
                         .width(search.Width)
                         .height(search.Height)
-                        .clip(RoundedCornerShape(search.Radius))
-                        .background(colors.elevated)
-                        .padding(horizontal = search.PaddingHorizontal),
-                    contentAlignment = Alignment.CenterStart
+                        .border(DesignTokens.Border.Width, DesignTokens.Border.SecondaryColor, RoundedCornerShape(search.Radius)),
+                    shape = RoundedCornerShape(search.Radius),
+                    color = colors.surface
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(search.Gap)) {
-                        Icon(Icons.Default.Search, contentDescription = null, tint = colors.textMuted, modifier = Modifier.size(search.IconSize))
+                    Row(
+                        modifier = Modifier.fillMaxSize().padding(horizontal = search.PaddingHorizontal),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Default.Search,
+                            contentDescription = null,
+                            tint = colors.accent,
+                            modifier = Modifier.size(search.IconSize)
+                        )
+                        Spacer(modifier = Modifier.width(search.Gap))
                         Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
                             if (searchQuery.isEmpty()) {
                                 Text(Strings["home_search_placeholder"], color = colors.textDisabled, fontSize = search.TextSize)
@@ -739,35 +752,91 @@ private fun HomeScreen(
                                 onValueChange = { searchQuery = it },
                                 modifier = Modifier.fillMaxWidth(),
                                 singleLine = true,
-                                textStyle = TextStyle(color = colors.textPrimary, fontSize = search.TextSize)
+                                textStyle = TextStyle(color = colors.textPrimary, fontSize = search.TextSize),
+                                cursorBrush = SolidColor(colors.accent)
                             )
                         }
                         if (searchQuery.isNotEmpty()) {
-                            Icon(Icons.Default.Clear, contentDescription = Strings["discover_search_clear"], tint = colors.textMuted,
-                                modifier = Modifier.size(search.ClearIconSize).pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR))).clickable { searchQuery = "" })
+                            Icon(
+                                Icons.Default.Clear,
+                                contentDescription = Strings["discover_search_clear"],
+                                tint = colors.textMuted,
+                                modifier = Modifier
+                                    .size(search.ClearIconSize)
+                                    .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
+                                    .clickable { searchQuery = "" }
+                            )
                         }
                     }
-                }
-
-                Spacer(Modifier.weight(1f))
-
-                // Manage button
-                Box(
-                    modifier = Modifier
-                        .width(96.dp).height(36.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                        .border(1.dp, colors.border, RoundedCornerShape(8.dp))
-                        .background(colors.surface)
-                        .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
-                        .clickable { isEditing = true },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(Strings["home_manage"], fontSize = 13.sp, fontWeight = FontWeight.Medium, color = colors.textPrimary)
                 }
             }
         }
 
         Spacer(modifier = Modifier.height(16.dp))
+
+        // ── List toolbar: count + actions ──
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = Strings.get("home_subscription_count", podcasts.size),
+                color = colors.textPrimary,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Medium
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                // Sort button
+                val sortInteractionSource = remember { MutableInteractionSource() }
+                val isSortHovered by sortInteractionSource.collectIsHoveredAsState()
+                Box(
+                    modifier = Modifier
+                        .size(32.dp)
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(if (isSortHovered) colors.elevated else Color.Transparent)
+                        .border(1.dp, colors.border, RoundedCornerShape(6.dp))
+                        .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
+                        .clickable(interactionSource = sortInteractionSource, indication = null) { },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        Icons.Default.UnfoldMore,
+                        contentDescription = Strings["home_sort"],
+                        tint = colors.textSecondary,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+
+                // Manage button
+                val manageInteractionSource = remember { MutableInteractionSource() }
+                val isManageHovered by manageInteractionSource.collectIsHoveredAsState()
+                Box(
+                    modifier = Modifier
+                        .size(32.dp)
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(if (isManageHovered) colors.elevated else Color.Transparent)
+                        .border(1.dp, colors.border, RoundedCornerShape(6.dp))
+                        .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
+                        .clickable(interactionSource = manageInteractionSource, indication = null) { isEditing = true },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        Icons.Default.Edit,
+                        contentDescription = Strings["home_manage"],
+                        tint = colors.textSecondary,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // ── Divider ──
+        HorizontalDivider(color = colors.divider)
+
+        Spacer(modifier = Modifier.height(6.dp))
 
         // ── Subscriptions list ──
         LazyColumn(modifier = Modifier.fillMaxSize()) {
@@ -855,10 +924,10 @@ private fun SubscriptionCard(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(88.dp)
+            .height(96.dp)
             .background(if (isHovered && !isEditing) colors.elevated else Color.Transparent)
             .clickable(interactionSource = interactionSource, indication = null) { onClick() }
-            .padding(vertical = 12.dp),
+            .padding(start = 12.dp, end = 8.dp, top = 12.dp, bottom = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp)
     ) {
@@ -879,27 +948,36 @@ private fun SubscriptionCard(
         // Info
         Column(modifier = Modifier.weight(1f)) {
             Text(text = podcast.fetchTitle(), color = colors.textPrimary, fontSize = 14.sp, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(text = podcast.author, color = colors.textMuted, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Spacer(modifier = Modifier.height(4.dp))
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                if (episodeCount > 0) {
-                    Text(text = Strings.get("home_episode_count", episodeCount), color = colors.textDisabled, fontSize = 11.sp)
-                }
-                if (newCount > 0) {
-                    Box(
-                        modifier = Modifier
-                            .height(20.dp)
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(colors.accent.copy(alpha = 0.15f))
-                            .padding(horizontal = 8.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = if (newCount == 1) Strings["home_new_badge"] else Strings.get("home_new_count", newCount),
-                            color = colors.accent, fontSize = 11.sp, fontWeight = FontWeight.SemiBold
-                        )
-                    }
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(text = podcast.author, color = colors.textMuted, fontSize = 12.sp, lineHeight = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            if (podcast.description.isNotBlank()) {
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(text = stripHtml(podcast.description), color = colors.textDisabled, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+        }
+
+        // Meta: episode count + New badge (horizontal row)
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            modifier = Modifier.padding(end = 4.dp)
+        ) {
+            if (episodeCount > 0) {
+                Text(text = Strings.get("home_episode_count", episodeCount), color = colors.textSecondary, fontSize = 11.sp)
+            }
+            if (newCount > 0) {
+                Box(
+                    modifier = Modifier
+                        .wrapContentSize()
+                        .clip(RoundedCornerShape(9.dp))
+                        .background(colors.accent.copy(alpha = 0.2f))
+                        .padding(horizontal = 6.dp, vertical = 2.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = if (newCount == 1) Strings["home_new_badge"] else Strings.get("home_new_count", newCount),
+                        color = colors.accent, fontSize = 11.sp, fontWeight = FontWeight.SemiBold
+                    )
                 }
             }
         }
@@ -917,7 +995,7 @@ private fun SubscriptionCard(
                     .clickable(interactionSource = moreInteractionSource, indication = null) { onMore() },
                 contentAlignment = Alignment.Center
             ) {
-                Icon(Icons.Default.MoreHoriz, contentDescription = Strings["discover_more"], tint = colors.textSecondary, modifier = Modifier.size(20.dp))
+                Icon(Icons.Default.Delete, contentDescription = Strings["unsubscribe"], tint = colors.textSecondary, modifier = Modifier.size(20.dp))
             }
         }
     }
@@ -1427,6 +1505,63 @@ private fun AddPodcastDialog(
             }
         }
     )
+}
+
+// ── Downloads Screen (placeholder) ──
+@Composable
+private fun DownloadsScreen(
+    database: AppDatabase,
+    onBack: () -> Unit
+) {
+    val colors = PodiumTheme.colors
+    val header = DesignTokens.PageHeader
+
+    Column(
+        modifier = Modifier.fillMaxSize().background(colors.background)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = header.PaddingHorizontal, end = header.PaddingHorizontal, top = header.PaddingTop),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.Top
+        ) {
+            Column {
+                Text(
+                    text = Strings["nav_downloads"],
+                    color = colors.textPrimary,
+                    fontSize = header.TitleSize,
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = FontFamily.Serif
+                )
+            }
+        }
+
+        // Placeholder content
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Icon(
+                    Icons.Default.FileDownload,
+                    contentDescription = null,
+                    modifier = Modifier.size(64.dp),
+                    tint = colors.textMuted
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = Strings["downloads_empty"],
+                    color = colors.textPrimary,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Medium
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = Strings["downloads_empty_hint"],
+                    color = colors.textMuted,
+                    fontSize = 14.sp
+                )
+            }
+        }
+    }
 }
 
 internal fun stripHtml(html: String): String {
