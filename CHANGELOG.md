@@ -39,7 +39,34 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `testMiniPlayerExpandButtonDisabledWhenNoPlayback` — expand disabled with no URL
 - `testFullPlayerShowsCloseButton`, `testFullPlayerShowsPodcastName` — basic rendering
 
-## [0.2.0] - 2026-07-03
+## [0.3.0] - 2026-07-03
+
+### Changed
+- HistoryScreen redesigned: unified Column padding (28dp top, 32dp sides, 8dp bottom) matching Subscriptions page layout, serif PageHeader (32sp) + subtitle, date grouping (Today/Yesterday/This Week/Earlier), search bar (320dp), hover-highlighted cards with duration badges and action buttons, relative time display, clear-all dialog
+- PodcastDetailScreen redesigned: removed Scaffold+TopAppBar in favor of Column layout with back button Row, consistent 32dp page margins, episode rows with hover effects (elevated background + hand cursor), unified 32dp padding before background for proper margin-aware hover, header cover aligned with episode row covers at 44dp (32dp margin + 12dp inset)
+- Download completed CheckCircle icon unified to `colors.success` (green) across PodcastDetailScreen and FullPlayer
+- Added `pointerHoverIcon(HAND_CURSOR)` to HistoryItem action buttons (queue, remove) and podcast name link
+
+### Added
+- History search field with text filtering by episode/podcast title
+- Relative timestamps ("Just now", "Xm ago", "Xh ago", "Yesterday", "MMM dd") in history list
+- Date-grouped sections in history (Today/Yesterday/This Week/Earlier)
+- `history_subtitle`, `history_search_placeholder`, `history_today`, `history_yesterday`, `history_this_week`, `history_earlier`, `history_count` i18n keys (EN/ZH)
+
+### Fixed
+- HistoryScreen hover background spanning full width (padding moved before background, matching Subscriptions page pattern)
+- HistoryScreen dividers lacking right margin (end padding added)
+- HistoryScreen episode count toolbar position inconsistent with Subscriptions page (unified Column padding eliminates jitter when switching pages)
+- PodcastDetailScreen episode row hover background spanning full width (32dp horizontal padding applied before background)
+- PodcastDetailScreen downloading progress indicator color set to `colors.accent`
+- Material theme primary color reference (`colorScheme.primary`) replaced with PodiumTheme semantic colors
+
+### Removed
+- `@OptIn(ExperimentalMaterial3Api)` from PodcastDetailScreen (no longer needed after Scaffold removal)
+- Back navigation button from HistoryScreen (page is sidebar-navigated, no TopAppBar)
+
+### Tests
+- HistoryScreenTest: removed `testHistoryBackButton` (page no longer has back button), added `testSearchBarIsDisplayed`, `testSubtitleText`
 
 ### Added
 - Downloads placeholder page with empty state (navigated from sidebar)

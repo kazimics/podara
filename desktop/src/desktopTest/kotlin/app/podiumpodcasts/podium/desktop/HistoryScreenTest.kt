@@ -61,25 +61,13 @@ class HistoryScreenTest {
     }
 
     @Test
-    fun testHistoryBackButton() {
-        var backClicked = false
-        composeTestRule.setContent {
-            PodiumTheme {
-                HistoryScreen(database = database, playerState = MediaPlayerState(), onBack = { backClicked = true })
-            }
-        }
-        composeTestRule.onNodeWithContentDescription(Strings["nav_back"]).performClick()
-        composeTestRule.waitForIdle()
-        assert(backClicked) { "Back button should trigger onBack" }
-    }
-
-    @Test
     fun testHistoryClearButtonHiddenWhenEmpty() {
         composeTestRule.setContent {
             PodiumTheme {
                 HistoryScreen(database = database, playerState = MediaPlayerState(), onBack = {})
             }
         }
+        // When history is empty, the toolbar with clear button is not rendered
         composeTestRule.onNodeWithContentDescription(Strings["history_clear"]).assertDoesNotExist()
     }
 
@@ -101,5 +89,25 @@ class HistoryScreenTest {
             }
         }
         composeTestRule.onNodeWithText(Strings["history_empty"]).assertIsDisplayed()
+    }
+
+    @Test
+    fun testSearchBarIsDisplayed() {
+        composeTestRule.setContent {
+            PodiumTheme {
+                HistoryScreen(database = database, playerState = MediaPlayerState(), onBack = {})
+            }
+        }
+        composeTestRule.onNodeWithText(Strings["history_search_placeholder"]).assertIsDisplayed()
+    }
+
+    @Test
+    fun testSubtitleText() {
+        composeTestRule.setContent {
+            PodiumTheme {
+                HistoryScreen(database = database, playerState = MediaPlayerState(), onBack = {})
+            }
+        }
+        composeTestRule.onNodeWithText(Strings["history_subtitle"]).assertIsDisplayed()
     }
 }
