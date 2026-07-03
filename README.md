@@ -21,7 +21,7 @@ This project is a Windows desktop port of [aimok04/podium](https://github.com/ai
 ## Notable Features
 
 - **Custom UI** — Immersive window with custom title bar, sidebar navigation, and premium gold gradient buttons.
-- **Download** your favorite episodes for offline listening.
+- **Download & offline management** — download episodes with pause/resume support, manage downloaded content, view storage usage and file paths, single or batch delete.
 - **Discover** new podcasts on the *Discover* tab *(powered by Apple Podcasts)* with featured cards and trending sections.
 - **Playback controls** - play/pause, seek, playback speed adjustment, 10s skip.
 - **Sleep timer** - automatically pause after a set duration.

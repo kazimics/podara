@@ -59,6 +59,7 @@ import app.podiumpodcasts.podium.utils.Logger
 import app.podiumpodcasts.podium.utils.RssConverter
 import app.podiumpodcasts.podium.utils.Settings
 import app.podiumpodcasts.podium.utils.Strings
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import java.io.File
 import java.io.PrintWriter
@@ -322,6 +323,8 @@ fun WindowScope.App(windowState: androidx.compose.ui.window.WindowState, awtWind
     var downloadingEpisodes by remember { mutableStateOf(setOf<String>()) }
     var downloadVersion by remember { mutableIntStateOf(0) }
     var completedDownloads by remember { mutableStateOf(setOf<String>()) }
+    var downloadJobs by remember { mutableStateOf(mapOf<String, Job>()) }
+    var activeDownloadMeta by remember { mutableStateOf(mapOf<String, Pair<String, String>>()) } // episodeId -> (podcastTitle, episodeTitle)
 
     LaunchedEffect(Unit) {
         Logger.d(TAG, "Loading podcasts from database")
@@ -330,28 +333,98 @@ fun WindowScope.App(windowState: androidx.compose.ui.window.WindowState, awtWind
         Logger.d(TAG, "Loaded ${podcasts.size} podcasts, ${completedDownloads.size} downloads")
     }
 
-    val startDownload = { episode: PodcastEpisode, podcastTitle: String ->
-        downloadingEpisodes = downloadingEpisodes + episode.id
-        completedDownloads = completedDownloads - episode.id
-        scope.launch {
-            try {
-                val result = downloadManager.downloadEpisode(
-                    episodeId = episode.id,
-                    audioUrl = episode.audioUrl,
-                    origin = episode.origin,
-                    episodeTitle = episode.title,
-                    podcastTitle = podcastTitle
-                ) { current, total ->
-                    downloadProgress = downloadProgress + (episode.id to Pair(current, total))
+    val startDownload: (PodcastEpisode, String) -> Unit = { episode, podcastTitle ->
+        // Guard: don't start a new download if already downloading
+        if (episode.id !in downloadingEpisodes) {
+            downloadingEpisodes = downloadingEpisodes + episode.id
+            completedDownloads = completedDownloads - episode.id
+            activeDownloadMeta = activeDownloadMeta + (episode.id to (podcastTitle to episode.title))
+            val job = scope.launch {
+                try {
+                    val result = downloadManager.downloadEpisode(
+                        episodeId = episode.id,
+                        audioUrl = episode.audioUrl,
+                        origin = episode.origin,
+                        episodeTitle = episode.title,
+                        podcastTitle = podcastTitle,
+                        onProgress = { current, total ->
+                            downloadProgress = downloadProgress + (episode.id to Pair(current, total))
+                        }
+                    )
+                    if (result.isSuccess) {
+                        completedDownloads = completedDownloads + episode.id
+                    }
+                } finally {
+                    downloadingEpisodes = downloadingEpisodes - episode.id
+                    downloadProgress = downloadProgress - episode.id
+                    activeDownloadMeta = activeDownloadMeta - episode.id
+                    downloadJobs = downloadJobs - episode.id
+                    downloadVersion++
                 }
-                if (result.isSuccess) {
-                    completedDownloads = completedDownloads + episode.id
-                }
-            } finally {
-                downloadingEpisodes = downloadingEpisodes - episode.id
-                downloadProgress = downloadProgress - episode.id
-                downloadVersion++
             }
+            downloadJobs = downloadJobs + (episode.id to job)
+        }
+        Unit
+    }
+
+    // ── Download management callbacks ──
+    val pauseDownload: (String) -> Unit = { episodeId ->
+        downloadManager.pauseDownload(episodeId)
+    }
+
+    val resumeDownload: (String) -> Unit = { episodeId ->
+        // Guard: don't resume if already downloading
+        if (episodeId !in downloadingEpisodes) {
+            scope.launch {
+                // Track in downloadingEpisodes so DownloadsScreen shows it as in-progress
+                downloadingEpisodes = downloadingEpisodes + episodeId
+                downloadVersion++ // trigger UI refresh to show in-progress state
+                try {
+                    val result = downloadManager.resumeDownload(episodeId) { current, total ->
+                        downloadProgress = downloadProgress + (episodeId to Pair(current, total))
+                    }
+                    if (result.isSuccess) {
+                        completedDownloads = completedDownloads + episodeId
+                    }
+                } finally {
+                    downloadingEpisodes = downloadingEpisodes - episodeId
+                    downloadProgress = downloadProgress - episodeId
+                    downloadVersion++ // trigger UI refresh to show completed / removed
+                }
+            }
+        }
+        Unit
+    }
+
+    val cancelDownload: (String) -> Unit = { episodeId ->
+        downloadManager.cancelDownload(episodeId)
+        downloadJobs[episodeId]?.cancel()
+        downloadingEpisodes = downloadingEpisodes - episodeId
+        downloadProgress = downloadProgress - episodeId
+        activeDownloadMeta = activeDownloadMeta - episodeId
+        downloadJobs = downloadJobs - episodeId
+        downloadVersion++
+        // Also clean up any paused/failed task in DB and partial files
+        scope.launch {
+            downloadManager.cleanupPausedTask(episodeId)
+        }
+        Unit
+    }
+
+    val deleteDownloaded: (String) -> Unit = { episodeId ->
+        scope.launch {
+            downloadManager.deleteDownloadedEpisode(episodeId)
+            completedDownloads = completedDownloads - episodeId
+            downloadVersion++
+        }
+        Unit
+    }
+
+    val deleteDownloadedByOrigin: (String) -> Unit = { origin ->
+        scope.launch {
+            downloadManager.deleteDownloadedByOrigin(origin)
+            completedDownloads = database.downloads.getAllValidDownloadedIds()
+            downloadVersion++
         }
         Unit
     }
@@ -511,6 +584,8 @@ fun WindowScope.App(windowState: androidx.compose.ui.window.WindowState, awtWind
                             downloadVersion = downloadVersion,
                             completedDownloads = completedDownloads,
                             onStartDownload = startDownload,
+                            onPauseDownload = pauseDownload,
+                            onResumeDownload = resumeDownload,
                             onBack = {
                                 selectedPodcast = null
                                 discoverRefreshKey++
@@ -563,7 +638,20 @@ fun WindowScope.App(windowState: androidx.compose.ui.window.WindowState, awtWind
                         )
                         currentScreen == "downloads" -> DownloadsScreen(
                             database = database,
-                            onBack = { currentScreen = "home" }
+                            downloadManager = downloadManager,
+                            downloadPath = downloadPath,
+                            downloadingEpisodes = downloadingEpisodes,
+                            downloadProgress = downloadProgress,
+                            downloadVersion = downloadVersion,
+                            completedDownloads = completedDownloads,
+                            activeDownloadMeta = activeDownloadMeta,
+                            onPauseDownload = pauseDownload,
+                            onResumeDownload = resumeDownload,
+                            onCancelDownload = cancelDownload,
+                            onDeleteDownloaded = deleteDownloaded,
+                            onDeleteDownloadedByOrigin = deleteDownloadedByOrigin,
+                            onBack = { currentScreen = "home" },
+                            onOpenSettings = { currentScreen = "settings" }
                         )
                     }
                 }
@@ -1015,6 +1103,8 @@ private fun PodcastDetailScreen(
     downloadVersion: Int,
     completedDownloads: Set<String>,
     onStartDownload: (PodcastEpisode, String) -> Unit,
+    onPauseDownload: (String) -> Unit = {},
+    onResumeDownload: (String) -> Unit = {},
     onBack: () -> Unit,
     onUnsubscribed: suspend () -> Unit = { },
     onSubscribed: suspend () -> Unit = { }
@@ -1025,6 +1115,25 @@ private fun PodcastDetailScreen(
     var isSubscribed by remember { mutableStateOf(false) }
     var showUnsubscribeDialog by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
+
+    // ── Active download progress from DB (for robustness across page navigation) ──
+    var activeTaskProgress by remember { mutableStateOf(mapOf<String, Pair<Long, Long>>()) }
+    LaunchedEffect(downloadVersion) {
+        try {
+            val activeTasks = database.downloadTasks.getAllActive()
+            // Include all non-completed tasks (DOWNLOADING, PAUSED, FAILED)
+            // so the detail page never shows a download button for a task that exists
+            activeTaskProgress = activeTasks.associate { t ->
+                t.episodeId to (t.downloadedBytes to t.totalBytes)
+            }
+        } catch (_: Exception) { }
+    }
+
+    // Combined check: memory state OR DB task.
+    // Keyed on downloadVersion so DB changes force recalculation.
+    val allDownloading = remember(downloadingEpisodes, activeTaskProgress, downloadVersion) {
+        downloadingEpisodes + activeTaskProgress.keys
+    }
 
     LaunchedEffect(podcast.origin) {
         val subscription = database.subscriptions.getByOriginSync(podcast.origin)
@@ -1309,8 +1418,9 @@ private fun PodcastDetailScreen(
                 // ── Episode list ──
                 LazyColumn(modifier = Modifier.fillMaxWidth().weight(1f)) {
                     items(episodes) { episode ->
-                        val isDownloading = episode.id in downloadingEpisodes
-                        val progress = downloadProgress[episode.id]
+                        val isDownloading = episode.id in allDownloading
+                        val progress = downloadProgress[episode.id] ?: activeTaskProgress[episode.id]
+                        val isDbTask = episode.id in activeTaskProgress && episode.id !in downloadProgress
 
                         val rowInteractionSource = remember { MutableInteractionSource() }
                         val isRowHovered by rowInteractionSource.collectIsHoveredAsState()
@@ -1321,7 +1431,6 @@ private fun PodcastDetailScreen(
                                 .height(88.dp)
                                 .padding(horizontal = 32.dp)
                                 .background(if (isRowHovered) colors.elevated else Color.Transparent)
-                                .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
                                 .clickable(interactionSource = rowInteractionSource, indication = null) {
                                     scope.launch {
                                         val downloadRecord = database.downloads.getByEpisodeId(episode.id)
@@ -1440,12 +1549,32 @@ private fun PodcastDetailScreen(
                                         val fraction = if (progress != null && progress.second > 0) {
                                             progress.first.toFloat() / progress.second
                                         } else 0f
-                                        CircularProgressIndicator(
-                                            progress = { fraction },
-                                            modifier = Modifier.size(20.dp),
-                                            strokeWidth = 2.dp,
-                                            color = colors.accent
-                                        )
+                                        val ringInteractionSource = remember { MutableInteractionSource() }
+                                        val isRingHovered by ringInteractionSource.collectIsHoveredAsState()
+                                        Box(
+                                            modifier = Modifier
+                                                .size(36.dp)
+                                                .clip(CircleShape)
+                                                .background(if (isRingHovered) colors.elevated else Color.Transparent)
+                                                .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
+                                                .clickable(interactionSource = ringInteractionSource, indication = null) {
+                                                    if (isDbTask) {
+                                                        // Paused/failed task from DB → resume
+                                                        onResumeDownload(episode.id)
+                                                    } else {
+                                                        // Active download → pause
+                                                        onPauseDownload(episode.id)
+                                                    }
+                                                },
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            CircularProgressIndicator(
+                                                progress = { fraction },
+                                                modifier = Modifier.size(20.dp),
+                                                strokeWidth = 2.dp,
+                                                color = colors.accent
+                                            )
+                                        }
                                     } else {
                                         val dInteractionSource = remember { MutableInteractionSource() }
                                         val isDHovered by dInteractionSource.collectIsHoveredAsState()
@@ -1551,62 +1680,7 @@ private fun AddPodcastDialog(
     )
 }
 
-// ── Downloads Screen (placeholder) ──
-@Composable
-private fun DownloadsScreen(
-    database: AppDatabase,
-    onBack: () -> Unit
-) {
-    val colors = PodiumTheme.colors
-    val header = DesignTokens.PageHeader
-
-    Column(
-        modifier = Modifier.fillMaxSize().background(colors.background)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(start = header.PaddingHorizontal, end = header.PaddingHorizontal, top = header.PaddingTop),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.Top
-        ) {
-            Column {
-                Text(
-                    text = Strings["nav_downloads"],
-                    color = colors.textPrimary,
-                    fontSize = header.TitleSize,
-                    fontWeight = FontWeight.Bold,
-                    fontFamily = FontFamily.Serif
-                )
-            }
-        }
-
-        // Placeholder content
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Icon(
-                    Icons.Default.FileDownload,
-                    contentDescription = null,
-                    modifier = Modifier.size(64.dp),
-                    tint = colors.textMuted
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-                Text(
-                    text = Strings["downloads_empty"],
-                    color = colors.textPrimary,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Medium
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = Strings["downloads_empty_hint"],
-                    color = colors.textMuted,
-                    fontSize = 14.sp
-                )
-            }
-        }
-    }
-}
+// ── DownloadsScreen is in DownloadsScreen.kt ──
 
 internal fun stripHtml(html: String): String {
     return html.replace(Regex("<[^>]*>"), " ")

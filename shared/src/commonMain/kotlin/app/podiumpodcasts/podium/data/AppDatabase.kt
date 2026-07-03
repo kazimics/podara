@@ -37,6 +37,10 @@ class AppDatabase private constructor(private val connection: Connection) {
                     skipEnding INTEGER NOT NULL DEFAULT 0
                 )
             """)
+            // ── podcastDownload: add episodeTitle column for existing DBs ──
+            try {
+                stmt.executeUpdate("ALTER TABLE podcastDownload ADD COLUMN episodeTitle TEXT NOT NULL DEFAULT ''")
+            } catch (_: Exception) { /* column already exists — ignore */ }
             stmt.executeUpdate("""
                 CREATE TABLE IF NOT EXISTS podcastEpisode (
                     id TEXT NOT NULL PRIMARY KEY,
@@ -100,7 +104,23 @@ class AppDatabase private constructor(private val connection: Connection) {
                     origin TEXT NOT NULL,
                     filePath TEXT NOT NULL,
                     podcastTitle TEXT NOT NULL,
+                    episodeTitle TEXT NOT NULL DEFAULT '',
                     timestamp INTEGER NOT NULL
+                )
+            """)
+            stmt.executeUpdate("""
+                CREATE TABLE IF NOT EXISTS downloadTask (
+                    episodeId TEXT NOT NULL PRIMARY KEY,
+                    origin TEXT NOT NULL,
+                    audioUrl TEXT NOT NULL,
+                    podcastTitle TEXT NOT NULL,
+                    episodeTitle TEXT NOT NULL,
+                    targetFilePath TEXT NOT NULL DEFAULT '',
+                    downloadedBytes INTEGER NOT NULL DEFAULT 0,
+                    totalBytes INTEGER NOT NULL DEFAULT 0,
+                    state TEXT NOT NULL DEFAULT 'DOWNLOADING',
+                    createdAt INTEGER NOT NULL,
+                    updatedAt INTEGER NOT NULL
                 )
             """)
             stmt.executeUpdate("""
@@ -119,6 +139,7 @@ class AppDatabase private constructor(private val connection: Connection) {
     val subscriptions = SubscriptionDao(connection)
     val syncActions = SyncActionDao(connection)
     val downloads = DownloadDao(connection)
+    val downloadTasks = DownloadTaskDao(connection)
     val itunesLookup = ItunesLookupDao(connection)
 
     fun close() { connection.close() }
@@ -412,15 +433,30 @@ data class PodcastDownload(
     val origin: String,
     val filePath: String,
     val podcastTitle: String,
+    val episodeTitle: String = "",
     val timestamp: Long
 )
 
+data class DownloadTask(
+    val episodeId: String,
+    val origin: String,
+    val audioUrl: String,
+    val podcastTitle: String,
+    val episodeTitle: String,
+    val targetFilePath: String = "",
+    val downloadedBytes: Long = 0,
+    val totalBytes: Long = 0,
+    val state: String = "DOWNLOADING",
+    val createdAt: Long,
+    val updatedAt: Long
+)
+
 class DownloadDao(private val conn: Connection) {
-    suspend fun insert(episodeId: String, origin: String, filePath: String, podcastTitle: String) = withContext(Dispatchers.IO) {
+    suspend fun insert(episodeId: String, origin: String, filePath: String, podcastTitle: String, episodeTitle: String = "") = withContext(Dispatchers.IO) {
         val ts = System.currentTimeMillis()
-        conn.prepareStatement("INSERT OR REPLACE INTO podcastDownload (episodeId, origin, filePath, podcastTitle, timestamp) VALUES (?, ?, ?, ?, ?)").apply {
+        conn.prepareStatement("INSERT OR REPLACE INTO podcastDownload (episodeId, origin, filePath, podcastTitle, episodeTitle, timestamp) VALUES (?, ?, ?, ?, ?, ?)").apply {
             setString(1, episodeId); setString(2, origin); setString(3, filePath)
-            setString(4, podcastTitle); setLong(5, ts); executeUpdate()
+            setString(4, podcastTitle); setString(5, episodeTitle); setLong(6, ts); executeUpdate()
         }
     }
 
@@ -433,6 +469,7 @@ class DownloadDao(private val conn: Connection) {
             origin = rs.getString("origin"),
             filePath = rs.getString("filePath"),
             podcastTitle = rs.getString("podcastTitle"),
+            episodeTitle = rs.getString("episodeTitle") ?: "",
             timestamp = rs.getLong("timestamp")
         ) else null
     }
@@ -457,16 +494,141 @@ class DownloadDao(private val conn: Connection) {
                 toDelete.add(episodeId)
             }
         }
-        for (id in toDelete) {
-            delete(id)
-        }
+        for (id in toDelete) { delete(id) }
         ids
     }
 
+    /** Return all valid download records (cleans up stale records where file is gone). */
+    suspend fun getAllValid(): List<PodcastDownload> = withContext(Dispatchers.IO) {
+        val rs = conn.createStatement().executeQuery("SELECT * FROM podcastDownload")
+        val valid = mutableListOf<PodcastDownload>()
+        val toDelete = mutableListOf<String>()
+        while (rs.next()) {
+            val episodeId = rs.getString("episodeId")
+            val filePath = rs.getString("filePath")
+            if (java.io.File(filePath).exists()) {
+                valid.add(PodcastDownload(
+                    episodeId = episodeId, origin = rs.getString("origin"),
+                    filePath = filePath, podcastTitle = rs.getString("podcastTitle"),
+                    episodeTitle = rs.getString("episodeTitle") ?: "",
+                    timestamp = rs.getLong("timestamp")
+                ))
+            } else {
+                toDelete.add(episodeId)
+            }
+        }
+        for (id in toDelete) { delete(id) }
+        valid
+    }
+
+    /** Get total bytes of all valid downloaded files. */
+    suspend fun getTotalDownloadedBytes(): Long = withContext(Dispatchers.IO) {
+        getAllValid().sumOf { java.io.File(it.filePath).length() }
+    }
+
+    /** Get all downloads for a specific podcast origin. */
+    suspend fun getAllByOrigin(origin: String): List<PodcastDownload> = withContext(Dispatchers.IO) {
+        val ps = conn.prepareStatement("SELECT * FROM podcastDownload WHERE origin = ?")
+        ps.setString(1, origin)
+        val rs = ps.executeQuery()
+        val list = mutableListOf<PodcastDownload>()
+        while (rs.next()) list.add(PodcastDownload(
+            episodeId = rs.getString("episodeId"), origin = rs.getString("origin"),
+            filePath = rs.getString("filePath"), podcastTitle = rs.getString("podcastTitle"),
+            episodeTitle = rs.getString("episodeTitle") ?: "",
+            timestamp = rs.getLong("timestamp")
+        ))
+        list
+    }
+
+    /** Delete download record (does NOT delete file — use DownloadManager for full cleanup). */
     suspend fun delete(episodeId: String) = withContext(Dispatchers.IO) {
         conn.prepareStatement("DELETE FROM podcastDownload WHERE episodeId = ?").apply {
             setString(1, episodeId); executeUpdate()
         }
+    }
+
+    /** Delete all download records for a podcast origin (does NOT delete files). */
+    suspend fun deleteByOrigin(origin: String) = withContext(Dispatchers.IO) {
+        conn.prepareStatement("DELETE FROM podcastDownload WHERE origin = ?").apply {
+            setString(1, origin); executeUpdate()
+        }
+    }
+
+    /** Clear all download records. */
+    suspend fun deleteAll() = withContext(Dispatchers.IO) {
+        conn.createStatement().executeUpdate("DELETE FROM podcastDownload")
+    }
+}
+
+class DownloadTaskDao(private val conn: Connection) {
+    suspend fun insert(task: DownloadTask) = withContext(Dispatchers.IO) {
+        conn.prepareStatement("INSERT OR REPLACE INTO downloadTask (episodeId, origin, audioUrl, podcastTitle, episodeTitle, targetFilePath, downloadedBytes, totalBytes, state, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").apply {
+            setString(1, task.episodeId); setString(2, task.origin); setString(3, task.audioUrl)
+            setString(4, task.podcastTitle); setString(5, task.episodeTitle); setString(6, task.targetFilePath)
+            setLong(7, task.downloadedBytes); setLong(8, task.totalBytes); setString(9, task.state)
+            setLong(10, task.createdAt); setLong(11, task.updatedAt); executeUpdate()
+        }
+    }
+
+    suspend fun getByEpisodeId(episodeId: String): DownloadTask? = withContext(Dispatchers.IO) {
+        val ps = conn.prepareStatement("SELECT * FROM downloadTask WHERE episodeId = ?")
+        ps.setString(1, episodeId)
+        val rs = ps.executeQuery()
+        if (rs.next()) DownloadTask(
+            episodeId = rs.getString("episodeId"), origin = rs.getString("origin"),
+            audioUrl = rs.getString("audioUrl"), podcastTitle = rs.getString("podcastTitle"),
+            episodeTitle = rs.getString("episodeTitle"), targetFilePath = rs.getString("targetFilePath") ?: "",
+            downloadedBytes = rs.getLong("downloadedBytes"), totalBytes = rs.getLong("totalBytes"),
+            state = rs.getString("state") ?: "DOWNLOADING",
+            createdAt = rs.getLong("createdAt"), updatedAt = rs.getLong("updatedAt")
+        ) else null
+    }
+
+    /** Get all tasks that are not completed (DOWNLOADING / PAUSED / FAILED). */
+    suspend fun getAllActive(): List<DownloadTask> = withContext(Dispatchers.IO) {
+        val rs = conn.createStatement().executeQuery("SELECT * FROM downloadTask WHERE state != 'COMPLETED' ORDER BY updatedAt DESC")
+        val list = mutableListOf<DownloadTask>()
+        while (rs.next()) list.add(DownloadTask(
+            episodeId = rs.getString("episodeId"), origin = rs.getString("origin"),
+            audioUrl = rs.getString("audioUrl"), podcastTitle = rs.getString("podcastTitle"),
+            episodeTitle = rs.getString("episodeTitle"), targetFilePath = rs.getString("targetFilePath") ?: "",
+            downloadedBytes = rs.getLong("downloadedBytes"), totalBytes = rs.getLong("totalBytes"),
+            state = rs.getString("state") ?: "DOWNLOADING",
+            createdAt = rs.getLong("createdAt"), updatedAt = rs.getLong("updatedAt")
+        ))
+        list
+    }
+
+    suspend fun updateProgress(episodeId: String, downloadedBytes: Long, totalBytes: Long) = withContext(Dispatchers.IO) {
+        val ts = System.currentTimeMillis()
+        conn.prepareStatement("UPDATE downloadTask SET downloadedBytes = ?, totalBytes = ?, updatedAt = ? WHERE episodeId = ?").apply {
+            setLong(1, downloadedBytes); setLong(2, totalBytes); setLong(3, ts); setString(4, episodeId); executeUpdate()
+        }
+    }
+
+    suspend fun updateState(episodeId: String, state: String, targetFilePath: String = "") = withContext(Dispatchers.IO) {
+        val ts = System.currentTimeMillis()
+        if (targetFilePath.isNotEmpty()) {
+            conn.prepareStatement("UPDATE downloadTask SET state = ?, targetFilePath = ?, updatedAt = ? WHERE episodeId = ?").apply {
+                setString(1, state); setString(2, targetFilePath); setLong(3, ts); setString(4, episodeId); executeUpdate()
+            }
+        } else {
+            conn.prepareStatement("UPDATE downloadTask SET state = ?, updatedAt = ? WHERE episodeId = ?").apply {
+                setString(1, state); setLong(2, ts); setString(3, episodeId); executeUpdate()
+            }
+        }
+    }
+
+    suspend fun delete(episodeId: String) = withContext(Dispatchers.IO) {
+        conn.prepareStatement("DELETE FROM downloadTask WHERE episodeId = ?").apply {
+            setString(1, episodeId); executeUpdate()
+        }
+    }
+
+    /** Clear all download tasks. */
+    suspend fun deleteAll() = withContext(Dispatchers.IO) {
+        conn.createStatement().executeUpdate("DELETE FROM downloadTask")
     }
 }
 

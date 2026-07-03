@@ -7,6 +7,38 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [0.1.0] - 2026-07-03
 
 ### Added
+- Download Management page with three-section layout (Summary + In Progress + Completed)
+- True pause/resume for downloads using HTTP Range headers and partial file persistence
+- Single episode delete and batch delete by podcast on downloaded content
+- Download task table (`downloadTask`) for persistent pause/resume state tracking
+- Download directory path display and storage usage statistics in Summary card
+- Download progress ring with click toggle (pause / resume) on PodcastDetailScreen episode rows
+- `DownloadTaskDao` with CRUD operations for active download task management
+- DB-backed active download check in PodcastDetailScreen for robust state across page navigation
+- `cleanupPausedTask()` method for cleaning up paused/failed download partial files
+- ConcurrentHashMap-based thread-safe pause/cancel tracking
+- 20+ new i18n string keys: `downloads_subtitle`, `downloads_in_progress`, `downloads_completed`, `downloads_summary_downloads`, `downloads_summary_storage`, `downloads_summary_path`, `downloads_pause`, `downloads_resume`, `downloads_cancel`, `downloads_status_paused`, `downloads_status_failed`, `downloads_retry`, `downloads_delete`, `downloads_delete_confirm`, `downloads_delete_podcast_confirm`, `downloads_delete_all`, `downloads_file_missing`, `downloads_open_folder`
+
+### Changed
+- DownloadsScreen promoted from placeholder to full download management page
+- DownloadManager rewritten with pause/resume/cancel/delete support
+- `podcastDownload` data class extended with `episodeTitle` field
+- `DownloadDao.getAllValid()` and related methods added for download list queries
+- StartDownload guard prevents duplicate downloads for the same episode
+- PodcastDetailScreen episode row cursor changed to default (removed row-wide hand cursor)
+
+### Fixed
+- Download state lost across page navigation (now checked from DB on re-mount)
+- Paused downloads showing download button after page switch (now shows progress ring)
+- Empty progress ring for paused tasks (now reads progress from DB)
+- Cancel inactive for paused tasks (now cleans up DB task and partial file)
+- Thread safety issue in pausedDownloads/cancelledDownloads MutableSet (now ConcurrentHashMap)
+
+### Tests
+- DownloadManagerTest: 19 tests (9 new: pause, cancel, cleanupPausedTask, delete single/by-origin, getAllValid filter, total bytes, task CRUD, missing file delete)
+- DownloadsScreenTest: 12 tests (new file: empty state, title/subtitle, summary path, completed list, file size, delete callback, in-progress section, pause button, cancel button, mixed state, batch delete button)
+
+### Added
 - FullPlayer redesign: large cover (160dp), hero episode title (24sp), podcast name, description, metadata (date/duration), timeline slider, playback controls (speed/rewind-10s/play-pause-56dp/forward-10s/sleep-timer)
 - Episode Notes section with HTML rendering (`<b>`, `<i>`, `<a>`, `<p>`, `<br>` support via `parseSimpleHtml()`)
 - "You might also like" recommendations section (other episodes from same podcast)
