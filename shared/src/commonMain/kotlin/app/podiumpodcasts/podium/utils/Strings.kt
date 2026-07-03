@@ -130,7 +130,14 @@ object Strings {
         "player_show_less" to "Show less",
         "player_you_might_also_like" to "You might also like",
         "player_rewind_15" to "Rewind 15s",
-        "player_forward_30" to "Forward 30s"
+        "player_forward_30" to "Forward 30s",
+        "home_subscriptions" to "Subscriptions",
+        "home_subscriptions_desc" to "The podcasts you follow and never miss an episode.",
+        "home_search_placeholder" to "Search my podcasts...",
+        "home_manage" to "Manage",
+        "home_episode_count" to "%1\$d episodes",
+        "home_new_badge" to "New",
+        "home_new_count" to "%1\$d new"
     )
 
     private val zh = mapOf(
@@ -256,7 +263,14 @@ object Strings {
         "player_show_less" to "收起",
         "player_you_might_also_like" to "你可能也喜欢",
         "player_rewind_15" to "后退15秒",
-        "player_forward_30" to "快进30秒"
+        "player_forward_30" to "快进30秒",
+        "home_subscriptions" to "我的订阅",
+        "home_subscriptions_desc" to "你关注并追更的播客",
+        "home_search_placeholder" to "搜索我的播客...",
+        "home_manage" to "管理",
+        "home_episode_count" to "%1\$d 集",
+        "home_new_badge" to "新",
+        "home_new_count" to "%1\$d 新"
     )
 
     private val maps = mapOf("en" to en, "zh" to zh)

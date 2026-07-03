@@ -23,9 +23,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.window.WindowDraggableArea
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Window
@@ -617,143 +619,188 @@ private fun HomeScreen(
     onSettings: () -> Unit,
     onPodcastsChanged: (List<Podcast>) -> Unit
 ) {
+    val colors = PodiumTheme.colors
     var isEditing by remember { mutableStateOf(false) }
     var selectedPodcasts by remember { mutableStateOf(setOf<String>()) }
     var showBatchUnsubscribeDialog by remember { mutableStateOf(false) }
     var showUnsubscribeDialog by remember { mutableStateOf(false) }
     var podcastToUnsubscribe by remember { mutableStateOf<Podcast?>(null) }
+    var searchQuery by remember { mutableStateOf("") }
+    var subscriptionMap by remember { mutableStateOf(mapOf<String, app.podiumpodcasts.podium.data.model.PodcastSubscription>()) }
+    var episodeCountMap by remember { mutableStateOf(mapOf<String, Int>()) }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    if (isEditing) {
-                        Text(Strings.get("home_selected_count", selectedPodcasts.size))
-                    } else {
-                        Text(Strings["home_title"])
-                    }
-                },
-                navigationIcon = {
-                    if (isEditing) {
-                        IconButton(onClick = {
-                            isEditing = false
-                            selectedPodcasts = emptySet()
-                        }) {
-                            Icon(Icons.Default.ArrowBack, contentDescription = Strings["home_cancel"])
-                        }
-                    }
-                },
-                actions = {
-                    if (isEditing) {
-                        IconButton(onClick = {
-                            if (selectedPodcasts.size == podcasts.size) {
-                                selectedPodcasts = emptySet()
-                            } else {
-                                selectedPodcasts = podcasts.map { it.origin }.toSet()
-                            }
-                        }) {
-                            Icon(Icons.Default.SelectAll, contentDescription = Strings["home_select_all"])
-                        }
-                        IconButton(onClick = { showBatchUnsubscribeDialog = true }) {
-                            Icon(Icons.Default.Delete, contentDescription = Strings["home_delete_selected"])
-                        }
-                    } else {
-                        IconButton(onClick = onDiscover) {
-                            Icon(Icons.Default.Explore, contentDescription = Strings["nav_discover"])
-                        }
-                        IconButton(onClick = onHistory) {
-                            Icon(Icons.Default.History, contentDescription = Strings["nav_history"])
-                        }
-                        IconButton(onClick = onSettings) {
-                            Icon(Icons.Default.Settings, contentDescription = Strings["nav_settings"])
-                        }
-                        IconButton(onClick = onAddPodcast) {
-                            Icon(Icons.Default.Add, contentDescription = Strings["home_add_podcast"])
-                        }
-                        IconButton(onClick = { isEditing = true }) {
-                            Icon(Icons.Default.Edit, contentDescription = Strings["home_edit"])
-                        }
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
-            )
+    LaunchedEffect(Unit) {
+        val subs = database.subscriptions.getAllSync()
+        subscriptionMap = subs.associateBy { it.origin }
+        // Episode counts for display
+        val counts = mutableMapOf<String, Int>()
+        podcasts.forEach { p ->
+            counts[p.origin] = database.episodes.getEpisodeIds(p.origin).size
         }
-    ) { padding ->
-        if (podcasts.isEmpty()) {
-            Box(
-                modifier = Modifier.fillMaxSize().padding(padding),
-                contentAlignment = Alignment.Center
+        episodeCountMap = counts
+    }
+
+    val filteredPodcasts = remember(podcasts, searchQuery) {
+        if (searchQuery.isBlank()) podcasts
+        else podcasts.filter { it.title.contains(searchQuery, ignoreCase = true) || it.author.contains(searchQuery, ignoreCase = true) }
+    }
+
+    // ── Empty state ──
+    if (podcasts.isEmpty()) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Icon(Icons.Default.RssFeed, null, Modifier.size(64.dp), tint = colors.textMuted)
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(Strings["home_empty"], style = MaterialTheme.typography.headlineSmall, color = colors.textPrimary)
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(Strings["home_empty_hint"], style = MaterialTheme.typography.bodyMedium, color = colors.textSecondary)
+                Spacer(modifier = Modifier.height(16.dp))
+                FilledTonalButton(onClick = onAddPodcast) {
+                    Icon(Icons.Default.Add, null, Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(Strings["home_add_podcast"])
+                }
+            }
+        }
+        return
+    }
+
+    Column(
+        modifier = Modifier.fillMaxSize().padding(top = 24.dp, start = 28.dp, end = 28.dp, bottom = 8.dp)
+    ) {
+        // ── Header (hidden in edit mode, replaced by selection bar) ──
+        if (isEditing) {
+            // Selection header
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(Icons.Default.RssFeed, null, Modifier.size(64.dp))
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text(Strings["home_empty"], style = MaterialTheme.typography.headlineSmall)
-                    Text(Strings["home_empty_hint"], style = MaterialTheme.typography.bodyMedium)
-                    Spacer(modifier = Modifier.height(16.dp))
-                    FilledTonalButton(onClick = onAddPodcast) {
-                        Icon(Icons.Default.Add, null, Modifier.size(18.dp))
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(Strings["home_add_podcast"])
-                    }
+                IconButton(onClick = { isEditing = false; selectedPodcasts = emptySet() }) {
+                    Icon(Icons.Default.Close, contentDescription = Strings["home_cancel"], tint = colors.textPrimary)
+                }
+                Text(Strings.get("home_selected_count", selectedPodcasts.size), fontSize = 18.sp, fontWeight = FontWeight.SemiBold, color = colors.textPrimary)
+                Spacer(Modifier.weight(1f))
+                IconButton(onClick = {
+                    selectedPodcasts = if (selectedPodcasts.size == filteredPodcasts.size) emptySet()
+                    else filteredPodcasts.map { it.origin }.toSet()
+                }) {
+                    Icon(Icons.Default.SelectAll, contentDescription = Strings["home_select_all"], tint = colors.textSecondary)
+                }
+                IconButton(onClick = { showBatchUnsubscribeDialog = true }) {
+                    Icon(Icons.Default.Delete, contentDescription = Strings["home_delete_selected"], tint = colors.danger)
                 }
             }
         } else {
-            LazyColumn(modifier = Modifier.fillMaxSize().padding(padding)) {
-                items(podcasts) { podcast ->
-                    ListItem(
-                        headlineContent = { Text(podcast.title) },
-                        supportingContent = { Text(podcast.author) },
-                        leadingContent = {
-                            if (isEditing) {
-                                Checkbox(
-                                    checked = podcast.origin in selectedPodcasts,
-                                    onCheckedChange = { checked ->
-                                        selectedPodcasts = if (checked) {
-                                            selectedPodcasts + podcast.origin
-                                        } else {
-                                            selectedPodcasts - podcast.origin
-                                        }
-                                    }
-                                )
-                            } else {
-                                AsyncImage(
-                                    model = podcast.imageUrl,
-                                    contentDescription = podcast.title,
-                                    contentScale = ContentScale.Crop,
-                                    modifier = Modifier
-                                        .size(48.dp)
-                                        .clip(RoundedCornerShape(8.dp))
-                                )
+            // Title row
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Text(Strings["home_subscriptions"], fontSize = 32.sp, fontWeight = FontWeight.Bold, color = colors.textPrimary)
+                Text(
+                    text = "(${podcasts.size})",
+                    fontSize = 16.sp,
+                    color = colors.textMuted,
+                    modifier = Modifier.padding(top = 6.dp)
+                )
+            }
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(Strings["home_subscriptions_desc"], fontSize = 14.sp, color = colors.textSecondary)
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Toolbar: Search + Manage
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                // Search bar
+                val search = DesignTokens.SearchBar
+                Box(
+                    modifier = Modifier
+                        .width(search.Width)
+                        .height(search.Height)
+                        .clip(RoundedCornerShape(search.Radius))
+                        .background(colors.elevated)
+                        .padding(horizontal = search.PaddingHorizontal),
+                    contentAlignment = Alignment.CenterStart
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(search.Gap)) {
+                        Icon(Icons.Default.Search, contentDescription = null, tint = colors.textMuted, modifier = Modifier.size(search.IconSize))
+                        Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
+                            if (searchQuery.isEmpty()) {
+                                Text(Strings["home_search_placeholder"], color = colors.textDisabled, fontSize = search.TextSize)
                             }
-                        },
-                        trailingContent = {
-                            if (!isEditing) {
-                                IconButton(onClick = {
-                                    podcastToUnsubscribe = podcast
-                                    showUnsubscribeDialog = true
-                                }) {
-                                    Icon(Icons.Default.Delete, contentDescription = Strings["unsubscribe"])
-                                }
-                            }
-                        },
-                        modifier = Modifier.clickable {
-                            if (!isEditing) {
-                                onPodcastClick(podcast)
-                            }
+                            androidx.compose.foundation.text.BasicTextField(
+                                value = searchQuery,
+                                onValueChange = { searchQuery = it },
+                                modifier = Modifier.fillMaxWidth(),
+                                singleLine = true,
+                                textStyle = TextStyle(color = colors.textPrimary, fontSize = search.TextSize)
+                            )
                         }
-                    )
-                    HorizontalDivider()
+                        if (searchQuery.isNotEmpty()) {
+                            Icon(Icons.Default.Clear, contentDescription = Strings["discover_search_clear"], tint = colors.textMuted,
+                                modifier = Modifier.size(search.ClearIconSize).pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR))).clickable { searchQuery = "" })
+                        }
+                    }
                 }
+
+                Spacer(Modifier.weight(1f))
+
+                // Manage button
+                Box(
+                    modifier = Modifier
+                        .width(96.dp).height(36.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .border(1.dp, colors.border, RoundedCornerShape(8.dp))
+                        .background(colors.surface)
+                        .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
+                        .clickable { isEditing = true },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(Strings["home_manage"], fontSize = 13.sp, fontWeight = FontWeight.Medium, color = colors.textPrimary)
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // ── Subscriptions list ──
+        LazyColumn(modifier = Modifier.fillMaxSize()) {
+            items(filteredPodcasts) { podcast ->
+                val sub = subscriptionMap[podcast.origin]
+                val newCount = sub?.newEpisodes ?: 0
+                val epCount = episodeCountMap[podcast.origin] ?: 0
+
+                SubscriptionCard(
+                    podcast = podcast,
+                    newCount = newCount,
+                    episodeCount = epCount,
+                    isEditing = isEditing,
+                    isSelected = podcast.origin in selectedPodcasts,
+                    onToggleSelect = { checked ->
+                        selectedPodcasts = if (checked) selectedPodcasts + podcast.origin
+                        else selectedPodcasts - podcast.origin
+                    },
+                    onClick = { if (!isEditing) onPodcastClick(podcast) },
+                    onMore = {
+                        podcastToUnsubscribe = podcast
+                        showUnsubscribeDialog = true
+                    }
+                )
+                HorizontalDivider(color = colors.divider, modifier = Modifier.padding(start = 80.dp))
             }
         }
     }
 
+    // ── Dialogs ──
     if (showUnsubscribeDialog && podcastToUnsubscribe != null) {
         AlertDialog(
-            onDismissRequest = {
-                showUnsubscribeDialog = false
-                podcastToUnsubscribe = null
-            },
+            onDismissRequest = { showUnsubscribeDialog = false; podcastToUnsubscribe = null },
             title = { Text(Strings["unsubscribe"]) },
             text = { Text(Strings.get("unsubscribe_confirm", podcastToUnsubscribe!!.title)) },
             confirmButton = {
@@ -761,20 +808,12 @@ private fun HomeScreen(
                     scope.launch {
                         subscriptionManager.unsubscribe(podcastToUnsubscribe!!.origin)
                         onPodcastsChanged(database.podcasts.getAllSync())
-                        showUnsubscribeDialog = false
-                        podcastToUnsubscribe = null
+                        showUnsubscribeDialog = false; podcastToUnsubscribe = null
                     }
-                }) {
-                    Text(Strings["unsubscribe"])
-                }
+                }) { Text(Strings["unsubscribe"]) }
             },
             dismissButton = {
-                TextButton(onClick = {
-                    showUnsubscribeDialog = false
-                    podcastToUnsubscribe = null
-                }) {
-                    Text(Strings["dialog_cancel"])
-                }
+                TextButton(onClick = { showUnsubscribeDialog = false; podcastToUnsubscribe = null }) { Text(Strings["dialog_cancel"]) }
             }
         )
     }
@@ -787,24 +826,100 @@ private fun HomeScreen(
             confirmButton = {
                 TextButton(onClick = {
                     scope.launch {
-                        selectedPodcasts.forEach { origin ->
-                            subscriptionManager.unsubscribe(origin)
-                        }
+                        selectedPodcasts.forEach { subscriptionManager.unsubscribe(it) }
                         onPodcastsChanged(database.podcasts.getAllSync())
-                        selectedPodcasts = emptySet()
-                        isEditing = false
-                        showBatchUnsubscribeDialog = false
+                        selectedPodcasts = emptySet(); isEditing = false; showBatchUnsubscribeDialog = false
                     }
-                }) {
-                    Text(Strings["unsubscribe"])
-                }
+                }) { Text(Strings["unsubscribe"]) }
             },
-            dismissButton = {
-                TextButton(onClick = { showBatchUnsubscribeDialog = false }) {
-                    Text(Strings["dialog_cancel"])
+            dismissButton = { TextButton(onClick = { showBatchUnsubscribeDialog = false }) { Text(Strings["dialog_cancel"]) } }
+        )
+    }
+}
+
+@Composable
+private fun SubscriptionCard(
+    podcast: Podcast,
+    newCount: Int,
+    episodeCount: Int,
+    isEditing: Boolean,
+    isSelected: Boolean,
+    onToggleSelect: (Boolean) -> Unit,
+    onClick: () -> Unit,
+    onMore: () -> Unit
+) {
+    val colors = PodiumTheme.colors
+    val interactionSource = remember { MutableInteractionSource() }
+    val isHovered by interactionSource.collectIsHoveredAsState()
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(88.dp)
+            .background(if (isHovered && !isEditing) colors.elevated else Color.Transparent)
+            .clickable(interactionSource = interactionSource, indication = null) { onClick() }
+            .padding(vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(14.dp)
+    ) {
+        if (isEditing) {
+            Checkbox(
+                checked = isSelected,
+                onCheckedChange = onToggleSelect,
+                modifier = Modifier.size(24.dp)
+            )
+        }
+
+        // Cover
+        Box(modifier = Modifier.size(64.dp).clip(RoundedCornerShape(12.dp)).background(colors.elevated)) {
+            AsyncImage(model = podcast.imageUrl, contentDescription = podcast.title,
+                contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+        }
+
+        // Info
+        Column(modifier = Modifier.weight(1f)) {
+            Text(text = podcast.fetchTitle(), color = colors.textPrimary, fontSize = 14.sp, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(text = podcast.author, color = colors.textMuted, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Spacer(modifier = Modifier.height(4.dp))
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (episodeCount > 0) {
+                    Text(text = Strings.get("home_episode_count", episodeCount), color = colors.textDisabled, fontSize = 11.sp)
+                }
+                if (newCount > 0) {
+                    Box(
+                        modifier = Modifier
+                            .height(20.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(colors.accent.copy(alpha = 0.15f))
+                            .padding(horizontal = 8.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = if (newCount == 1) Strings["home_new_badge"] else Strings.get("home_new_count", newCount),
+                            color = colors.accent, fontSize = 11.sp, fontWeight = FontWeight.SemiBold
+                        )
+                    }
                 }
             }
-        )
+        }
+
+        // More button
+        if (!isEditing) {
+            val moreInteractionSource = remember { MutableInteractionSource() }
+            val isMoreHovered by moreInteractionSource.collectIsHoveredAsState()
+            Box(
+                modifier = Modifier
+                    .size(36.dp)
+                    .clip(CircleShape)
+                    .background(if (isMoreHovered) colors.elevated else Color.Transparent)
+                    .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
+                    .clickable(interactionSource = moreInteractionSource, indication = null) { onMore() },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(Icons.Default.MoreHoriz, contentDescription = Strings["discover_more"], tint = colors.textSecondary, modifier = Modifier.size(20.dp))
+            }
+        }
     }
 }
 

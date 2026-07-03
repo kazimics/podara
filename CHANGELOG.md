@@ -17,6 +17,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Episode is inserted into database on play to ensure FullPlayer can retrieve metadata
 - `database` parameter in FullPlayer for episode/recommendation queries
 - 8 new i18n string keys: `player_follow`, `player_following`, `player_episode_notes`, `player_show_more`, `player_show_less`, `player_you_might_also_like`, `player_rewind_15`, `player_forward_30`
+- Subscriptions page redesign: custom header (title+count, subtitle, search bar, manage button), subscription cards (64dp cover, title, author, new-episode badge, episode count, more menu)
+- New i18n keys: `home_subscriptions`, `home_subscriptions_desc`, `home_search_placeholder`, `home_manage`, `home_episode_count`, `home_new_badge`, `home_new_count`
 
 ### Changed
 - FullPlayer controls size reduced to match DesignTokens (cover 160dp, play 56dp, circle buttons 40dp, speed 38×30, gaps 20dp)
@@ -26,6 +28,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - MiniPlayer expand button disabled when no track is loaded
 - HistoryScreen play calls now pass `episodeId` for FullPlayer lookup
 - Removed FollowingButton from FullPlayer (action buttons now only Download + More)
+- HomeScreen redesigned: custom header replaces TopAppBar, Material ListItems replaced with custom SubscriptionCards, added local search and manage mode
 
 ### Tests
 - `testCurrentEpisodeIdIsNullByDefault` — verifies initial null state
