@@ -47,6 +47,11 @@ object Strings {
         "settings_import" to "Import",
         "settings_downloads" to "Downloads",
         "settings_download_location" to "Download Location",
+        "settings_download_speed_limit" to "Download Speed Limit",
+        "settings_download_speed_unlimited" to "Unlimited",
+        "settings_download_speed_hint" to "Enter the maximum download speed per task (0 for unlimited):",
+        "settings_download_speed_error" to "Please enter a non-negative integer",
+        "settings_download_speed_unit" to "KB/s",
         "settings_change" to "Change",
         "settings_reset_default" to "Reset to Default",
         "settings_language" to "Language",
@@ -167,7 +172,12 @@ object Strings {
         "home_subscription_count" to "%1\$d Subscriptions",
         "home_episode_count" to "%1\$d episodes",
         "home_new_badge" to "New",
-        "home_new_count" to "%1\$d new"
+        "home_new_count" to "%1\$d new",
+        "home_sort_title" to "Sort by",
+        "home_sort_name_asc" to "Name A-Z",
+        "home_sort_name_desc" to "Name Z-A",
+        "home_sort_recent_update" to "Recent Update",
+        "home_sort_recent_listen" to "Recently Listened"
     )
 
     private val zh = mapOf(
@@ -210,6 +220,11 @@ object Strings {
         "settings_import" to "导入",
         "settings_downloads" to "下载",
         "settings_download_location" to "下载位置",
+        "settings_download_speed_limit" to "下载限速",
+        "settings_download_speed_unlimited" to "不限速",
+        "settings_download_speed_hint" to "输入每个下载任务的速度上限（0 表示不限速）：",
+        "settings_download_speed_error" to "请输入非负整数",
+        "settings_download_speed_unit" to "KB/s",
         "settings_change" to "更改",
         "settings_reset_default" to "恢复默认",
         "settings_language" to "语言",
@@ -330,7 +345,12 @@ object Strings {
         "home_subscription_count" to "%1\$d 个订阅",
         "home_episode_count" to "%1\$d 集",
         "home_new_badge" to "新",
-        "home_new_count" to "%1\$d 新"
+        "home_new_count" to "%1\$d 新",
+        "home_sort_title" to "排序方式",
+        "home_sort_name_asc" to "名称 A-Z",
+        "home_sort_name_desc" to "名称 Z-A",
+        "home_sort_recent_update" to "最近更新",
+        "home_sort_recent_listen" to "最近收听"
     )
 
     private val maps = mapOf("en" to en, "zh" to zh)

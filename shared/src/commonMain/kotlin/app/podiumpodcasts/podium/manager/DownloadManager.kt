@@ -4,6 +4,7 @@ import app.podiumpodcasts.podium.data.AppDatabase
 import app.podiumpodcasts.podium.data.DownloadTask
 import app.podiumpodcasts.podium.utils.Logger
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -15,7 +16,8 @@ private const val TAG = "DownloadManager"
 
 class DownloadManager(
     private val db: AppDatabase,
-    private val downloadsDir: File
+    private val downloadsDir: File,
+    private val speedLimitKbps: Int = 0
 ) {
     // ── Thread-safe pause/cancel tracking ──
     private val pausedDownloads = ConcurrentHashMap.newKeySet<String>()
@@ -96,6 +98,11 @@ class DownloadManager(
                 outputFile.outputStream() // overwrite for fresh download
             }
 
+            // Per-task rate limiter
+            val rateLimiter = if (speedLimitKbps > 0) {
+                RateLimiter(speedLimitKbps.toLong() * 1024)
+            } else null
+
             try {
                 while (true) {
                     if (cancelledDownloads.remove(episodeId)) {
@@ -134,6 +141,7 @@ class DownloadManager(
                     fileOutputStream.write(buffer, 0, read)
                     downloadedBytes += read
                     onProgress?.invoke(downloadedBytes, totalBytes)
+                    rateLimiter?.throttle(read) { episodeId in pausedDownloads || episodeId in cancelledDownloads }
                 }
             } finally {
                 fileOutputStream.close()
@@ -305,6 +313,42 @@ class DownloadManager(
             result = result.replace(c, '_')
         }
         return result.trim()
+    }
+}
+
+/**
+ * Per-task rate limiter using cumulative byte tracking.
+ * Suspends the caller when actual throughput exceeds [limitBps],
+ * checking [shouldStop] periodically so pause/cancel are responsive.
+ */
+private class RateLimiter(private val limitBps: Long) {
+    private var accumulatedBytes = 0L
+    private var windowStartNanos = System.nanoTime()
+
+    /**
+     * Throttle after reading [bytesRead] bytes. Suspends the current coroutine
+     * if the average rate exceeds [limitBps] since construction.
+     *
+     * @param shouldStop called periodically during long waits — return true
+     *   to abort the wait early (e.g. when pause/cancel is requested).
+     */
+    suspend fun throttle(bytesRead: Int, shouldStop: () -> Boolean = { false }) {
+        if (bytesRead <= 0) return
+        accumulatedBytes += bytesRead
+
+        val expectedNanos = accumulatedBytes * 1_000_000_000L / limitBps
+        val elapsedNanos = System.nanoTime() - windowStartNanos
+        var waitNanos = expectedNanos - elapsedNanos
+
+        while (waitNanos > 0) {
+            if (shouldStop()) return
+            // Cap each delay chunk at 200ms so pause/cancel can be checked promptly
+            val chunk = minOf(waitNanos, 200_000_000L)
+            delay(chunk / 1_000_000)
+            // Recompute remaining wait after the chunk
+            val newElapsed = System.nanoTime() - windowStartNanos
+            waitNanos = expectedNanos - newElapsed
+        }
     }
 }
 

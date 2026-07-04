@@ -411,8 +411,17 @@ private fun FeaturedCard(
                 .clip(RoundedCornerShape(card.Radius))
                 .background(DesignTokens.Card.Gradient)
         ) {
-            // ── Navigation arrows in the top-right area, BEFORE content so they get correct layout
-            //     but they render on TOP because they use TopEnd alignment and we layer them last ──
+            val featuredHoverInteraction = remember { MutableInteractionSource() }
+            val isFeaturedHovered by featuredHoverInteraction.collectIsHoveredAsState()
+
+            // Full-card hover highlight
+            if (isFeaturedHovered) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.White.copy(alpha = 0.04f))
+                )
+            }
 
             // Content: Cover + Text (whole area clickable → navigate to detail)
             Row(
@@ -420,7 +429,7 @@ private fun FeaturedCard(
                     .fillMaxSize()
                     .padding(card.Padding)
                     .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
-                    .clickable { onShowDetail() },
+                    .clickable(interactionSource = featuredHoverInteraction, indication = null) { onShowDetail() },
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 // Cover
@@ -573,7 +582,7 @@ private fun FeaturedCard(
 
             // Navigation arrows — top right, layered ON TOP of the content
             Row(
-                modifier = Modifier.align(Alignment.TopEnd).padding(card.NavPadding),
+                modifier = Modifier.align(Alignment.TopEnd).padding(card.Padding),
                 horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 val prevInteractionSource = remember { MutableInteractionSource() }

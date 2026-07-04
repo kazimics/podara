@@ -298,6 +298,16 @@ class HistoryDao(private val conn: Connection) {
         list
     }
 
+    /** Returns the latest listen timestamp per podcast origin. */
+    suspend fun getLatestTimestampPerOrigin(): Map<String, Long> = withContext(Dispatchers.IO) {
+        val rs = conn.createStatement().executeQuery(
+            "SELECT origin, MAX(timestamp) AS maxTs FROM podcastHistory GROUP BY origin"
+        )
+        val map = mutableMapOf<String, Long>()
+        while (rs.next()) map[rs.getString("origin")] = rs.getLong("maxTs")
+        map
+    }
+
     suspend fun getAllWithEpisode(): List<Pair<PodcastHistory, PodcastEpisode?>> = withContext(Dispatchers.IO) {
         val rs = conn.createStatement().executeQuery(
             """SELECT h.id, h.origin, h.episodeId, h.timestamp,

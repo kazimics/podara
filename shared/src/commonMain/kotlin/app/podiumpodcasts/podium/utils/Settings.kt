@@ -17,6 +17,17 @@ object Settings {
         }
     }
 
+    fun getDownloadSpeedLimitKbps(): Int {
+        val raw = props.getProperty("download_speed_limit_kbps", "0")
+        val value = raw.toIntOrNull() ?: return 0
+        return maxOf(value, 0)
+    }
+
+    fun setDownloadSpeedLimitKbps(limitKbps: Int) {
+        props.setProperty("download_speed_limit_kbps", limitKbps.toString())
+        save()
+    }
+
     fun getDownloadPath(): String {
         return props.getProperty("download_path", defaultDownloadPath())
     }

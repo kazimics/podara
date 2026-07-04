@@ -3,6 +3,7 @@ package app.podiumpodcasts.podium.desktop.player
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsDraggedAsState
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
@@ -26,7 +27,9 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -55,6 +58,7 @@ import java.awt.Cursor
 import java.text.SimpleDateFormat
 import java.util.*
 import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 
 // ── Design Tokens: button.primary ──
 private val PrimaryButtonGradient = Brush.verticalGradient(
@@ -999,6 +1003,11 @@ fun QueueDrawer(
     val colors = PodiumTheme.colors
     var isSelectionMode by remember { mutableStateOf(false) }
     var selectedIndices by remember { mutableStateOf(setOf<Int>()) }
+    val density = LocalDensity.current
+    val rowHeightPx = with(density) { 72.dp.toPx() }
+    var draggingIndex by remember { mutableIntStateOf(-1) }
+    var dragAccumulated by remember { mutableFloatStateOf(0f) }
+    var dragTargetIndex by remember { mutableIntStateOf(-1) }
 
     Box(modifier = Modifier.fillMaxSize()) {
         // Scrim
@@ -1013,35 +1022,56 @@ fun QueueDrawer(
         Surface(
             modifier = Modifier
                 .fillMaxHeight()
-                .width(320.dp)
+                .width(DesignTokens.QueuePanel.Width)
                 .align(Alignment.CenterEnd),
             color = colors.surface
         ) {
-            Column(modifier = Modifier.fillMaxSize().padding(top = 20.dp)) {
-                // ── Header: "Up Next" + Clear ──
+            Column(modifier = Modifier.fillMaxSize().padding(top = DesignTokens.QueuePanel.PaddingTop)) {
+                // ── Header: "Up Next" + Select/Clear ──
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 24.dp),
+                        .padding(horizontal = DesignTokens.QueuePanel.PaddingHorizontal),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
                         text = Strings["queue_title"],
                         color = colors.textPrimary,
-                        fontSize = 18.sp,
+                        fontSize = DesignTokens.QueuePanel.HeaderTitleSize,
                         fontWeight = FontWeight.SemiBold
                     )
-                    TextButton(
-                        onClick = {
-                            state.removeSelectedFromQueue(state.queue.indices.toSet())
-                        },
-                        contentPadding = PaddingValues(0.dp)
-                    ) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        // Select / Cancel button
+                        Text(
+                            text = if (isSelectionMode) Strings["home_cancel"] else Strings["player_select"],
+                            color = colors.accent,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium,
+                            modifier = Modifier
+                                .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
+                                .clickable(
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    indication = null
+                                ) {
+                                    isSelectionMode = !isSelectionMode
+                                    if (!isSelectionMode) selectedIndices = emptySet()
+                                }
+                        )
+                        // Clear
                         Text(
                             text = Strings["queue_clear"],
                             color = colors.accent,
-                            fontSize = 13.sp
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium,
+                            modifier = Modifier
+                                .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
+                                .clickable(
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    indication = null
+                                ) {
+                                    state.removeSelectedFromQueue(state.queue.indices.toSet())
+                                }
                         )
                     }
                 }
@@ -1061,17 +1091,50 @@ fun QueueDrawer(
                         )
                     }
                 } else {
-                    LazyColumn(modifier = Modifier.weight(1f)) {
-                        itemsIndexed(state.queue) { index, item ->
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth()
+                            .verticalScroll(rememberScrollState())
+                    ) {
+                        state.queue.forEachIndexed { index, item ->
                             val isActive = index == state.queueIndex
-                            val bgColor = if (isActive) colors.elevated else Color.Transparent
+                            val isDraggingThis = draggingIndex == index
+                            val rowInteractionSource = remember { MutableInteractionSource() }
+                            val isRowHovered by rowInteractionSource.collectIsHoveredAsState()
+
+                            // Per-item offset: dragged item follows cursor; items between
+                            // old and new position shift to show the insertion gap.
+                            val itemOffsetPx = when {
+                                isDraggingThis -> dragAccumulated.roundToInt()
+                                draggingIndex >= 0 && dragTargetIndex >= 0 && draggingIndex != dragTargetIndex -> {
+                                    val rp = rowHeightPx.roundToInt()
+                                    if (draggingIndex < dragTargetIndex && index > draggingIndex && index <= dragTargetIndex) -rp
+                                    else if (draggingIndex > dragTargetIndex && index < draggingIndex && index >= dragTargetIndex) rp
+                                    else 0
+                                }
+                                else -> 0
+                            }
 
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .height(80.dp)
-                                    .background(bgColor)
-                                    .clickable {
+                                    .height(72.dp)
+                                    .then(
+                                        if (itemOffsetPx != 0) Modifier.offset { IntOffset(0, itemOffsetPx) }
+                                        else Modifier
+                                    )
+                                    .background(
+                                        when {
+                                            isActive && !isDraggingThis -> colors.accent.copy(alpha = 0.1f)
+                                            isRowHovered && !isDraggingThis -> colors.elevated
+                                            else -> Color.Transparent
+                                        }
+                                    )
+                                    .clickable(
+                                        interactionSource = rowInteractionSource,
+                                        indication = null
+                                    ) {
                                         if (isSelectionMode) {
                                             selectedIndices = if (index in selectedIndices) selectedIndices - index
                                             else selectedIndices + index
@@ -1080,84 +1143,123 @@ fun QueueDrawer(
                                             onDismiss()
                                         }
                                     }
-                                    .padding(horizontal = 24.dp, vertical = 12.dp),
+                                    .padding(horizontal = DesignTokens.QueuePanel.PaddingHorizontal, vertical = 12.dp),
                                 verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
                             ) {
-                                // Cover
+                                // Cover / Checkbox
                                 Box {
-                                    AsyncImage(
-                                        model = item.artworkUrl,
-                                        contentDescription = null,
-                                        contentScale = ContentScale.Crop,
-                                        modifier = Modifier
-                                            .size(56.dp)
-                                            .clip(RoundedCornerShape(8.dp))
-                                    )
-                                    // Active indicator: X button overlay
-                                    if (isActive && !isSelectionMode) {
-                                        Box(
-                                            modifier = Modifier
-                                                .align(Alignment.TopEnd)
-                                                .size(20.dp)
-                                                .background(colors.surface.copy(alpha = 0.8f), CircleShape)
-                                                .clickable { state.removeFromQueue(index) },
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            Icon(
-                                                Icons.Default.Close,
-                                                contentDescription = Strings["player_remove"],
-                                                tint = colors.textPrimary,
-                                                modifier = Modifier.size(12.dp)
-                                            )
-                                        }
-                                    }
-                                    // Selection checkbox
                                     if (isSelectionMode) {
+                                        val checked = index in selectedIndices
                                         Box(
                                             modifier = Modifier
-                                                .align(Alignment.TopEnd)
                                                 .size(20.dp)
-                                                .background(colors.surface, CircleShape),
+                                                .clip(CircleShape)
+                                                .background(if (checked) colors.accent else Color.Transparent)
+                                                .border(1.dp, if (checked) colors.accent else colors.border, CircleShape)
+                                                .clickable(
+                                                    interactionSource = remember { MutableInteractionSource() },
+                                                    indication = null
+                                                ) {
+                                                    selectedIndices = if (checked) selectedIndices - index
+                                                    else selectedIndices + index
+                                                },
                                             contentAlignment = Alignment.Center
                                         ) {
-                                            Checkbox(
-                                                checked = index in selectedIndices,
-                                                onCheckedChange = { checked ->
-                                                    selectedIndices = if (checked) selectedIndices + index
-                                                    else selectedIndices - index
-                                                },
-                                                modifier = Modifier.size(16.dp)
-                                            )
+                                            if (checked) {
+                                                Icon(
+                                                    Icons.Default.Check,
+                                                    contentDescription = null,
+                                                    tint = colors.surface,
+                                                    modifier = Modifier.size(12.dp)
+                                                )
+                                            }
+                                        }
+                                    } else {
+                                        AsyncImage(
+                                            model = item.artworkUrl,
+                                            contentDescription = null,
+                                            contentScale = ContentScale.Crop,
+                                            modifier = Modifier
+                                                .size(DesignTokens.QueuePanel.CoverSize)
+                                                .clip(RoundedCornerShape(DesignTokens.QueuePanel.CoverRadius))
+                                        )
+                                        if (isActive) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .align(Alignment.TopEnd)
+                                                    .size(DesignTokens.QueuePanel.ActiveCoverBadge)
+                                                    .background(colors.surface.copy(alpha = 0.8f), CircleShape)
+                                                    .clickable { state.removeFromQueue(index) },
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                Icon(
+                                                    Icons.Default.Close,
+                                                    contentDescription = Strings["player_remove"],
+                                                    tint = colors.textPrimary,
+                                                    modifier = Modifier.size(10.dp)
+                                                )
+                                            }
                                         }
                                     }
                                 }
 
-                                // Title + Podcast
+                                // Title + subtitle
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(
                                         text = item.title,
                                         color = if (isActive) colors.accent else colors.textPrimary,
-                                        fontSize = 13.sp,
+                                        fontSize = DesignTokens.QueuePanel.TitleSize,
                                         maxLines = 2,
                                         overflow = TextOverflow.Ellipsis
                                     )
-                                    if (item.episodeId != null) {
+                                    if (item.subtitle != null || item.podcastArtworkUrl != null) {
                                         Text(
-                                            text = "",
+                                            text = item.subtitle ?: "",
                                             color = colors.textMuted,
-                                            fontSize = 11.sp
+                                            fontSize = 11.sp,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
                                         )
                                     }
                                 }
 
-                                // Duration placeholder or drag handle
+                                // Drag handle with drag-to-reorder
                                 if (!isSelectionMode) {
                                     Icon(
                                         Icons.Default.DragHandle,
                                         contentDescription = null,
-                                        tint = colors.textMuted,
-                                        modifier = Modifier.size(16.dp)
+                                        tint = if (isRowHovered || isDraggingThis) colors.textSecondary else colors.textMuted,
+                                        modifier = Modifier
+                                            .size(24.dp)
+                                            .pointerInput(index, rowHeightPx) {
+                                                detectDragGestures(
+                                                    onDragStart = {
+                                                        draggingIndex = index
+                                                        dragAccumulated = 0f
+                                                    },
+                                                    onDrag = { change, dragAmount ->
+                                                        change.consume()
+                                                        dragAccumulated += dragAmount.y
+                                                        val offsetRows = (dragAccumulated / rowHeightPx).roundToInt()
+                                                        dragTargetIndex = (index + offsetRows)
+                                                            .coerceIn(0, state.queue.size - 1)
+                                                    },
+                                                    onDragEnd = {
+                                                        if (draggingIndex >= 0 && dragTargetIndex >= 0 && dragTargetIndex != draggingIndex) {
+                                                            state.moveQueueItem(draggingIndex, dragTargetIndex)
+                                                        }
+                                                        draggingIndex = -1
+                                                        dragAccumulated = 0f
+                                                        dragTargetIndex = -1
+                                                    },
+                                                    onDragCancel = {
+                                                        draggingIndex = -1
+                                                        dragAccumulated = 0f
+                                                        dragTargetIndex = -1
+                                                    }
+                                                )
+                                            }
                                     )
                                 }
                             }
@@ -1165,34 +1267,53 @@ fun QueueDrawer(
                     }
                 }
 
-                // ── Selection actions ──
+                // ── Selection actions bar ──
                 if (isSelectionMode && selectedIndices.isNotEmpty()) {
                     HorizontalDivider(color = colors.divider)
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 24.dp, vertical = 12.dp),
+                            .padding(horizontal = DesignTokens.QueuePanel.PaddingHorizontal, vertical = 12.dp),
                         horizontalArrangement = Arrangement.End,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         if (onDownload != null) {
-                            TextButton(onClick = {
-                                selectedIndices.forEach { idx ->
-                                    if (idx in state.queue.indices) onDownload(state.queue[idx])
+                            Text(
+                                text = Strings["episode_download"],
+                                color = colors.accent,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Medium,
+                                modifier = Modifier
+                                    .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
+                                    .clickable(
+                                        interactionSource = remember { MutableInteractionSource() },
+                                        indication = null
+                                    ) {
+                                        selectedIndices.forEach { idx ->
+                                            if (idx in state.queue.indices) onDownload(state.queue[idx])
+                                        }
+                                        selectedIndices = setOf()
+                                        isSelectionMode = false
+                                    }
+                            )
+                            Spacer(Modifier.width(16.dp))
+                        }
+                        Text(
+                            text = Strings["player_delete"],
+                            color = colors.danger,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium,
+                            modifier = Modifier
+                                .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
+                                .clickable(
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    indication = null
+                                ) {
+                                    state.removeSelectedFromQueue(selectedIndices)
+                                    selectedIndices = setOf()
+                                    isSelectionMode = false
                                 }
-                                selectedIndices = setOf()
-                                isSelectionMode = false
-                            }) {
-                                Text(Strings["episode_download"], color = colors.textSecondary)
-                            }
-                        }
-                        TextButton(onClick = {
-                            state.removeSelectedFromQueue(selectedIndices)
-                            selectedIndices = setOf()
-                            isSelectionMode = false
-                        }) {
-                            Text(Strings["player_delete"], color = colors.danger)
-                        }
+                        )
                     }
                 }
             }

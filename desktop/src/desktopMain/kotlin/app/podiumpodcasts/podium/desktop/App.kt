@@ -299,10 +299,11 @@ fun WindowScope.App(windowState: androidx.compose.ui.window.WindowState, awtWind
         onDispose { appleClient.close() }
     }
     var downloadPath by remember { mutableStateOf(Settings.getDownloadPath()) }
-    val downloadManager = remember(downloadPath) {
+    var downloadSpeedLimitKbps by remember { mutableStateOf(Settings.getDownloadSpeedLimitKbps()) }
+    val downloadManager = remember(downloadPath, downloadSpeedLimitKbps) {
         val downloadsDir = File(downloadPath)
         downloadsDir.mkdirs()
-        DownloadManager(database, downloadsDir)
+        DownloadManager(database, downloadsDir, downloadSpeedLimitKbps)
     }
     val playerState = remember { MediaPlayerState() }
     val fetchPodcastClient = remember { FetchPodcastClient() }
@@ -628,7 +629,9 @@ fun WindowScope.App(windowState: androidx.compose.ui.window.WindowState, awtWind
                             database = database,
                             onBack = { currentScreen = "home" },
                             onDownloadPathChanged = { newPath -> downloadPath = newPath },
-                            onLanguageChanged = { /* Language change is handled by Settings */ }
+                            onLanguageChanged = { /* Language change is handled by Settings */ },
+                            downloadSpeedLimitKbps = downloadSpeedLimitKbps,
+                            onDownloadSpeedLimitChanged = { limit -> downloadSpeedLimitKbps = limit }
                         )
                         currentScreen == "history" -> HistoryScreen(
                             database = database,
@@ -726,6 +729,9 @@ private fun HomeScreen(
     var searchQuery by remember { mutableStateOf("") }
     var subscriptionMap by remember { mutableStateOf(mapOf<String, app.podiumpodcasts.podium.data.model.PodcastSubscription>()) }
     var episodeCountMap by remember { mutableStateOf(mapOf<String, Int>()) }
+    var lastListenedMap by remember { mutableStateOf(mapOf<String, Long>()) }
+    var sortOption by remember { mutableStateOf("name_asc") }
+    var showSortMenu by remember { mutableStateOf(false) }
 
     // Load subscription data and episode counts
     LaunchedEffect(podcasts) {
@@ -737,11 +743,22 @@ private fun HomeScreen(
             counts[p.origin] = database.episodes.getEpisodeIds(p.origin).size
         }
         episodeCountMap = counts
+        lastListenedMap = database.history.getLatestTimestampPerOrigin()
     }
 
     val filteredPodcasts = remember(podcasts, searchQuery) {
         if (searchQuery.isBlank()) podcasts
         else podcasts.filter { it.title.contains(searchQuery, ignoreCase = true) || it.author.contains(searchQuery, ignoreCase = true) }
+    }
+
+    val sortedPodcasts = remember(filteredPodcasts, sortOption, subscriptionMap, lastListenedMap) {
+        when (sortOption) {
+            "name_asc" -> filteredPodcasts.sortedBy { it.fetchTitle() }
+            "name_desc" -> filteredPodcasts.sortedByDescending { it.fetchTitle() }
+            "recent_update" -> filteredPodcasts.sortedByDescending { subscriptionMap[it.origin]?.lastUpdate ?: 0L }
+            "recent_listen" -> filteredPodcasts.sortedByDescending { lastListenedMap[it.origin] ?: 0L }
+            else -> filteredPodcasts
+        }
     }
 
     // ── Empty state ──
@@ -772,22 +789,70 @@ private fun HomeScreen(
             // Selection header
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                IconButton(onClick = { isEditing = false; selectedPodcasts = emptySet() }) {
-                    Icon(Icons.Default.Close, contentDescription = Strings["home_cancel"], tint = colors.textPrimary)
+                // Close button (32dp square matching Sort/Manage style)
+                val closeInteractionSource = remember { MutableInteractionSource() }
+                val isCloseHovered by closeInteractionSource.collectIsHoveredAsState()
+                Box(
+                    modifier = Modifier
+                        .size(32.dp)
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(if (isCloseHovered) colors.elevated else Color.Transparent)
+                        .border(1.dp, colors.border, RoundedCornerShape(6.dp))
+                        .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
+                        .clickable(interactionSource = closeInteractionSource, indication = null) {
+                            isEditing = false; selectedPodcasts = emptySet()
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.Default.Close, contentDescription = Strings["home_cancel"], tint = colors.textPrimary, modifier = Modifier.size(16.dp))
                 }
-                Text(Strings.get("home_selected_count", selectedPodcasts.size), fontSize = 18.sp, fontWeight = FontWeight.SemiBold, color = colors.textPrimary)
+
+                Spacer(Modifier.width(12.dp))
+
+                Text(
+                    text = Strings.get("home_selected_count", selectedPodcasts.size),
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = colors.textPrimary
+                )
+
                 Spacer(Modifier.weight(1f))
-                IconButton(onClick = {
-                    selectedPodcasts = if (selectedPodcasts.size == filteredPodcasts.size) emptySet()
-                    else filteredPodcasts.map { it.origin }.toSet()
-                }) {
-                    Icon(Icons.Default.SelectAll, contentDescription = Strings["home_select_all"], tint = colors.textSecondary)
-                }
-                IconButton(onClick = { showBatchUnsubscribeDialog = true }) {
-                    Icon(Icons.Default.Delete, contentDescription = Strings["home_delete_selected"], tint = colors.danger)
+
+                // Select all — clean text button
+                Text(
+                    text = Strings["home_select_all"],
+                    color = colors.accent,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium,
+                    modifier = Modifier
+                        .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null
+                        ) {
+                            selectedPodcasts = if (selectedPodcasts.size == filteredPodcasts.size) emptySet()
+                            else filteredPodcasts.map { it.origin }.toSet()
+                        }
+                )
+
+                Spacer(Modifier.width(16.dp))
+
+                // Delete button (32dp square with danger color)
+                val deleteInteractionSource = remember { MutableInteractionSource() }
+                val isDeleteHovered by deleteInteractionSource.collectIsHoveredAsState()
+                Box(
+                    modifier = Modifier
+                        .size(32.dp)
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(if (isDeleteHovered) colors.danger.copy(alpha = 0.15f) else Color.Transparent)
+                        .border(1.dp, colors.border, RoundedCornerShape(6.dp))
+                        .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
+                        .clickable(interactionSource = deleteInteractionSource, indication = null) { showBatchUnsubscribeDialog = true },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.Default.Delete, contentDescription = Strings["home_delete_selected"], tint = colors.danger, modifier = Modifier.size(16.dp))
                 }
             }
         } else {
@@ -876,49 +941,73 @@ private fun HomeScreen(
                 fontWeight = FontWeight.Medium
             )
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                // Sort button
-                val sortInteractionSource = remember { MutableInteractionSource() }
-                val isSortHovered by sortInteractionSource.collectIsHoveredAsState()
-                Box(
-                    modifier = Modifier
-                        .size(32.dp)
-                        .clip(RoundedCornerShape(6.dp))
-                        .background(if (isSortHovered) colors.elevated else Color.Transparent)
-                        .border(1.dp, colors.border, RoundedCornerShape(6.dp))
-                        .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
-                        .clickable(interactionSource = sortInteractionSource, indication = null) { },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        Icons.Default.UnfoldMore,
-                        contentDescription = Strings["home_sort"],
-                        tint = colors.textSecondary,
-                        modifier = Modifier.size(16.dp)
-                    )
-                }
+                if (!isEditing) {
+                    // Sort button
+                    val sortInteractionSource = remember { MutableInteractionSource() }
+                    val isSortHovered by sortInteractionSource.collectIsHoveredAsState()
+                    Box(
+                        modifier = Modifier
+                            .size(32.dp)
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(if (isSortHovered) colors.elevated else Color.Transparent)
+                            .border(1.dp, colors.border, RoundedCornerShape(6.dp))
+                            .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
+                            .clickable(interactionSource = sortInteractionSource, indication = null) { showSortMenu = true },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            Icons.Default.UnfoldMore,
+                            contentDescription = Strings["home_sort"],
+                            tint = if (sortOption != "name_asc") colors.accent else colors.textSecondary,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
 
-                // Manage button
-                val manageInteractionSource = remember { MutableInteractionSource() }
-                val isManageHovered by manageInteractionSource.collectIsHoveredAsState()
-                Box(
-                    modifier = Modifier
-                        .size(32.dp)
-                        .clip(RoundedCornerShape(6.dp))
-                        .background(if (isManageHovered) colors.elevated else Color.Transparent)
-                        .border(1.dp, colors.border, RoundedCornerShape(6.dp))
-                        .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
-                        .clickable(interactionSource = manageInteractionSource, indication = null) { isEditing = true },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        Icons.Default.Edit,
-                        contentDescription = Strings["home_manage"],
-                        tint = colors.textSecondary,
-                        modifier = Modifier.size(16.dp)
-                    )
+                    DropdownMenu(
+                        expanded = showSortMenu,
+                        onDismissRequest = { showSortMenu = false },
+                        containerColor = colors.surface
+                    ) {
+                        val sortOptions = listOf(
+                            "name_asc" to Strings["home_sort_name_asc"],
+                            "name_desc" to Strings["home_sort_name_desc"],
+                            "recent_update" to Strings["home_sort_recent_update"],
+                            "recent_listen" to Strings["home_sort_recent_listen"]
+                        )
+                        sortOptions.forEach { (key, label) ->
+                            DropdownMenuItem(
+                                text = { Text(label, color = if (key == sortOption) colors.accent else colors.textPrimary) },
+                                onClick = { sortOption = key; showSortMenu = false },
+                                leadingIcon = if (key == sortOption) {
+                                    { Icon(Icons.Default.Check, contentDescription = null, tint = colors.accent, modifier = Modifier.size(16.dp)) }
+                                } else null
+                            )
+                        }
+                    }
+
+                    // Manage button
+                    val manageInteractionSource = remember { MutableInteractionSource() }
+                    val isManageHovered by manageInteractionSource.collectIsHoveredAsState()
+                    Box(
+                        modifier = Modifier
+                            .size(32.dp)
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(if (isManageHovered) colors.elevated else Color.Transparent)
+                            .border(1.dp, colors.border, RoundedCornerShape(6.dp))
+                            .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
+                            .clickable(interactionSource = manageInteractionSource, indication = null) { isEditing = true },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            Icons.Default.Edit,
+                            contentDescription = Strings["home_manage"],
+                            tint = colors.textSecondary,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
                 }
-            }
-        }
+            }  // closes inner Row
+        }  // closes outer Row
 
         Spacer(modifier = Modifier.height(8.dp))
 
@@ -929,7 +1018,7 @@ private fun HomeScreen(
 
         // ── Subscriptions list ──
         LazyColumn(modifier = Modifier.fillMaxSize()) {
-            items(filteredPodcasts) { podcast ->
+            items(sortedPodcasts) { podcast ->
                 val sub = subscriptionMap[podcast.origin]
                 val newCount = sub?.newEpisodes ?: 0
                 val epCount = episodeCountMap[podcast.origin] ?: 0
@@ -979,8 +1068,9 @@ private fun HomeScreen(
     if (showBatchUnsubscribeDialog) {
         AlertDialog(
             onDismissRequest = { showBatchUnsubscribeDialog = false },
-            title = { Text(Strings["batch_unsubscribe"]) },
-            text = { Text(Strings.get("batch_unsubscribe_confirm", selectedPodcasts.size)) },
+            containerColor = colors.surface,
+            title = { Text(Strings["batch_unsubscribe"], color = colors.textPrimary) },
+            text = { Text(Strings.get("batch_unsubscribe_confirm", selectedPodcasts.size), color = colors.textSecondary) },
             confirmButton = {
                 TextButton(onClick = {
                     scope.launch {
@@ -988,9 +1078,9 @@ private fun HomeScreen(
                         onPodcastsChanged(database.podcasts.getAllSync())
                         selectedPodcasts = emptySet(); isEditing = false; showBatchUnsubscribeDialog = false
                     }
-                }) { Text(Strings["unsubscribe"]) }
+                }) { Text(Strings["unsubscribe"], color = colors.danger) }
             },
-            dismissButton = { TextButton(onClick = { showBatchUnsubscribeDialog = false }) { Text(Strings["dialog_cancel"]) } }
+            dismissButton = { TextButton(onClick = { showBatchUnsubscribeDialog = false }) { Text(Strings["dialog_cancel"], color = colors.textSecondary) } }
         )
     }
 }

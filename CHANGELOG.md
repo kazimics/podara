@@ -4,7 +4,49 @@ All notable changes to podium-windows will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [0.1.0] - 2026-07-03
+## [0.1.0] - 2026-07-04
+
+### Added
+- Download speed limit setting with per-task rate limiter (Settings → Downloads → Download Speed Limit)
+- Custom numerical input dialog for speed limit with validation (non-negative integer, KB/s unit)
+- `Settings.getDownloadSpeedLimitKbps()` / `setDownloadSpeedLimitKbps()` for persisting speed limit
+- `RateLimiter` class with cumulative byte tracking for per-task download throttling
+- `HistoryDao.getLatestTimestampPerOrigin()` — GROUP BY query for last-listen timestamps
+- Subscription list sorting: Name A-Z, Name Z-A, Recent Update (RSS feed), Recently Listened
+- Sort dropdown menu with accent highlight on active option
+- Drag-to-reorder for queue items using `detectDragGestures` on DragHandle
+- Real-time drag animation — shifted items part to show insertion gap during drag
+- `MediaPlayerState.moveQueueItem()` for queue reordering
+- Select/Cancel mode toggle in QueueDrawer header
+- FeaturedCard full-card hover overlay (subtle White 4% brightening)
+
+### Changed
+- SettingsScreen fully redesigned: MD3 `Scaffold` + `TopAppBar` + `ListItem` replaced with custom `Column` + `SectionHeader` + `SettingsRow`, matching app design system
+- All SettingsScreen dialogs now use `colors.surface` container, 0-radius corners, explicit text colors
+- `TextButton` → `SettingsActionText` (plain text + clickable, no MD3 hover/ripple) on all settings rows
+- HomeScreen edit mode toolbar redesigned: MD3 `IconButton` + `Checkbox` → custom 32dp buttons + `SettingsActionText` select-all
+- Edit/manage button hidden during editing mode
+- Batch unsubscribe dialog styled with `containerColor = colors.surface` + explicit colors
+- QueueDrawer redesigned: MD3 `TextButton` → plain text, `Checkbox` → custom 20dp circle, hover effects, DesignTokens spacing/colors
+- Queue row height 80dp → 72dp, cover 56dp → 48dp, active row accent tint
+- `LazyColumn` → `Column` + `verticalScroll` in QueueDrawer for per-item offset control during drag
+- FeaturedCard nav button padding 12dp → 20dp to stay within content boundaries
+- `DownloadManager` speed limit constructor parameter added, `RateLimiter` throttle during download loop
+
+### Fixed
+- Download speed limit unit mismatch (KB/s treated as bytes/s — 128x slowdown)
+- Pause unresponsive during `RateLimiter` delay (delay split into 200ms chunks with `shouldStop` check)
+- `Icons.Default.Speed` → `Icons.Default.Star` (icon not in default Material set)
+- Missing outer Row closing brace in HomeScreen toolbar after edit mode refactor
+
+### Removed
+- Back navigation button from SettingsScreen (sidebar provides navigation)
+- `CircleShape` / `ArrowBack` / `clip` / `collectIsHoveredAsState` unused imports from SettingsScreen
+- `testSettingsBackButton` test (back button removed)
+
+### Tests
+- SettingsScreenTest: removed `testSettingsBackButton`
+- 187 tests pass (all existing + new structure compatible)
 
 ### Added
 - Download Management page with three-section layout (Summary + In Progress + Completed)

@@ -167,6 +167,18 @@ class MediaPlayerState(
         }
     }
 
+    fun moveQueueItem(fromIndex: Int, toIndex: Int) {
+        if (fromIndex !in queue.indices || toIndex !in queue.indices) return
+        val item = queue.removeAt(fromIndex)
+        queue.add(toIndex, item)
+        if (queueIndex == fromIndex) {
+            queueIndex = toIndex
+        } else {
+            if (fromIndex < queueIndex && toIndex >= queueIndex) queueIndex--
+            else if (fromIndex > queueIndex && toIndex <= queueIndex) queueIndex++
+        }
+    }
+
     fun removeSelectedFromQueue(selectedIndices: Set<Int>) {
         val wasPlayingSelected = queueIndex in selectedIndices
         val sorted = selectedIndices.sortedDescending()

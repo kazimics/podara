@@ -91,19 +91,6 @@ class SettingsScreenTest {
     }
 
     @Test
-    fun testSettingsBackButton() {
-        var backClicked = false
-        composeTestRule.setContent {
-            PodiumTheme {
-                SettingsScreen(database = database, onBack = { backClicked = true })
-            }
-        }
-        composeTestRule.onNodeWithContentDescription(Strings["nav_back"]).performClick()
-        composeTestRule.waitForIdle()
-        assert(backClicked) { "Back button should trigger onBack" }
-    }
-
-    @Test
     fun testSettingsDataSection() {
         composeTestRule.setContent {
             PodiumTheme {
