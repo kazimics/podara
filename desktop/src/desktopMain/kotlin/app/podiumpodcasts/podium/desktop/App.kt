@@ -10,7 +10,6 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.togetherWith
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -583,11 +582,7 @@ fun WindowScope.App(windowState: androidx.compose.ui.window.WindowState, awtWind
 
                     // Main content (hidden when FullPlayer is showing)
                     Box(modifier = Modifier.weight(1f)) {
-                        val contentKey = selectedPodcast?.origin ?: currentScreen
-                        AnimatedContent(targetState = contentKey, transitionSpec = {
-                            fadeIn(tween(200)) togetherWith fadeOut(tween(100))
-                        }) {
-                            if (!showFullPlayer) {
+                        if (!showFullPlayer) {
                         when {
                             selectedPodcast != null -> PodcastDetailScreen(
                             podcast = selectedPodcast!!,
@@ -674,7 +669,6 @@ fun WindowScope.App(windowState: androidx.compose.ui.window.WindowState, awtWind
                         )   // DownloadsScreen
                         }   // when
                         }   // if
-                        }   // Crossfade
                     }   // content Box
 
             }   // Row close
