@@ -1,5 +1,15 @@
 package app.podiumpodcasts.podium.desktop
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -126,8 +136,7 @@ private fun Sidebar(
                 val isActive = currentScreen == item.screen
                 val interactionSource = remember(item.screen) { MutableInteractionSource() }
                 val isHovered by interactionSource.collectIsHoveredAsState()
-                val showBg = isActive || isHovered
-                val bgColor = if (showBg) SidebarActiveBg else Color.Transparent
+                val animatedBg by animateColorAsState(if (isActive || isHovered) SidebarActiveBg else Color.Transparent, tween(150))
                 val iconTint = if (isActive) colors.accent else colors.textSecondary
 
                 Box(
@@ -140,7 +149,7 @@ private fun Sidebar(
                             .fillMaxWidth()
                             .height(sidebar.NavItemHeight)
                             .padding(horizontal = sidebar.NavItemPadding)
-                            .background(bgColor, RoundedCornerShape(8.dp))
+                            .background(animatedBg, RoundedCornerShape(8.dp))
                             .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
                             .clickable(interactionSource = interactionSource, indication = null) {
                                 when (item.screen) {
@@ -178,13 +187,13 @@ private fun Sidebar(
             val settingsActive = currentScreen == "settings"
             val settingsInteractionSource = remember { MutableInteractionSource() }
             val settingsIsHovered by settingsInteractionSource.collectIsHoveredAsState()
-            val settingsShowBg = settingsActive || settingsIsHovered
+            val settingsAnimatedBg by animateColorAsState(if (settingsActive || settingsIsHovered) SidebarActiveBg else Color.Transparent, tween(150))
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(sidebar.NavItemHeight)
                     .padding(horizontal = sidebar.NavItemPadding)
-                    .background(if (settingsShowBg) SidebarActiveBg else Color.Transparent, RoundedCornerShape(8.dp))
+                    .background(settingsAnimatedBg, RoundedCornerShape(8.dp))
                     .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
                     .clickable(interactionSource = settingsInteractionSource, indication = null) { onSettings() }
                     .padding(horizontal = 8.dp),
@@ -254,11 +263,14 @@ private fun WindowControlButton(
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isHovered by interactionSource.collectIsHoveredAsState()
-    val bgColor = when {
-        isClose && isHovered -> Color(0xFFE81123)
-        isHovered -> Color(0x18FFFFFF)
-        else -> Color.Transparent
-    }
+    val animatedBg by animateColorAsState(
+        when {
+            isClose && isHovered -> Color(0xFFE81123)
+            isHovered -> Color(0x18FFFFFF)
+            else -> Color.Transparent
+        },
+        tween(150)
+    )
     val iconTint = when {
         isClose && isHovered -> Color.White
         isHovered -> Color.White
@@ -268,7 +280,7 @@ private fun WindowControlButton(
     Box(
         modifier = Modifier
             .size(36.dp)
-            .background(bgColor)
+            .background(animatedBg)
             .clickable(interactionSource = interactionSource, indication = null) { onClick() },
         contentAlignment = Alignment.Center
     ) {
@@ -556,24 +568,24 @@ fun WindowScope.App(windowState: androidx.compose.ui.window.WindowState, awtWind
                 }
             }
 
-            Row(modifier = Modifier.weight(1f).fillMaxWidth()) {
-                Sidebar(
-                    currentScreen = currentScreen,
-                    onDiscover = { currentScreen = "discover"; showFullPlayer = false; selectedPodcast = null },
-                    onShows = { currentScreen = "home"; showFullPlayer = false; selectedPodcast = null },
-                    onHistory = { currentScreen = "history"; showFullPlayer = false; selectedPodcast = null },
-                    onSettings = { currentScreen = "settings"; showFullPlayer = false; selectedPodcast = null },
-                    onDownloads = { currentScreen = "downloads"; showFullPlayer = false; selectedPodcast = null }
-                )
+            Box(modifier = Modifier.weight(1f)) {
+                Row(modifier = Modifier.fillMaxSize()) {
+                    Sidebar(
+                        currentScreen = currentScreen,
+                        onDiscover = { currentScreen = "discover"; showFullPlayer = false; selectedPodcast = null },
+                        onShows = { currentScreen = "home"; showFullPlayer = false; selectedPodcast = null },
+                        onHistory = { currentScreen = "history"; showFullPlayer = false; selectedPodcast = null },
+                        onSettings = { currentScreen = "settings"; showFullPlayer = false; selectedPodcast = null },
+                        onDownloads = { currentScreen = "downloads"; showFullPlayer = false; selectedPodcast = null }
+                    )
 
-                Box(modifier = Modifier.weight(1f)) {
-                    when {
-                        showFullPlayer -> FullPlayer(
-                            state = playerState,
-                            database = database,
-                            onClose = { showFullPlayer = false }
-                        )
-                        selectedPodcast != null -> PodcastDetailScreen(
+                    // Main content (hidden when FullPlayer is showing)
+                    Box(modifier = Modifier.weight(1f)) {
+                        val contentKey = selectedPodcast?.origin ?: currentScreen
+                        Crossfade(targetState = contentKey, animationSpec = tween(250)) {
+                            if (!showFullPlayer) {
+                        when {
+                            selectedPodcast != null -> PodcastDetailScreen(
                             podcast = selectedPodcast!!,
                             database = database,
                             subscriptionManager = subscriptionManager,
@@ -655,8 +667,32 @@ fun WindowScope.App(windowState: androidx.compose.ui.window.WindowState, awtWind
                             onDeleteDownloadedByOrigin = deleteDownloadedByOrigin,
                             onBack = { currentScreen = "home" },
                             onOpenSettings = { currentScreen = "settings" }
-                        )
+                        )   // DownloadsScreen
+                        }   // when
+                        }   // if
+                        }   // Crossfade
+                    }   // content Box
+
+            }   // Row close
+
+                Box(Modifier.matchParentSize()) {
+                    @Composable
+                    fun FullPlayerOverlay() {
+                        androidx.compose.animation.AnimatedVisibility(
+                            visible = showFullPlayer,
+                            enter = slideInVertically(animationSpec = tween(400)) { it } + fadeIn(animationSpec = tween(300)),
+                            exit = slideOutVertically(animationSpec = tween(300)) { it } + fadeOut(animationSpec = tween(200))
+                        ) {
+                            Box(Modifier.fillMaxSize()) {
+                                FullPlayer(
+                                    state = playerState,
+                                    database = database,
+                                    onClose = { showFullPlayer = false }
+                                )
+                            }
+                        }
                     }
+                    FullPlayerOverlay()
                 }
             }
 
@@ -669,7 +705,11 @@ fun WindowScope.App(windowState: androidx.compose.ui.window.WindowState, awtWind
         }
     }
 
-    if (showQueueFromMini) {
+    AnimatedVisibility(
+        visible = showQueueFromMini,
+        enter = slideInHorizontally(animationSpec = tween(300)) { it } + fadeIn(animationSpec = tween(250)),
+        exit = slideOutHorizontally(animationSpec = tween(250)) { it } + fadeOut(animationSpec = tween(200))
+    ) {
         QueueDrawer(
             state = playerState,
             onDismiss = { showQueueFromMini = false }
@@ -1099,12 +1139,13 @@ private fun SubscriptionCard(
     val colors = PodiumTheme.colors
     val interactionSource = remember { MutableInteractionSource() }
     val isHovered by interactionSource.collectIsHoveredAsState()
+    val animatedBg by animateColorAsState(if (isHovered && !isEditing) colors.elevated else Color.Transparent, tween(150))
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .height(96.dp)
-            .background(if (isHovered && !isEditing) colors.elevated else Color.Transparent)
+            .background(animatedBg)
             .clickable(interactionSource = interactionSource, indication = null) { onClick() }
             .padding(start = 12.dp, end = 8.dp, top = 12.dp, bottom = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -1165,11 +1206,12 @@ private fun SubscriptionCard(
         if (!isEditing) {
             val moreInteractionSource = remember { MutableInteractionSource() }
             val isMoreHovered by moreInteractionSource.collectIsHoveredAsState()
+            val moreAnimatedBg by animateColorAsState(if (isMoreHovered) colors.elevated else Color.Transparent, tween(150))
             Box(
                 modifier = Modifier
                     .size(36.dp)
                     .clip(CircleShape)
-                    .background(if (isMoreHovered) colors.elevated else Color.Transparent)
+                    .background(moreAnimatedBg)
                     .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
                     .clickable(interactionSource = moreInteractionSource, indication = null) { onMore() },
                 contentAlignment = Alignment.Center
@@ -1264,11 +1306,12 @@ private fun PodcastDetailScreen(
         ) {
             val backInteractionSource = remember { MutableInteractionSource() }
             val isBackHovered by backInteractionSource.collectIsHoveredAsState()
+            val backAnimatedBg by animateColorAsState(if (isBackHovered) colors.elevated else Color.Transparent, tween(150))
             Box(
                 modifier = Modifier
                     .size(36.dp)
                     .clip(CircleShape)
-                    .background(if (isBackHovered) colors.elevated else Color.Transparent)
+                    .background(backAnimatedBg)
                     .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
                     .clickable(interactionSource = backInteractionSource, indication = null) { onBack() },
                 contentAlignment = Alignment.Center
@@ -1423,18 +1466,20 @@ private fun PodcastDetailScreen(
                             // 2. Subscribe / Unsubscribe
                             val subInteractionSource = remember { MutableInteractionSource() }
                             val isSubHovered by subInteractionSource.collectIsHoveredAsState()
+                            val subAnimatedBg by animateColorAsState(
+                                when {
+                                    isSubscribed -> colors.accent.copy(alpha = 0.15f)
+                                    isSubHovered -> colors.elevated
+                                    else -> colors.surface
+                                },
+                                tween(150)
+                            )
                             Box(
                                 modifier = Modifier
                                     .size(DesignTokens.IconButton.Size)
                                     .clip(CircleShape)
                                     .border(DesignTokens.Border.Width, DesignTokens.Border.SecondaryColor, CircleShape)
-                                    .background(
-                                        when {
-                                            isSubscribed -> colors.accent.copy(alpha = 0.15f)
-                                            isSubHovered -> colors.elevated
-                                            else -> colors.surface
-                                        }
-                                    )
+                                    .background(subAnimatedBg)
                                     .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
                                     .clickable(interactionSource = subInteractionSource, indication = null) {
                                         if (isSubscribed) {
@@ -1469,13 +1514,14 @@ private fun PodcastDetailScreen(
                             // 3. More options — copy RSS URL
                             val moreInteractionSource = remember { MutableInteractionSource() }
                             val isMoreHovered by moreInteractionSource.collectIsHoveredAsState()
+                            val moreAnimatedBg by animateColorAsState(if (isMoreHovered) colors.elevated else colors.surface, tween(150))
                             var showPopup by remember { mutableStateOf(false) }
                             Box(
                                 modifier = Modifier
                                     .size(DesignTokens.IconButton.Size)
                                     .clip(CircleShape)
                                     .border(DesignTokens.Border.Width, DesignTokens.Border.SecondaryColor, CircleShape)
-                                    .background(if (isMoreHovered) colors.elevated else colors.surface)
+                                    .background(moreAnimatedBg)
                                     .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
                                     .clickable(interactionSource = moreInteractionSource, indication = null) { showPopup = true },
                                 contentAlignment = Alignment.Center
@@ -1514,13 +1560,14 @@ private fun PodcastDetailScreen(
 
                         val rowInteractionSource = remember { MutableInteractionSource() }
                         val isRowHovered by rowInteractionSource.collectIsHoveredAsState()
+                        val rowAnimatedBg by animateColorAsState(if (isRowHovered) colors.elevated else Color.Transparent, tween(150))
 
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(88.dp)
                                 .padding(horizontal = 32.dp)
-                                .background(if (isRowHovered) colors.elevated else Color.Transparent)
+                                .background(rowAnimatedBg)
                                 .clickable(interactionSource = rowInteractionSource, indication = null) {
                                     scope.launch {
                                         val downloadRecord = database.downloads.getByEpisodeId(episode.id)
@@ -1593,11 +1640,12 @@ private fun PodcastDetailScreen(
                                 // Add to queue
                                 val qInteractionSource = remember { MutableInteractionSource() }
                                 val isQHovered by qInteractionSource.collectIsHoveredAsState()
+                                val qAnimatedBg by animateColorAsState(if (isQHovered) colors.elevated else Color.Transparent, tween(150))
                                 Box(
                                     modifier = Modifier
                                         .size(36.dp)
                                         .clip(CircleShape)
-                                        .background(if (isQHovered) colors.elevated else Color.Transparent)
+                                        .background(qAnimatedBg)
                                         .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
                                         .clickable(interactionSource = qInteractionSource, indication = null) {
                                             scope.launch {
@@ -1641,11 +1689,12 @@ private fun PodcastDetailScreen(
                                         } else 0f
                                         val ringInteractionSource = remember { MutableInteractionSource() }
                                         val isRingHovered by ringInteractionSource.collectIsHoveredAsState()
+                                        val ringAnimatedBg by animateColorAsState(if (isRingHovered) colors.elevated else Color.Transparent, tween(150))
                                         Box(
                                             modifier = Modifier
                                                 .size(36.dp)
                                                 .clip(CircleShape)
-                                                .background(if (isRingHovered) colors.elevated else Color.Transparent)
+                                                .background(ringAnimatedBg)
                                                 .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
                                                 .clickable(interactionSource = ringInteractionSource, indication = null) {
                                                     if (isDbTask) {
@@ -1668,11 +1717,12 @@ private fun PodcastDetailScreen(
                                     } else {
                                         val dInteractionSource = remember { MutableInteractionSource() }
                                         val isDHovered by dInteractionSource.collectIsHoveredAsState()
+                                        val dAnimatedBg by animateColorAsState(if (isDHovered) colors.elevated else Color.Transparent, tween(150))
                                         Box(
                                             modifier = Modifier
                                                 .size(36.dp)
                                                 .clip(CircleShape)
-                                                .background(if (isDHovered) colors.elevated else Color.Transparent)
+                                                .background(dAnimatedBg)
                                                 .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
                                                 .clickable(interactionSource = dInteractionSource, indication = null) {
                                                     onStartDownload(episode, podcast.title)

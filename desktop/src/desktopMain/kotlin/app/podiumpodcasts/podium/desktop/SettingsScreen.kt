@@ -1,5 +1,7 @@
 package app.podiumpodcasts.podium.desktop
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -570,13 +572,14 @@ private fun SettingsRow(
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isHovered by interactionSource.collectIsHoveredAsState()
+    val rowBg by animateColorAsState(if (isHovered) colors.elevated else Color.Transparent, tween(150))
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .height(64.dp)
             .clip(RoundedCornerShape(12.dp))
-            .background(if (isHovered) colors.elevated else Color.Transparent)
+            .background(rowBg)
             .pointerHoverIcon(PointerIcon(java.awt.Cursor(java.awt.Cursor.HAND_CURSOR)))
             .clickable(
                 interactionSource = interactionSource,

@@ -1,5 +1,7 @@
 package app.podiumpodcasts.podium.desktop
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -369,12 +371,17 @@ private fun InProgressRow(
     val progress = if (totalBytes > 0) (currentBytes.toFloat() / totalBytes) else 0f
     val interactionSource = remember { MutableInteractionSource() }
     val isHovered by interactionSource.collectIsHoveredAsState()
+    val animatedBg by animateColorAsState(
+        targetValue = if (isHovered) colors.elevated else Color.Transparent,
+        animationSpec = tween(durationMillis = 150),
+        label = "rowBg"
+    )
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .height(88.dp)
-            .background(if (isHovered) colors.elevated else Color.Transparent)
+            .background(animatedBg)
             .padding(start = 12.dp, end = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -472,12 +479,17 @@ private fun PausedTaskRow(
     val isFailed = task.state == "FAILED"
     val interactionSource = remember { MutableInteractionSource() }
     val isHovered by interactionSource.collectIsHoveredAsState()
+    val animatedBg by animateColorAsState(
+        targetValue = if (isHovered) colors.elevated else Color.Transparent,
+        animationSpec = tween(durationMillis = 150),
+        label = "rowBg"
+    )
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .height(80.dp)
-            .background(if (isHovered) colors.elevated else Color.Transparent)
+            .background(animatedBg)
             .padding(start = 12.dp, end = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -589,10 +601,15 @@ private fun PodcastDownloadGroup(
             // Delete All button
             val daInteractionSource = remember { MutableInteractionSource() }
             val isDaHovered by daInteractionSource.collectIsHoveredAsState()
+            val daAnimatedBg by animateColorAsState(
+                targetValue = if (isDaHovered) colors.elevated else Color.Transparent,
+                animationSpec = tween(durationMillis = 150),
+                label = "deleteAllBg"
+            )
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(6.dp))
-                    .background(if (isDaHovered) colors.elevated else Color.Transparent)
+                    .background(daAnimatedBg)
                     .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
                     .clickable(interactionSource = daInteractionSource, indication = null) { onDeleteAll() }
                     .padding(horizontal = 8.dp, vertical = 4.dp)
@@ -630,6 +647,11 @@ private fun CompletedDownloadRow(
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isHovered by interactionSource.collectIsHoveredAsState()
+    val animatedBg by animateColorAsState(
+        targetValue = if (isHovered) colors.elevated else Color.Transparent,
+        animationSpec = tween(durationMillis = 150),
+        label = "rowBg"
+    )
     val file = remember(download) { File(download.filePath) }
     val fileExists = remember(download) { file.exists() }
     val fileSize = remember(download) { if (file.exists()) file.length() else 0L }
@@ -638,7 +660,7 @@ private fun CompletedDownloadRow(
         modifier = Modifier
             .fillMaxWidth()
             .height(76.dp)
-            .background(if (isHovered) colors.elevated else Color.Transparent)
+            .background(animatedBg)
             .padding(start = 12.dp, end = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -706,12 +728,17 @@ private fun CompletedDownloadRow(
             // Open folder
             val ofInteractionSource = remember { MutableInteractionSource() }
             val isOfHovered by ofInteractionSource.collectIsHoveredAsState()
+            val ofAnimatedBg by animateColorAsState(
+                targetValue = if (isOfHovered) colors.elevated else Color.Transparent,
+                animationSpec = tween(durationMillis = 150),
+                label = "openFolderBg"
+            )
             if (fileExists) {
                 Box(
                     modifier = Modifier
                         .size(36.dp)
                         .clip(CircleShape)
-                        .background(if (isOfHovered) colors.elevated else Color.Transparent)
+                        .background(ofAnimatedBg)
                         .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
                         .clickable(interactionSource = ofInteractionSource, indication = null) {
                             try {
@@ -750,11 +777,16 @@ private fun ActionIconButton(
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isHovered by interactionSource.collectIsHoveredAsState()
+    val animatedBg by animateColorAsState(
+        targetValue = if (isHovered) colors.elevated else Color.Transparent,
+        animationSpec = tween(durationMillis = 150),
+        label = "iconBg"
+    )
     Box(
         modifier = Modifier
             .size(36.dp)
             .clip(CircleShape)
-            .background(if (isHovered) colors.elevated else Color.Transparent)
+            .background(animatedBg)
             .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
             .clickable(interactionSource = interactionSource, indication = null) { onClick() },
         contentAlignment = Alignment.Center

@@ -5,6 +5,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.FastOutSlowInEasing
 
 object DesignTokens {
 
@@ -177,5 +179,12 @@ object DesignTokens {
             start = Offset(0f, 0f),
             end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
         )
+    }
+
+    // ── Animation durations ──
+    object Animation {
+        val HoverMs = 150
+        val NormalMs = 300
+        val SlowMs = 500
     }
 }

@@ -1,6 +1,10 @@
 package app.podiumpodcasts.podium.desktop
 
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -302,7 +306,6 @@ fun DiscoverScreen(
                         if (!hasSearched && podcasts.isNotEmpty()) {
                             item {
                                 var featuredIndex by remember { mutableIntStateOf(0) }
-                                val featured = podcasts[featuredIndex % 5]
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.End,
@@ -310,17 +313,19 @@ fun DiscoverScreen(
                                 ) {
                                     // arrows are inside FeaturedCard
                                 }
-                                FeaturedCard(
-                                    podcast = featured,
-                                    isSubscribed = featured.fetchUrl in subscribedOrigins
-                                        || itunesToRssCache[featured.fetchUrl] in subscribedOrigins,
-                                    isSubscribing = featured.fetchUrl in subscribingOrigins,
-                                    onSubscribe = { subscribe(featured) },
-                                    onPlayLatestEpisode = { onPlayLatestEpisode(featured) },
-                                    onShowDetail = { onShowDetail(featured) },
-                                    onPrevious = { featuredIndex = if (featuredIndex > 0) featuredIndex - 1 else podcasts.size - 1 },
-                                    onNext = { featuredIndex = (featuredIndex + 1) % podcasts.size }
-                                )
+                                Crossfade(targetState = featuredIndex % 5, animationSpec = tween(300)) { idx ->
+                                    FeaturedCard(
+                                        podcast = podcasts[idx],
+                                        isSubscribed = podcasts[idx].fetchUrl in subscribedOrigins
+                                            || itunesToRssCache[podcasts[idx].fetchUrl] in subscribedOrigins,
+                                        isSubscribing = podcasts[idx].fetchUrl in subscribingOrigins,
+                                        onSubscribe = { subscribe(podcasts[idx]) },
+                                        onPlayLatestEpisode = { onPlayLatestEpisode(podcasts[idx]) },
+                                        onShowDetail = { onShowDetail(podcasts[idx]) },
+                                        onPrevious = { featuredIndex = if (featuredIndex > 0) featuredIndex - 1 else podcasts.size - 1 },
+                                        onNext = { featuredIndex = (featuredIndex + 1) % podcasts.size }
+                                    )
+                                }
                             }
                         }
 
@@ -413,15 +418,17 @@ private fun FeaturedCard(
         ) {
             val featuredHoverInteraction = remember { MutableInteractionSource() }
             val isFeaturedHovered by featuredHoverInteraction.collectIsHoveredAsState()
+            val animatedFeaturedBg by animateColorAsState(
+                targetValue = if (isFeaturedHovered) Color.White.copy(alpha = 0.04f) else Color.Transparent,
+                animationSpec = tween(300)
+            )
 
             // Full-card hover highlight
-            if (isFeaturedHovered) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(Color.White.copy(alpha = 0.04f))
-                )
-            }
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(animatedFeaturedBg)
+            )
 
             // Content: Cover + Text (whole area clickable → navigate to detail)
             Row(
@@ -522,18 +529,20 @@ private fun FeaturedCard(
                         // Add to playlist / Subscribe
                         val addInteractionSource = remember { MutableInteractionSource() }
                         val isAddHovered by addInteractionSource.collectIsHoveredAsState()
+                        val animatedAddBg by animateColorAsState(
+                            targetValue = when {
+                                isSubscribed -> colors.accent.copy(alpha = 0.15f)
+                                isAddHovered -> colors.elevated
+                                else -> colors.surface
+                            },
+                            animationSpec = tween(300)
+                        )
                         Box(
                             modifier = Modifier
                                 .size(DesignTokens.IconButton.Size)
                                 .clip(CircleShape)
                                 .border(DesignTokens.Border.Width, DesignTokens.Border.SecondaryColor, CircleShape)
-                                .background(
-                                    when {
-                                        isSubscribed -> colors.accent.copy(alpha = 0.15f)
-                                        isAddHovered -> colors.elevated
-                                        else -> colors.surface
-                                    }
-                                )
+                                .background(animatedAddBg)
                                 .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
                                 .clickable(interactionSource = addInteractionSource, indication = null) {
                                     if (!isSubscribed) onSubscribe()
@@ -564,12 +573,16 @@ private fun FeaturedCard(
                         // More / Detail
                         val moreInteractionSource = remember { MutableInteractionSource() }
                         val isMoreHovered by moreInteractionSource.collectIsHoveredAsState()
+                        val animatedMoreBg by animateColorAsState(
+                            targetValue = if (isMoreHovered) colors.elevated else colors.surface,
+                            animationSpec = tween(300)
+                        )
                         Box(
                             modifier = Modifier
                                 .size(DesignTokens.IconButton.Size)
                                 .clip(CircleShape)
                                 .border(DesignTokens.Border.Width, DesignTokens.Border.SecondaryColor, CircleShape)
-                                .background(if (isMoreHovered) colors.elevated else colors.surface)
+                                .background(animatedMoreBg)
                                 .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
                                 .clickable(interactionSource = moreInteractionSource, indication = null) { onShowDetail() },
                             contentAlignment = Alignment.Center
@@ -587,11 +600,15 @@ private fun FeaturedCard(
             ) {
                 val prevInteractionSource = remember { MutableInteractionSource() }
                 val isPrevHovered by prevInteractionSource.collectIsHoveredAsState()
+                val animatedPrevBg by animateColorAsState(
+                    targetValue = if (isPrevHovered) colors.elevated else colors.surface.copy(alpha = 0.6f),
+                    animationSpec = tween(300)
+                )
                 Box(
                     modifier = Modifier
                         .size(card.NavButtonSize)
                         .clip(CircleShape)
-                        .background(if (isPrevHovered) colors.elevated else colors.surface.copy(alpha = 0.6f))
+                        .background(animatedPrevBg)
                         .border(1.dp, colors.border, CircleShape)
                         .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
                         .clickable(interactionSource = prevInteractionSource, indication = null) { onPrevious() },
@@ -606,11 +623,15 @@ private fun FeaturedCard(
                 }
                 val nextInteractionSource = remember { MutableInteractionSource() }
                 val isNextHovered by nextInteractionSource.collectIsHoveredAsState()
+                val animatedNextBg by animateColorAsState(
+                    targetValue = if (isNextHovered) colors.elevated else colors.surface.copy(alpha = 0.6f),
+                    animationSpec = tween(300)
+                )
                 Box(
                     modifier = Modifier
                         .size(32.dp)
                         .clip(CircleShape)
-                        .background(if (isNextHovered) colors.elevated else colors.surface.copy(alpha = 0.6f))
+                        .background(animatedNextBg)
                         .border(1.dp, colors.border, CircleShape)
                         .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
                         .clickable(interactionSource = nextInteractionSource, indication = null) { onNext() },

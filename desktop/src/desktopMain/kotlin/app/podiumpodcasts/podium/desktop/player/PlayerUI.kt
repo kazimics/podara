@@ -7,6 +7,8 @@ import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsDraggedAsState
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -540,12 +542,17 @@ fun FullPlayer(
                         var showMore by remember { mutableStateOf(false) }
                         val moreInteractionSource = remember { MutableInteractionSource() }
                         val isMoreHovered by moreInteractionSource.collectIsHoveredAsState()
+                        val moreBg by animateColorAsState(
+                            targetValue = if (isMoreHovered) colors.elevated else colors.surface,
+                            animationSpec = tween(150),
+                            label = "moreButtonBg"
+                        )
                         Box(
                             modifier = Modifier
                                 .size(40.dp)
                                 .clip(CircleShape)
                                 .border(1.dp, colors.border, CircleShape)
-                                .background(if (isMoreHovered) colors.elevated else colors.surface)
+                                .background(moreBg)
                                 .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
                                 .clickable(interactionSource = moreInteractionSource, indication = null) { showMore = true },
                             contentAlignment = Alignment.Center
@@ -784,13 +791,18 @@ private fun DownloadActionButton(isDownloaded: Boolean, onClick: () -> Unit) {
     val colors = PodiumTheme.colors
     val interactionSource = remember { MutableInteractionSource() }
     val isHovered by interactionSource.collectIsHoveredAsState()
+    val animatedBg by animateColorAsState(
+        targetValue = if (isHovered) colors.elevated else colors.surface,
+        animationSpec = tween(150),
+        label = "downloadButtonBg"
+    )
 
     Box(
         modifier = Modifier
             .width(108.dp).height(40.dp)
             .clip(RoundedCornerShape(10.dp))
             .border(1.dp, colors.border, RoundedCornerShape(10.dp))
-            .background(if (isHovered) colors.elevated else colors.surface)
+            .background(animatedBg)
             .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
             .clickable(interactionSource = interactionSource, indication = null) { if (!isDownloaded) onClick() },
         contentAlignment = Alignment.Center
@@ -809,12 +821,17 @@ private fun RecommendationCard(title: String, subtitle: String, duration: String
     val colors = PodiumTheme.colors
     val interactionSource = remember { MutableInteractionSource() }
     val isHovered by interactionSource.collectIsHoveredAsState()
+    val animatedBg by animateColorAsState(
+        targetValue = if (isHovered) colors.elevated else colors.surface,
+        animationSpec = tween(150),
+        label = "recommendationCardBg"
+    )
 
     Row(
         modifier = Modifier
             .width(200.dp).height(72.dp)
             .clip(RoundedCornerShape(10.dp))
-            .background(if (isHovered) colors.elevated else colors.surface)
+            .background(animatedBg)
             .border(1.dp, colors.border, RoundedCornerShape(10.dp))
             .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
             .clickable(interactionSource = interactionSource, indication = null) { onClick() }
@@ -1102,6 +1119,15 @@ fun QueueDrawer(
                             val isDraggingThis = draggingIndex == index
                             val rowInteractionSource = remember { MutableInteractionSource() }
                             val isRowHovered by rowInteractionSource.collectIsHoveredAsState()
+                            val queueRowBg by animateColorAsState(
+                                targetValue = when {
+                                    isActive && !isDraggingThis -> colors.accent.copy(alpha = 0.1f)
+                                    isRowHovered && !isDraggingThis -> colors.elevated
+                                    else -> Color.Transparent
+                                },
+                                animationSpec = tween(150),
+                                label = "queueRowBg"
+                            )
 
                             // Per-item offset: dragged item follows cursor; items between
                             // old and new position shift to show the insertion gap.
@@ -1124,13 +1150,7 @@ fun QueueDrawer(
                                         if (itemOffsetPx != 0) Modifier.offset { IntOffset(0, itemOffsetPx) }
                                         else Modifier
                                     )
-                                    .background(
-                                        when {
-                                            isActive && !isDraggingThis -> colors.accent.copy(alpha = 0.1f)
-                                            isRowHovered && !isDraggingThis -> colors.elevated
-                                            else -> Color.Transparent
-                                        }
-                                    )
+                                    .background(queueRowBg)
                                     .clickable(
                                         interactionSource = rowInteractionSource,
                                         indication = null

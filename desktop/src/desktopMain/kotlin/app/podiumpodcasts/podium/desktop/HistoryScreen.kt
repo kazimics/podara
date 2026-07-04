@@ -5,6 +5,8 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -230,11 +232,15 @@ fun HistoryScreen(
                 // Clear All button
                 val clearInteractionSource = remember { MutableInteractionSource() }
                 val isClearHovered by clearInteractionSource.collectIsHoveredAsState()
+                val clearAnimatedBg by animateColorAsState(
+                    targetValue = if (isClearHovered) colors.elevated else Color.Transparent,
+                    animationSpec = tween(durationMillis = 150)
+                )
                 Box(
                     modifier = Modifier
                         .size(32.dp)
                         .clip(RoundedCornerShape(6.dp))
-                        .background(if (isClearHovered) colors.elevated else Color.Transparent)
+                        .background(clearAnimatedBg)
                         .border(1.dp, colors.border, RoundedCornerShape(6.dp))
                         .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
                         .clickable(interactionSource = clearInteractionSource, indication = null) {
@@ -336,13 +342,17 @@ private fun HistoryItem(
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isHovered by interactionSource.collectIsHoveredAsState()
+    val historyItemBg by animateColorAsState(
+        targetValue = if (isHovered) colors.elevated else Color.Transparent,
+        animationSpec = tween(durationMillis = 150)
+    )
     val er = DesignTokens.EpisodeRow
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .height(88.dp)
-            .background(if (isHovered) colors.elevated else Color.Transparent)
+            .background(historyItemBg)
             .clickable(
                 interactionSource = interactionSource,
                 indication = null
@@ -450,11 +460,15 @@ private fun HistoryItem(
             // Add to queue
             val qInteractionSource = remember { MutableInteractionSource() }
             val isQHovered by qInteractionSource.collectIsHoveredAsState()
+            val queueAnimatedBg by animateColorAsState(
+                targetValue = if (isQHovered) colors.elevated else Color.Transparent,
+                animationSpec = tween(durationMillis = 150)
+            )
             Box(
                 modifier = Modifier
                     .size(36.dp)
                     .clip(CircleShape)
-                    .background(if (isQHovered) colors.elevated else Color.Transparent)
+                    .background(queueAnimatedBg)
                     .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
                     .clickable(interactionSource = qInteractionSource, indication = null) {
                         scope.launch {
@@ -480,11 +494,15 @@ private fun HistoryItem(
             // Remove from history
             val rInteractionSource = remember { MutableInteractionSource() }
             val isRHovered by rInteractionSource.collectIsHoveredAsState()
+            val removeAnimatedBg by animateColorAsState(
+                targetValue = if (isRHovered) colors.elevated else Color.Transparent,
+                animationSpec = tween(durationMillis = 150)
+            )
             Box(
                 modifier = Modifier
                     .size(36.dp)
                     .clip(CircleShape)
-                    .background(if (isRHovered) colors.elevated else Color.Transparent)
+                    .background(removeAnimatedBg)
                     .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
                     .clickable(interactionSource = rInteractionSource, indication = null) {
                         scope.launch {
