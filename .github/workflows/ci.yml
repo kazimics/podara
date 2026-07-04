@@ -25,11 +25,11 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew || true
 
-      - name: Compile (shared + desktop)
+      - name: Compile (desktop)
         shell: bash
         run: |
           START=$(date +%s)
-          ./gradlew :shared:compileKotlinDesktop :desktop:compileTestKotlinDesktop
+          ./gradlew :desktop:compileTestKotlinDesktop
           END=$(date +%s)
           echo "::notice::Compilation took $((END - START)) seconds"
 
@@ -49,7 +49,7 @@ jobs:
         shell: bash
         run: |
           START=$(date +%s)
-          ./gradlew :desktop:desktopTest --tests "app.podiumpodcasts.podium.desktop.VlcjMediaPlayerTest" --tests "app.podiumpodcasts.podium.desktop.ExportManagerTest" --tests "app.podiumpodcasts.podium.desktop.PodcastManagerTest" --tests "app.podiumpodcasts.podium.desktop.DownloadManagerTest" --tests "app.podiumpodcasts.podium.desktop.ImportManagerTest" --tests "app.podiumpodcasts.podium.desktop.MediaPlayerStateTest" --tests "app.podiumpodcasts.podium.desktop.HistoryDaoTest" --tests "app.podiumpodcasts.podium.desktop.AudioPlayerTest" --tests "app.podiumpodcasts.podium.desktop.MpvAudioPlayerEngineTest" --tests "app.podiumpodcasts.podium.desktop.UnsubscribeTest"
+          ./gradlew :desktop:desktopTest --tests "app.podiumpodcasts.podium.desktop.ExportManagerTest" --tests "app.podiumpodcasts.podium.desktop.PodcastManagerTest" --tests "app.podiumpodcasts.podium.desktop.DownloadManagerTest" --tests "app.podiumpodcasts.podium.desktop.ImportManagerTest" --tests "app.podiumpodcasts.podium.desktop.MediaPlayerStateTest" --tests "app.podiumpodcasts.podium.desktop.HistoryDaoTest" --tests "app.podiumpodcasts.podium.desktop.AudioPlayerTest" --tests "app.podiumpodcasts.podium.desktop.MpvAudioPlayerEngineTest" --tests "app.podiumpodcasts.podium.desktop.UnsubscribeTest" --tests "app.podiumpodcasts.podium.desktop.PodcastDetailUtilTest"
           END=$(date +%s)
           echo "::notice::Tests took $((END - START)) seconds"
 
@@ -78,11 +78,11 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew || true
 
-      - name: Compile (shared + desktop + tests)
+      - name: Compile (desktop + tests)
         shell: bash
         run: |
           START=$(date +%s)
-          ./gradlew :shared:compileKotlinDesktop :desktop:compileTestKotlinDesktop
+          ./gradlew :desktop:compileTestKotlinDesktop
           END=$(date +%s)
           echo "::notice::Compilation took $((END - START)) seconds"
 
