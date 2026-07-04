@@ -4,6 +4,22 @@ All notable changes to podium-windows will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.1.0] - 2026-07-05
+
+### Changed
+- Complete project restructure: removed Android KMP `shared/` module, merged all sources into single `:desktop` module
+- Removed 5 empty `feature-*` modules (discover, home, library, player, settings)
+- Reorganized source into feature-based sub-packages: `screen/`, `player/`, `data/`, `api/`, `manager/`, `theme/`, `util/`
+- Moved `App.kt` + `Main.kt` to root package `app.podiumpodcasts.podium`
+- `ui/theme/` → `theme/`, `utils/` → `util/`, `desktop/player/` → `player/`
+- Updated 60+ import paths across all source and test files
+
+### Removed
+- `feature-discover/`, `feature-home/`, `feature-library/`, `feature-player/`, `feature-settings/` (empty shells)
+- `shared/` module (KMP split no longer needed for Windows-only app)
+- Dead Android legacy code: `EpisodeListItem.kt`, `PodcastListItem.kt`, `ListItem.kt`, `ListModel.kt`
+- `designer/` directory and `AGENTS.md`
+
 ## [0.1.0] - 2026-07-04
 
 ### Added

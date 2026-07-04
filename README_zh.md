@@ -80,20 +80,24 @@ gradlew.bat :desktop:desktopTest
 
 ```
 podium-windows/
-├── shared/                    # 共享业务逻辑 (KMP)
-│   └── ui/theme/
-│       ├── Color.kt           # 颜色定义
-│       ├── Theme.kt           # PodiumTheme + PodiumColors
-│       └── DesignTokens.kt    # 设计系统 Token
 ├── desktop/                   # Windows 桌面入口
-├── feature-home/              # 首页功能模块
-├── feature-discover/          # 发现功能模块
-├── feature-player/            # 播放器功能模块
-├── feature-library/           # 库功能模块
-├── feature-settings/          # 设置功能模块
-├── build.gradle.kts           # 根构建配置
-├── settings.gradle.kts        # 模块配置
-└── gradle/                    # Gradle 配置
+│   ├── build.gradle.kts
+│   └── src/
+│       ├── desktopMain/kotlin/app/podiumpodcasts/podium/
+│       │   ├── App.kt            # 主应用组合
+│       │   ├── Main.kt           # 入口
+│       │   ├── screen/           # UI 页面
+│       │   ├── player/           # 音频引擎 & 播放器 UI
+│       │   ├── data/             # 数据库 & 数据模型
+│       │   ├── api/              # 网络 API 客户端
+│       │   ├── manager/          # 业务逻辑
+│       │   ├── theme/            # 设计系统
+│       │   └── util/             # 工具类
+│       └── desktopTest/          # 测试
+├── build.gradle.kts
+├── settings.gradle.kts
+├── gradle.properties
+└── libs/                        # mpv + JNA 本地库
 ```
 
 ## 许可证

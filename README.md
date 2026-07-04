@@ -81,20 +81,24 @@ gradlew.bat :desktop:desktopTest
 
 ```
 podium-windows/
-├── shared/                    # Shared business logic (KMP)
-│   └── ui/theme/
-│       ├── Color.kt           # Color definitions
-│       ├── Theme.kt           # PodiumTheme + PodiumColors
-│       └── DesignTokens.kt    # Design system tokens
 ├── desktop/                   # Windows desktop entry point
-├── feature-home/              # Home feature module
-├── feature-discover/          # Discover feature module
-├── feature-player/            # Player feature module
-├── feature-library/           # Library feature module
-├── feature-settings/          # Settings feature module
-├── build.gradle.kts           # Root build config
-├── settings.gradle.kts        # Module config
-└── gradle/                    # Gradle config
+│   ├── build.gradle.kts
+│   └── src/
+│       ├── desktopMain/kotlin/app/podiumpodcasts/podium/
+│       │   ├── App.kt            # Main application composable
+│       │   ├── Main.kt           # Entry point
+│       │   ├── screen/           # UI screens
+│       │   ├── player/           # Audio engine & player UI
+│       │   ├── data/             # Database & data models
+│       │   ├── api/              # Network API clients
+│       │   ├── manager/          # Business logic
+│       │   ├── theme/            # Design system
+│       │   └── util/             # Utilities
+│       └── desktopTest/          # Test classes
+├── build.gradle.kts
+├── settings.gradle.kts
+├── gradle.properties
+└── libs/                        # mpv + JNA native libraries
 ```
 
 ## License

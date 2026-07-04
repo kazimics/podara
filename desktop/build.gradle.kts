@@ -63,7 +63,7 @@ tasks.withType<Test>().configureEach {
 
 compose.desktop {
     application {
-        mainClass = "app.podiumpodcasts.podium.desktop.MainKt"
+        mainClass = "app.podiumpodcasts.podium.MainKt"
 
         jvmArgs += "-Dfile.encoding=UTF-8"
         jvmArgs += "--add-modules=java.sql"
