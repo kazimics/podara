@@ -1,5 +1,6 @@
 package app.podiumpodcasts.podium.desktop
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.slideInHorizontally
@@ -9,6 +10,7 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.togetherWith
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -582,7 +584,9 @@ fun WindowScope.App(windowState: androidx.compose.ui.window.WindowState, awtWind
                     // Main content (hidden when FullPlayer is showing)
                     Box(modifier = Modifier.weight(1f)) {
                         val contentKey = selectedPodcast?.origin ?: currentScreen
-                        Crossfade(targetState = contentKey, animationSpec = tween(250)) {
+                        AnimatedContent(targetState = contentKey, transitionSpec = {
+                            fadeIn(tween(200)) togetherWith fadeOut(tween(100))
+                        }) {
                             if (!showFullPlayer) {
                         when {
                             selectedPodcast != null -> PodcastDetailScreen(
@@ -705,10 +709,21 @@ fun WindowScope.App(windowState: androidx.compose.ui.window.WindowState, awtWind
         }
     }
 
+    // Scrim — appears instantly, separate from panel animation
+    if (showQueueFromMini) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.4f))
+                .clickable { showQueueFromMini = false }
+        )
+    }
+
+    // Panel — slides in from right
     AnimatedVisibility(
         visible = showQueueFromMini,
-        enter = slideInHorizontally(animationSpec = tween(300)) { it } + fadeIn(animationSpec = tween(250)),
-        exit = slideOutHorizontally(animationSpec = tween(250)) { it } + fadeOut(animationSpec = tween(200))
+        enter = slideInHorizontally(animationSpec = tween(300)) { it },
+        exit = slideOutHorizontally(animationSpec = tween(250)) { it }
     ) {
         QueueDrawer(
             state = playerState,

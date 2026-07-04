@@ -1027,15 +1027,6 @@ fun QueueDrawer(
     var dragTargetIndex by remember { mutableIntStateOf(-1) }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        // Scrim
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .clickable(onClick = onDismiss)
-                .background(Color.Black.copy(alpha = 0.4f))
-        )
-
-        // Panel
         Surface(
             modifier = Modifier
                 .fillMaxHeight()
