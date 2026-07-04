@@ -1,12 +1,15 @@
 package app.podiumpodcasts.podium.desktop
+import app.podiumpodcasts.podium.screen.DiscoverScreen
+import app.podiumpodcasts.podium.screen.EpisodeRow
+import app.podiumpodcasts.podium.screen.SectionHeader
 
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
 import app.podiumpodcasts.podium.api.model.PodcastPreviewModel
 import app.podiumpodcasts.podium.data.AppDatabase
 import app.podiumpodcasts.podium.manager.SubscriptionManager
-import app.podiumpodcasts.podium.ui.theme.PodiumTheme
-import app.podiumpodcasts.podium.utils.Strings
+import app.podiumpodcasts.podium.theme.PodiumTheme
+import app.podiumpodcasts.podium.util.Strings
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher

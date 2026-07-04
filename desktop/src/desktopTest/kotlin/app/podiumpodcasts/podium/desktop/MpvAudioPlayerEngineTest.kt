@@ -1,7 +1,7 @@
 package app.podiumpodcasts.podium.desktop
 
-import app.podiumpodcasts.podium.desktop.player.MpvAudioPlayerEngine
-import app.podiumpodcasts.podium.desktop.player.PlaybackState
+import app.podiumpodcasts.podium.player.MpvAudioPlayerEngine
+import app.podiumpodcasts.podium.player.PlaybackState
 import kotlin.test.*
 
 class MpvAudioPlayerEngineTest {

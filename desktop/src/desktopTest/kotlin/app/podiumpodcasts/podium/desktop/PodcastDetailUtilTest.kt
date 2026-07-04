@@ -1,4 +1,6 @@
 package app.podiumpodcasts.podium.desktop
+import app.podiumpodcasts.podium.stripHtml
+import app.podiumpodcasts.podium.formatDate
 
 import kotlin.test.Test
 import kotlin.test.assertEquals

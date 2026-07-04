@@ -1,11 +1,12 @@
 package app.podiumpodcasts.podium.desktop
+import app.podiumpodcasts.podium.screen.DownloadsScreen
 
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
 import app.podiumpodcasts.podium.data.AppDatabase
 import app.podiumpodcasts.podium.manager.DownloadManager
-import app.podiumpodcasts.podium.ui.theme.PodiumTheme
-import app.podiumpodcasts.podium.utils.Strings
+import app.podiumpodcasts.podium.theme.PodiumTheme
+import app.podiumpodcasts.podium.util.Strings
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.runBlocking

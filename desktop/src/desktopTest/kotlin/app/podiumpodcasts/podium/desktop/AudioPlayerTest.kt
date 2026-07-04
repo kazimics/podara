@@ -1,6 +1,6 @@
 package app.podiumpodcasts.podium.desktop
 
-import app.podiumpodcasts.podium.desktop.player.MediaPlayerState
+import app.podiumpodcasts.podium.player.MediaPlayerState
 import kotlin.test.*
 
 class MediaPlayerStateTestExtended {

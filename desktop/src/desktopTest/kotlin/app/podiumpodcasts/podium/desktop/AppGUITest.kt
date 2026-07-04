@@ -1,11 +1,14 @@
 package app.podiumpodcasts.podium.desktop
+import app.podiumpodcasts.podium.screen.DiscoverScreen
+import app.podiumpodcasts.podium.screen.SettingsScreen
+import app.podiumpodcasts.podium.screen.HistoryScreen
 
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
 import app.podiumpodcasts.podium.data.AppDatabase
-import app.podiumpodcasts.podium.desktop.player.MediaPlayerState
-import app.podiumpodcasts.podium.ui.theme.PodiumTheme
-import app.podiumpodcasts.podium.utils.Strings
+import app.podiumpodcasts.podium.player.MediaPlayerState
+import app.podiumpodcasts.podium.theme.PodiumTheme
+import app.podiumpodcasts.podium.util.Strings
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.runBlocking
@@ -82,7 +85,7 @@ class AppGUITest {
         composeTestRule.setContent {
             PodiumTheme {
                 val playerState = MediaPlayerState()
-                app.podiumpodcasts.podium.desktop.player.MiniPlayer(
+                app.podiumpodcasts.podium.player.MiniPlayer(
                     state = playerState,
                     onExpand = {},
                     onBodyClick = {},
@@ -99,7 +102,7 @@ class AppGUITest {
             PodiumTheme {
                 val playerState = MediaPlayerState()
                 playerState.play("https://example.com/audio.mp3", "Test Episode", null)
-                app.podiumpodcasts.podium.desktop.player.MiniPlayer(
+                app.podiumpodcasts.podium.player.MiniPlayer(
                     state = playerState,
                     onExpand = {},
                     onBodyClick = {},
@@ -116,7 +119,7 @@ class AppGUITest {
             PodiumTheme {
                 val playerState = MediaPlayerState()
                 playerState.play("https://example.com/audio.mp3", "Test", null)
-                app.podiumpodcasts.podium.desktop.player.MiniPlayer(
+                app.podiumpodcasts.podium.player.MiniPlayer(
                     state = playerState,
                     onExpand = {},
                     onBodyClick = {},
@@ -136,7 +139,7 @@ class AppGUITest {
             PodiumTheme {
                 val playerState = MediaPlayerState()
                 playerState.play("https://example.com/audio.mp3", "Test", null)
-                app.podiumpodcasts.podium.desktop.player.MiniPlayer(
+                app.podiumpodcasts.podium.player.MiniPlayer(
                     state = playerState,
                     onExpand = {},
                     onBodyClick = {},
@@ -157,7 +160,7 @@ class AppGUITest {
             PodiumTheme {
                 val playerState = MediaPlayerState()
                 playerState.play("https://example.com/audio.mp3", "Full Player Test", null)
-                app.podiumpodcasts.podium.desktop.player.FullPlayer(
+                app.podiumpodcasts.podium.player.FullPlayer(
                     state = playerState,
                     database = database,
                     onClose = {}
@@ -173,7 +176,7 @@ class AppGUITest {
             PodiumTheme {
                 val playerState = MediaPlayerState()
                 playerState.play("https://example.com/audio.mp3", "Test", null)
-                app.podiumpodcasts.podium.desktop.player.FullPlayer(
+                app.podiumpodcasts.podium.player.FullPlayer(
                     state = playerState,
                     database = database,
                     onClose = {}
@@ -194,7 +197,7 @@ class AppGUITest {
             PodiumTheme {
                 val playerState = MediaPlayerState()
                 playerState.play("https://example.com/audio.mp3", "Test", null)
-                app.podiumpodcasts.podium.desktop.player.FullPlayer(
+                app.podiumpodcasts.podium.player.FullPlayer(
                     state = playerState,
                     database = database,
                     onClose = {}
@@ -210,7 +213,7 @@ class AppGUITest {
             PodiumTheme {
                 val playerState = MediaPlayerState()
                 playerState.play("https://example.com/audio.mp3", "Test", null)
-                app.podiumpodcasts.podium.desktop.player.FullPlayer(
+                app.podiumpodcasts.podium.player.FullPlayer(
                     state = playerState,
                     database = database,
                     onClose = {}
@@ -226,7 +229,7 @@ class AppGUITest {
             PodiumTheme {
                 val playerState = MediaPlayerState()
                 playerState.play("https://example.com/audio.mp3", "Test", null)
-                app.podiumpodcasts.podium.desktop.player.FullPlayer(
+                app.podiumpodcasts.podium.player.FullPlayer(
                     state = playerState,
                     database = database,
                     onClose = {}
@@ -302,7 +305,7 @@ class AppGUITest {
             PodiumTheme {
                 val playerState = MediaPlayerState()
                 playerState.play("https://example.com/audio.mp3", "Body Click Episode", "Test Podcast", null)
-                app.podiumpodcasts.podium.desktop.player.MiniPlayer(
+                app.podiumpodcasts.podium.player.MiniPlayer(
                     state = playerState,
                     onExpand = {},
                     onBodyClick = { toggled = true },
@@ -324,7 +327,7 @@ class AppGUITest {
             PodiumTheme {
                 val playerState = MediaPlayerState()
                 playerState.play("https://example.com/audio.mp3", "Test", null)
-                app.podiumpodcasts.podium.desktop.player.MiniPlayer(
+                app.podiumpodcasts.podium.player.MiniPlayer(
                     state = playerState,
                     onExpand = {},
                     onBodyClick = { toggled = true },
@@ -344,7 +347,7 @@ class AppGUITest {
             PodiumTheme {
                 val playerState = MediaPlayerState()
                 playerState.play("https://example.com/audio.mp3", "Test", null)
-                app.podiumpodcasts.podium.desktop.player.MiniPlayer(
+                app.podiumpodcasts.podium.player.MiniPlayer(
                     state = playerState,
                     onExpand = {},
                     onBodyClick = { toggled = true },
@@ -362,7 +365,7 @@ class AppGUITest {
         composeTestRule.setContent {
             PodiumTheme {
                 val playerState = MediaPlayerState()
-                app.podiumpodcasts.podium.desktop.player.MiniPlayer(
+                app.podiumpodcasts.podium.player.MiniPlayer(
                     state = playerState,
                     onExpand = {},
                     onBodyClick = {},
@@ -381,7 +384,7 @@ class AppGUITest {
             PodiumTheme {
                 val playerState = MediaPlayerState()
                 playerState.play("https://example.com/audio.mp3", "Test", null)
-                app.podiumpodcasts.podium.desktop.player.FullPlayer(
+                app.podiumpodcasts.podium.player.FullPlayer(
                     state = playerState,
                     database = database,
                     onClose = {}
@@ -397,7 +400,7 @@ class AppGUITest {
             PodiumTheme {
                 val playerState = MediaPlayerState()
                 playerState.play("https://example.com/audio.mp3", "Episode Title", "Test Podcast", null)
-                app.podiumpodcasts.podium.desktop.player.FullPlayer(
+                app.podiumpodcasts.podium.player.FullPlayer(
                     state = playerState,
                     database = database,
                     onClose = {}
@@ -438,7 +441,7 @@ class AppGUITest {
                     durationMs = 1800000L,
                     episodeId = "test:ep-notes-1"
                 )
-                app.podiumpodcasts.podium.desktop.player.FullPlayer(
+                app.podiumpodcasts.podium.player.FullPlayer(
                     state = playerState,
                     database = database,
                     onClose = {}
@@ -478,7 +481,7 @@ class AppGUITest {
                     durationMs = 600000L,
                     episodeId = "test:rec-main"
                 )
-                app.podiumpodcasts.podium.desktop.player.FullPlayer(
+                app.podiumpodcasts.podium.player.FullPlayer(
                     state = playerState,
                     database = database,
                     onClose = {}

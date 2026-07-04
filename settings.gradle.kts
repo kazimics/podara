@@ -16,10 +16,4 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "podium"
-include(":shared")
 include(":desktop")
-include(":feature-home")
-include(":feature-discover")
-include(":feature-player")
-include(":feature-library")
-include(":feature-settings")
