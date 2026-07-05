@@ -81,6 +81,7 @@ compose.desktop {
                 dirChooser = true
                 shortcut = true
                 menu = true
+                iconFile.set(project.file("../libs/icon.ico"))
             }
         }
     }

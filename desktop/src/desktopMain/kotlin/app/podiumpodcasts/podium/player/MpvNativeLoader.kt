@@ -16,46 +16,58 @@ object MpvNativeLoader {
                 val nativeDir = File(System.getProperty("user.home"), ".podium/native")
                 nativeDir.mkdirs()
 
-                val dlls = listOf("mpv-1.dll")
+                val dllName = "mpv-1.dll"
+                val outFile = File(nativeDir, dllName)
 
-                val baseDir = File(System.getProperty("user.dir"))
-                val libDirs = listOf(
-                    File(baseDir, "libs"),
-                    File(baseDir, "../libs"),
-                    File(baseDir, "../../libs")
-                )
+                if (!outFile.exists()) {
+                    // 1. Try filesystem paths (development & legacy)
+                    val baseDir = File(System.getProperty("user.dir"))
+                    val libDirs = listOf(
+                        File(baseDir, "libs"),
+                        File(baseDir, "../libs"),
+                        File(baseDir, "../../libs"),
+                        File(baseDir, "app/libs"),
+                        File(baseDir, "app")
+                    )
 
-                for (dllName in dlls) {
-                    val outFile = File(nativeDir, dllName)
-                    if (!outFile.exists()) {
-                        var copied = false
-                        for (libDir in libDirs) {
-                            val srcFile = File(libDir, dllName)
-                            if (srcFile.exists()) {
-                                srcFile.copyTo(outFile, overwrite = true)
-                                Logger.d(TAG, "Copied: $dllName (${outFile.length()} bytes)")
-                                copied = true
-                                break
+                    var copied = false
+                    for (libDir in libDirs) {
+                        val srcFile = File(libDir, dllName)
+                        if (srcFile.exists()) {
+                            srcFile.copyTo(outFile, overwrite = true)
+                            Logger.d(TAG, "Copied from filesystem: $dllName (${outFile.length()} bytes)")
+                            copied = true
+                            break
+                        }
+                    }
+
+                    // 2. Fallback: extract from classpath (packaged distribution)
+                    if (!copied) {
+                        val resourcePath = "mpv-1.dll"
+                        val stream = this::class.java.classLoader.getResourceAsStream(resourcePath)
+                        if (stream != null) {
+                            stream.use { input ->
+                                outFile.outputStream().use { output ->
+                                    input.copyTo(output)
+                                }
                             }
+                            Logger.d(TAG, "Extracted from classpath: $dllName (${outFile.length()} bytes)")
+                            copied = true
                         }
-                        if (!copied) {
-                            Logger.e(TAG, "DLL not found: $dllName")
-                            return false
-                        }
+                    }
+
+                    if (!copied) {
+                        Logger.e(TAG, "DLL not found: $dllName. Place it in libs/ directory")
+                        return false
                     }
                 }
 
-                for (dllName in dlls) {
-                    val dll = File(nativeDir, dllName)
-                    if (dll.exists()) {
-                        try {
-                            System.load(dll.absolutePath)
-                            Logger.d(TAG, "Loaded: $dllName")
-                        } catch (e: UnsatisfiedLinkError) {
-                            Logger.e(TAG, "Cannot load $dllName: ${e.message}")
-                            return false
-                        }
-                    }
+                try {
+                    System.load(outFile.absolutePath)
+                    Logger.d(TAG, "Loaded: $dllName")
+                } catch (e: UnsatisfiedLinkError) {
+                    Logger.e(TAG, "Cannot load $dllName: ${e.message}")
+                    return false
                 }
 
                 loaded = true
