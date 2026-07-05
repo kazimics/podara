@@ -11,6 +11,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -32,6 +33,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.decodeToImageBitmap
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.layout.ContentScale
@@ -48,6 +50,7 @@ import androidx.compose.ui.window.WindowPlacement
 import androidx.compose.ui.window.WindowScope
 import java.awt.Cursor
 import coil3.compose.AsyncImage
+import androidx.compose.ui.graphics.painter.BitmapPainter
 import app.podiumpodcasts.podium.api.apple.ApplePodcastClient
 import app.podiumpodcasts.podium.api.model.PodcastPreviewModel
 import app.podiumpodcasts.podium.api.rss.FetchPodcastClient
@@ -116,19 +119,21 @@ private fun Sidebar(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                Box(
-                    modifier = Modifier.size(sidebar.LogoSize).background(colors.accent, RoundedCornerShape(8.dp)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        Icons.Default.GraphicEq,
-                        contentDescription = null,
-                        tint = colors.surface,
-                        modifier = Modifier.size(sidebar.LogoIconSize)
-                    )
+                val logoPainter = remember {
+                    val loader = object {}::class.java.classLoader
+                    val bytes = loader.getResourceAsStream("logo-64.png")!!.readBytes()
+                    BitmapPainter(bytes.decodeToImageBitmap())
                 }
+                Image(
+                    painter = logoPainter,
+                    contentDescription = null,
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier
+                        .size(sidebar.LogoSize)
+                        .clip(RoundedCornerShape(8.dp))
+                )
                 Text(
-                    text = "Podify",
+                    text = Strings["app_name"],
                     color = colors.textPrimary,
                     fontSize = sidebar.LogoTextSize,
                     fontWeight = FontWeight.SemiBold
@@ -531,10 +536,15 @@ fun WindowScope.App(windowState: androidx.compose.ui.window.WindowState, awtWind
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Spacer(modifier = Modifier.width(12.dp))
-                    Icon(
-                        Icons.Default.GraphicEq,
+                    val titleLogoPainter = remember {
+                        val loader = object {}::class.java.classLoader
+                        val bytes = loader.getResourceAsStream("logo-64.png")!!.readBytes()
+                        BitmapPainter(bytes.decodeToImageBitmap())
+                    }
+                    Image(
+                        painter = titleLogoPainter,
                         contentDescription = null,
-                        tint = titleBarColors.accent,
+                        contentScale = ContentScale.Fit,
                         modifier = Modifier.size(16.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))

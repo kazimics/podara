@@ -11,6 +11,14 @@ import app.podiumpodcasts.podium.util.Strings
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
+import androidx.compose.runtime.remember
+import androidx.compose.ui.graphics.painter.BitmapPainter
+import androidx.compose.ui.graphics.decodeToImageBitmap
+
+private val appIcon = lazy {
+    val bytes = object {}::class.java.classLoader.getResourceAsStream("logo-256.png")!!.readBytes()
+    BitmapPainter(bytes.decodeToImageBitmap())
+}
 
 fun main() {
     val logFile = File(System.getProperty("user.home"), ".podium/crash.log")
@@ -27,7 +35,8 @@ fun main() {
                 state = windowState,
                 title = Strings["app_name"],
                 undecorated = true,
-                transparent = false
+                transparent = false,
+                icon = appIcon.value
             ) {
                 App(windowState, window)
             }

@@ -75,10 +75,10 @@ object DesignTokens {
         val NavIconSize = 20.dp
         val NavTextSize = 14.sp
         val NavSpacing = 10.dp
-        val LogoSize = 32.dp
-        val LogoRadius = 8.dp
+        val LogoSize = 40.dp
+        val LogoRadius = 10.dp
         val LogoIconSize = 18.dp
-        val LogoTextSize = 17.sp
+        val LogoTextSize = 20.sp
         val DividerPadding = 20.dp
     }
 

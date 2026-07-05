@@ -6,8 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [0.1.0] - 2026-07-05
 
+### Added
+- Custom app logo and window icon: `desktop/src/desktopMain/resources/` — replaces default Material `GraphicEq` icons and Java coffee-cup taskbar icon
+
 ### Changed
-- Complete project restructure: removed Android KMP `shared/` module, merged all sources into single `:desktop` module
+- Sidebar logo: replaced `Icons.Default.GraphicEq` with `logo-64.png` loaded via `BitmapPainter` + `decodeToImageBitmap()`, enlarged from 32dp → 40dp
+- Sidebar title: "Podify" → `Strings["app_name"]` ("Podium"), enlarged from 17sp → 20sp
+- Custom title bar icon: replaced `Icons.Default.GraphicEq` with `logo-64.png` (16dp)
+- Window/taskbar icon: `logo-256.png` set via `Window` composable `icon` parameter (`appIcon` file-level lazy `BitmapPainter`)
 - Removed 5 empty `feature-*` modules (discover, home, library, player, settings)
 - Reorganized source into feature-based sub-packages: `screen/`, `player/`, `data/`, `api/`, `manager/`, `theme/`, `util/`
 - Moved `App.kt` + `Main.kt` to root package `app.podiumpodcasts.podium`
