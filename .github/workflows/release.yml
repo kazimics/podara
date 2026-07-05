@@ -1,0 +1,39 @@
+name: Release
+
+on:
+  push:
+    tags: [ 'v*' ]
+
+jobs:
+  package:
+    name: Package MSI + EXE
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v5
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew || true
+
+      - name: Build MSI installer
+        run: ./gradlew :desktop:packageMsi
+
+      - name: Build EXE installer
+        run: ./gradlew :desktop:packageExe
+
+      - name: Upload artifacts to release
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          generate_release_notes: false
+          files: |
+            desktop/build/compose/binaries/msi/main/*.msi
+            desktop/build/compose/binaries/exe/main/*.exe

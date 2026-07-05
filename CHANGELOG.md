@@ -4,6 +4,23 @@ All notable changes to podium-windows will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.0-alpha] - 2026-07-05
+
+### Added
+- Release workflow (`.github/workflows/release.yml`): triggered by `v*` tags, builds MSI + EXE installers and uploads to GitHub Releases as draft
+- Custom app logo and window icon: `desktop/src/desktopMain/resources/` — replaces default Material `GraphicEq` icons and Java coffee-cup taskbar icon
+
+### Changed
+- `packageVersion` bumped from `0.1.0` to `1.0.0-alpha`
+- Sidebar logo: replaced `Icons.Default.GraphicEq` with `logo-64.png` loaded via `BitmapPainter` + `decodeToImageBitmap()`, enlarged from 32dp → 40dp
+- Sidebar title: "Podify" → `Strings["app_name"]` ("Podium"), enlarged from 17sp → 20sp
+- Custom title bar icon: replaced `Icons.Default.GraphicEq` with `logo-64.png` (16dp)
+- Window/taskbar icon: `logo-256.png` set via `Window` composable `icon` parameter
+- Updated README / README_zh for 1.0.0-alpha release: removed "WIP" warnings, added download table, updated badge URLs to `kazimics/podium-windows`
+
+### Removed
+- Old `LaunchedEffect` + `ImageIO` window-icon fallback (replaced by `Window.icon` parameter)
+
 ## [0.1.0] - 2026-07-05
 
 ### Added

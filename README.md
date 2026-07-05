@@ -1,22 +1,18 @@
 ![podium](/images/title_light.png#gh-light-mode-only)
 ![podium](/images/title_dark.png#gh-dark-mode-only)
 ---
-![GitHub](https://img.shields.io/github/license/aimok04/podium?style=for-the-badge) ![GitHub release (latest by date)](https://img.shields.io/github/v/release/aimok04/podium?style=for-the-badge)
+![GitHub](https://img.shields.io/github/license/kazimics/podium-windows?style=for-the-badge)
+![GitHub release (latest by date)](https://img.shields.io/github/v/release/kazimics/podium-windows?style=for-the-badge)
+![GitHub downloads](https://img.shields.io/github/downloads/kazimics/podium-windows/total?style=for-the-badge)
 
 English | [中文](README_zh.md)
 
 **podium-windows** is a modern, open-source Podcast app for **Windows**, written in Kotlin using Compose Multiplatform.
 The app uses **Material 3** design and audio playback powered by **libmpv**.
 
-This project is a Windows desktop port of [aimok04/podium](https://github.com/aimok04/podium), an Android podcast app.
-
-> [!CAUTION]
-> Keep in mind that *podium-windows* is work in progress software.
-> It is far from feature complete and can contain bugs.
-
 > [!NOTE]
-> *podium-windows* is still lacking some essential features.
-> Please open up an issue if you have any ideas!
+> This is the 1.0.0-alpha release. Features are mostly complete, but you may still encounter edge-case bugs.
+> Please [open an issue](https://github.com/kazimics/podium-windows/issues) if you find one!
 
 ## Notable Features
 
@@ -31,21 +27,14 @@ This project is a Windows desktop port of [aimok04/podium](https://github.com/ai
 - **Subscription management** — unsubscribe from podcasts individually or in batch, **sort by name / update / listen time**.
 - **Design system** — centralized design tokens for consistent spacing, colors, and typography.
 
-## Installation
+## Download
 
-1. Clone the repository:
-   ```
-   git clone https://github.com/aimok04/podium.git
-   cd podium-windows
-   ```
+Download the latest installer from the [Releases page](https://github.com/kazimics/podium-windows/releases).
 
-2. Build and install:
-   ```
-   set JAVA_HOME="C:\Program Files\Microsoft\jdk-17.0.19.10-hotspot"
-   gradlew.bat :desktop:packageMsi
-   ```
-
-3. Run the MSI installer from `desktop/build/compose/binaries/main/msi/`
+| Format | Description |
+|--------|-------------|
+| **MSI** | Windows Installer — installs and registers in Add/Remove Programs |
+| **EXE** | Portable executable — run directly without installation |
 
 ## Building from Source
 
@@ -55,13 +44,16 @@ This project is a Windows desktop port of [aimok04/podium](https://github.com/ai
 ### Build Commands
 ```bash
 # Run the app directly
-gradlew.bat :desktop:run
+./gradlew :desktop:run
 
 # Build MSI installer
-gradlew.bat :desktop:packageMsi
+./gradlew :desktop:packageMsi
+
+# Build EXE installer
+./gradlew :desktop:packageExe
 
 # Run tests
-gradlew.bat :desktop:desktopTest
+./gradlew :desktop:desktopTest
 ```
 
 ## Tech Stack

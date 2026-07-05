@@ -71,7 +71,7 @@ compose.desktop {
         nativeDistributions {
             targetFormats(TargetFormat.Msi, TargetFormat.Exe)
             packageName = "podium"
-            packageVersion = "0.1.0"
+            packageVersion = "1.0.0-alpha"
             description = "Podium Podcasts"
             vendor = "Podium Podcasts"
 

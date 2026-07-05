@@ -1,21 +1,18 @@
 ![podium](/images/title_light.png#gh-light-mode-only)
 ![podium](/images/title_dark.png#gh-dark-mode-only)
 ---
-![GitHub](https://img.shields.io/github/license/aimok04/podium?style=for-the-badge) ![GitHub release (latest by date)](https://img.shields.io/github/v/release/aimok04/podium?style=for-the-badge)
+![GitHub](https://img.shields.io/github/license/kazimics/podium-windows?style=for-the-badge)
+![GitHub release (latest by date)](https://img.shields.io/github/v/release/kazimics/podium-windows?style=for-the-badge)
+![GitHub downloads](https://img.shields.io/github/downloads/kazimics/podium-windows/total?style=for-the-badge)
 
 [English](README.md) | 中文
 
 **podium-windows** 是一个现代化的开源播客应用，面向 **Windows** 平台，使用 Kotlin 和 Compose Multiplatform 开发。
 应用采用 **Material 3** 设计，音频播放基于 **libmpv**。
 
-本项目移植自 [aimok04/podium](https://github.com/aimok04/podium) — 一个 Android 播客应用。
-
-> [!CAUTION]
-> 请注意，*podium-windows* 仍在开发中，功能尚未完善，可能存在 Bug。
-
 > [!NOTE]
-> *podium-windows* 仍缺少一些重要功能。
-> 如果你有任何想法，请提交 Issue！
+> 这是 1.0.0-alpha 版本。功能已基本完善，但仍可能遇到边缘场景的 Bug。
+> 如果发现问题，请[提交 Issue](https://github.com/kazimics/podium-windows/issues)。
 
 ## 主要功能
 
@@ -30,21 +27,14 @@
 - **订阅管理** — 单个或批量取消订阅播客，**支持按名称/最近更新/最近收听排序**。
 - **设计系统** — 集中式设计 Token，确保间距、颜色、排版一致。
 
-## 安装
+## 下载
 
-1. 克隆仓库：
-   ```
-   git clone https://github.com/aimok04/podium.git
-   cd podium-windows
-   ```
+从 [Releases 页面](https://github.com/kazimics/podium-windows/releases) 下载最新安装包。
 
-2. 构建并安装：
-   ```
-   set JAVA_HOME="C:\Program Files\Microsoft\jdk-17.0.19.10-hotspot"
-   gradlew.bat :desktop:packageMsi
-   ```
-
-3. 运行 MSI 安装包：`desktop/build/compose/binaries/main/msi/`
+| 格式 | 说明 |
+|------|------|
+| **MSI** | Windows 安装包 — 安装后可在"添加/删除程序"中管理 |
+| **EXE** | 可执行文件 — 直接运行，无需安装 |
 
 ## 从源码构建
 
@@ -54,13 +44,16 @@
 ### 构建命令
 ```bash
 # 直接运行应用
-gradlew.bat :desktop:run
+./gradlew :desktop:run
 
 # 构建 MSI 安装包
-gradlew.bat :desktop:packageMsi
+./gradlew :desktop:packageMsi
+
+# 构建 EXE 安装包
+./gradlew :desktop:packageExe
 
 # 运行测试
-gradlew.bat :desktop:desktopTest
+./gradlew :desktop:desktopTest
 ```
 
 ## 技术栈
