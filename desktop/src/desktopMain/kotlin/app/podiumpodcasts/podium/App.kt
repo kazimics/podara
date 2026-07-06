@@ -77,6 +77,7 @@ import app.podiumpodcasts.podium.util.Logger
 import app.podiumpodcasts.podium.util.RssConverter
 import app.podiumpodcasts.podium.util.Settings
 import app.podiumpodcasts.podium.util.Strings
+import app.podiumpodcasts.podium.util.SystemTrayManager
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import java.io.File
@@ -328,6 +329,16 @@ fun WindowScope.App(windowState: androidx.compose.ui.window.WindowState, awtWind
         DownloadManager(database, downloadsDir, downloadSpeedLimitKbps)
     }
     val playerState = remember { MediaPlayerState() }
+    val trayManager = remember { SystemTrayManager(awtWindow, playerState) }
+
+    DisposableEffect(Unit) {
+        trayManager.setup()
+        onDispose { trayManager.remove() }
+    }
+
+    LaunchedEffect(playerState.isPlaying) {
+        trayManager.updatePlayPauseLabel(playerState.isPlaying)
+    }
     val fetchPodcastClient = remember { FetchPodcastClient() }
     DisposableEffect(Unit) {
         onDispose { playerState.release() }
@@ -341,6 +352,7 @@ fun WindowScope.App(windowState: androidx.compose.ui.window.WindowState, awtWind
     var showFullPlayer by remember { mutableStateOf(false) }
     var showQueueFromMini by remember { mutableStateOf(false) }
     var showAddDialog by remember { mutableStateOf(false) }
+    var showCloseDialog by remember { mutableStateOf(false) }
     var addError by remember { mutableStateOf<String?>(null) }
     var downloadProgress by remember { mutableStateOf(mapOf<String, Pair<Long, Long>>()) }
     var downloadingEpisodes by remember { mutableStateOf(setOf<String>()) }
@@ -576,7 +588,21 @@ fun WindowScope.App(windowState: androidx.compose.ui.window.WindowState, awtWind
                     )
                     // Close
                     WindowControlButton(
-                        onClick = { awtWindow.dispose(); System.exit(0) },
+                        onClick = {
+                            val action = Settings.getCloseAction()
+                            if (Settings.isCloseActionRemembered()) {
+                                when (action) {
+                                    "quit" -> { awtWindow.dispose(); System.exit(0) }
+                                    "minimize_to_tray" -> {
+                                        awtWindow.isVisible = false
+                                        trayManager.updateShowHideLabel(false)
+                                    }
+                                    else -> { showCloseDialog = true }
+                                }
+                            } else {
+                                showCloseDialog = true
+                            }
+                        },
                         icon = { tint -> Icon(Icons.Default.Close, contentDescription = Strings["titlebar_close"], tint = tint, modifier = Modifier.size(14.dp)) },
                         isClose = true
                     )
@@ -765,6 +791,153 @@ fun WindowScope.App(windowState: androidx.compose.ui.window.WindowState, awtWind
                 }
             },
             error = addError
+        )
+    }
+
+    // ── Close Behavior Dialog ──
+    if (showCloseDialog) {
+        val dialogColors = PodiumTheme.colors
+        var chosenAction by remember { mutableStateOf(Settings.getCloseAction()) }
+        var rememberChoice by remember { mutableStateOf(false) }
+
+        AlertDialog(
+            onDismissRequest = { showCloseDialog = false },
+            shape = RoundedCornerShape(0),
+            modifier = Modifier.widthIn(max = 380.dp),
+            containerColor = dialogColors.surface,
+            title = {
+                Text(
+                    text = Strings["close_dialog_title"],
+                    color = dialogColors.textPrimary
+                )
+            },
+            text = {
+                Column {
+                    Text(
+                        text = Strings["close_dialog_message"],
+                        fontSize = 14.sp,
+                        color = dialogColors.textSecondary
+                    )
+                    Spacer(Modifier.height(12.dp))
+
+                    // Quit option
+                    val quitInteractionSource = remember { MutableInteractionSource() }
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(44.dp)
+                            .pointerHoverIcon(PointerIcon(java.awt.Cursor(java.awt.Cursor.HAND_CURSOR)))
+                            .clickable(interactionSource = quitInteractionSource, indication = null) {
+                                chosenAction = "quit"
+                            }
+                            .padding(horizontal = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(
+                            selected = chosenAction == "quit",
+                            onClick = { chosenAction = "quit" },
+                            colors = RadioButtonDefaults.colors(
+                                selectedColor = dialogColors.accent,
+                                unselectedColor = dialogColors.textSecondary
+                            )
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Column {
+                            Text(
+                                text = Strings["close_action_quit"],
+                                fontSize = 14.sp,
+                                color = dialogColors.textPrimary
+                            )
+                        }
+                    }
+
+                    // Minimize to tray option
+                    val minimizeInteractionSource = remember { MutableInteractionSource() }
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(44.dp)
+                            .pointerHoverIcon(PointerIcon(java.awt.Cursor(java.awt.Cursor.HAND_CURSOR)))
+                            .clickable(interactionSource = minimizeInteractionSource, indication = null) {
+                                chosenAction = "minimize_to_tray"
+                            }
+                            .padding(horizontal = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(
+                            selected = chosenAction == "minimize_to_tray",
+                            onClick = { chosenAction = "minimize_to_tray" },
+                            colors = RadioButtonDefaults.colors(
+                                selectedColor = dialogColors.accent,
+                                unselectedColor = dialogColors.textSecondary
+                            )
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Column {
+                            Text(
+                                text = Strings["close_action_minimize"],
+                                fontSize = 14.sp,
+                                color = dialogColors.textPrimary
+                            )
+                        }
+                    }
+
+                    Spacer(Modifier.height(8.dp))
+
+                    // Remember choice checkbox
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(40.dp)
+                            .pointerHoverIcon(PointerIcon(java.awt.Cursor(java.awt.Cursor.HAND_CURSOR)))
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null
+                            ) { rememberChoice = !rememberChoice }
+                            .padding(horizontal = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Checkbox(
+                            checked = rememberChoice,
+                            onCheckedChange = { rememberChoice = it },
+                            colors = CheckboxDefaults.colors(
+                                checkedColor = dialogColors.accent,
+                                uncheckedColor = dialogColors.textSecondary,
+                                checkmarkColor = dialogColors.surface
+                            )
+                        )
+                        Spacer(Modifier.width(4.dp))
+                        Text(
+                            text = Strings["close_remember"],
+                            fontSize = 13.sp,
+                            color = dialogColors.textSecondary
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    if (rememberChoice) {
+                        Settings.setCloseAction(chosenAction)
+                        Settings.setCloseActionRemembered(true)
+                    }
+                    when (chosenAction) {
+                        "quit" -> { awtWindow.dispose(); System.exit(0) }
+                        "minimize_to_tray" -> {
+                            awtWindow.isVisible = false
+                            trayManager.updateShowHideLabel(false)
+                        }
+                    }
+                    showCloseDialog = false
+                }) {
+                    Text(Strings["dialog_ok"], color = dialogColors.accent)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showCloseDialog = false }) {
+                    Text(Strings["dialog_cancel"], color = dialogColors.textSecondary)
+                }
+            }
         )
     }
 }

@@ -4,7 +4,21 @@ All notable changes to podium-windows will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [1.0.0-alpha] - 2026-07-05
+## [1.0.0-alpha2] - 2026-07-06
+
+### Added
+- System tray icon with app logo (`SystemTrayManager.kt`) — always present while the app is running
+- Tray right-click menu: Show/Hide Podium, Play/Pause, Previous, Next, Quit (Swing JDialog with Podium dark theme styling)
+- Close behavior dialog: on first close, asks whether to quit or minimize to tray; "Remember my choice" checkbox persists the decision
+- Close behavior setting in Settings → Close Behavior: "Ask me every time" / "Quit the app" / "Minimize to tray"
+- `close_action` / `close_action_remembered` settings keys in `Settings.kt`
+- 15 new i18n string keys for tray menu, close dialog, and close behavior settings (EN/ZH)
+- `logo-16.png` resource for high-quality tray icon rendering
+
+### Changed
+- Close button no longer immediately exits — checks remembered close action or shows the close behavior dialog
+- Window can be hidden to system tray while audio continues playing (requires "Minimize to tray" setting)
+- Tray left-click restores hidden window and brings it to front
 
 ### Added
 - Release workflow (`.github/workflows/release.yml`): triggered by `v*` tags, builds MSI + EXE installers and uploads to GitHub Releases as draft

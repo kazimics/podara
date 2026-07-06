@@ -51,6 +51,28 @@ object Settings {
         save()
     }
 
+    // ── Close Action (ask / quit / minimize_to_tray) ──
+
+    fun getCloseAction(): String {
+        val raw = props.getProperty("close_action", "ask")
+        return if (raw in listOf("ask", "quit", "minimize_to_tray")) raw else "ask"
+    }
+
+    fun setCloseAction(action: String) {
+        if (action !in listOf("ask", "quit", "minimize_to_tray")) return
+        props.setProperty("close_action", action)
+        save()
+    }
+
+    fun isCloseActionRemembered(): Boolean {
+        return props.getProperty("close_action_remembered", "false").toBoolean()
+    }
+
+    fun setCloseActionRemembered(remembered: Boolean) {
+        props.setProperty("close_action_remembered", remembered.toString())
+        save()
+    }
+
     private fun save() {
         try {
             settingsFile.parentFile?.mkdirs()

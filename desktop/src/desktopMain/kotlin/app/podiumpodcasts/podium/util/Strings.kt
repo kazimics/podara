@@ -177,7 +177,27 @@ object Strings {
         "home_sort_name_asc" to "Name A-Z",
         "home_sort_name_desc" to "Name Z-A",
         "home_sort_recent_update" to "Recent Update",
-        "home_sort_recent_listen" to "Recently Listened"
+        "home_sort_recent_listen" to "Recently Listened",
+        // ── System Tray ──
+        "tray_show" to "Show Podium",
+        "tray_hide" to "Hide Podium",
+        "tray_play" to "Play",
+        "tray_pause" to "Pause",
+        "tray_previous" to "Previous",
+        "tray_next" to "Next",
+        "tray_quit" to "Quit",
+        // ── Close Dialog ──
+        "close_dialog_title" to "Minimize to Tray?",
+        "close_dialog_message" to "What happens when you close the window?",
+        "close_action_quit" to "Quit the app",
+        "close_action_minimize" to "Minimize to tray, keep playing",
+        "close_remember" to "Remember my choice",
+        // ── Close Behavior Settings ──
+        "settings_close_behavior" to "Close Behavior",
+        "settings_close_behavior_desc" to "Choose what happens when you close the window",
+        "settings_close_quit" to "Quit the app",
+        "settings_close_minimize_tray" to "Minimize to tray",
+        "settings_close_ask" to "Ask me every time"
     )
 
     private val zh = mapOf(
@@ -350,7 +370,27 @@ object Strings {
         "home_sort_name_asc" to "名称 A-Z",
         "home_sort_name_desc" to "名称 Z-A",
         "home_sort_recent_update" to "最近更新",
-        "home_sort_recent_listen" to "最近收听"
+        "home_sort_recent_listen" to "最近收听",
+        // ── System Tray ──
+        "tray_show" to "显示 Podium",
+        "tray_hide" to "隐藏 Podium",
+        "tray_play" to "播放",
+        "tray_pause" to "暂停",
+        "tray_previous" to "上一首",
+        "tray_next" to "下一首",
+        "tray_quit" to "退出",
+        // ── Close Dialog ──
+        "close_dialog_title" to "最小化到托盘？",
+        "close_dialog_message" to "关闭窗口后你希望？",
+        "close_action_quit" to "直接关闭应用",
+        "close_action_minimize" to "最小化到托盘继续播放",
+        "close_remember" to "记住我的选择",
+        // ── Close Behavior Settings ──
+        "settings_close_behavior" to "关闭行为",
+        "settings_close_behavior_desc" to "选择关闭窗口时的行为",
+        "settings_close_quit" to "直接关闭",
+        "settings_close_minimize_tray" to "最小化到托盘",
+        "settings_close_ask" to "每次询问"
     )
 
     private val maps = mapOf("en" to en, "zh" to zh)

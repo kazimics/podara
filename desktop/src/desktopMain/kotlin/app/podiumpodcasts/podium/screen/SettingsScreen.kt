@@ -70,6 +70,8 @@ fun SettingsScreen(
     var localSpeedLimitInput by remember { mutableStateOf("") }
     var showSpeedLimitDialog by remember { mutableStateOf(false) }
     var speedLimitError by remember { mutableStateOf<String?>(null) }
+    // ── Close behavior dialog state ──
+    var showCloseBehaviorDialog by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -243,6 +245,30 @@ fun SettingsScreen(
 
             HorizontalDivider(color = colors.divider, modifier = Modifier.padding(vertical = 8.dp))
 
+            // ── Close Behavior section ──
+            SectionHeader(Strings["settings_close_behavior"])
+            Spacer(Modifier.height(DesignTokens.Spacing.sm))
+
+            SettingsRow(
+                icon = Icons.Default.ExitToApp,
+                title = Strings["settings_close_behavior"],
+                subtitle = when (Settings.getCloseAction()) {
+                    "quit" -> Strings["settings_close_quit"]
+                    "minimize_to_tray" -> Strings["settings_close_minimize_tray"]
+                    else -> Strings["settings_close_ask"]
+                },
+                action = {
+                    SettingsActionText(
+                        text = Strings["settings_change"],
+                        color = colors.accent,
+                        onClick = { showCloseBehaviorDialog = true }
+                    )
+                },
+                colors = colors
+            )
+
+            HorizontalDivider(color = colors.divider, modifier = Modifier.padding(vertical = 8.dp))
+
             // ── About section ──
             SectionHeader(Strings["settings_about"])
             Spacer(Modifier.height(DesignTokens.Spacing.sm))
@@ -386,6 +412,129 @@ fun SettingsScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showSpeedLimitDialog = false; speedLimitError = null }) {
+                    Text(Strings["dialog_cancel"], color = colors.textSecondary)
+                }
+            }
+        )
+    }
+
+    // ── Close behavior dialog ──
+    if (showCloseBehaviorDialog) {
+        var selectedAction by remember { mutableStateOf(Settings.getCloseAction()) }
+
+        AlertDialog(
+            onDismissRequest = { showCloseBehaviorDialog = false },
+            shape = RoundedCornerShape(0),
+            modifier = Modifier.widthIn(max = 380.dp),
+            containerColor = colors.surface,
+            title = { Text(Strings["settings_close_behavior"], color = colors.textPrimary) },
+            text = {
+                Column {
+                    Text(
+                        text = Strings["settings_close_behavior_desc"],
+                        fontSize = 13.sp,
+                        color = colors.textSecondary
+                    )
+                    Spacer(Modifier.height(8.dp))
+
+                    // Ask every time
+                    val askInteractionSource = remember { MutableInteractionSource() }
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(44.dp)
+                            .pointerHoverIcon(PointerIcon(java.awt.Cursor(java.awt.Cursor.HAND_CURSOR)))
+                            .clickable(interactionSource = askInteractionSource, indication = null) {
+                                selectedAction = "ask"
+                            }
+                            .padding(horizontal = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(
+                            selected = selectedAction == "ask",
+                            onClick = { selectedAction = "ask" },
+                            colors = RadioButtonDefaults.colors(
+                                selectedColor = colors.accent,
+                                unselectedColor = colors.textSecondary
+                            )
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            text = Strings["settings_close_ask"],
+                            fontSize = 14.sp,
+                            color = colors.textPrimary
+                        )
+                    }
+
+                    // Quit
+                    val quitInteractionSource = remember { MutableInteractionSource() }
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(44.dp)
+                            .pointerHoverIcon(PointerIcon(java.awt.Cursor(java.awt.Cursor.HAND_CURSOR)))
+                            .clickable(interactionSource = quitInteractionSource, indication = null) {
+                                selectedAction = "quit"
+                            }
+                            .padding(horizontal = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(
+                            selected = selectedAction == "quit",
+                            onClick = { selectedAction = "quit" },
+                            colors = RadioButtonDefaults.colors(
+                                selectedColor = colors.accent,
+                                unselectedColor = colors.textSecondary
+                            )
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            text = Strings["settings_close_quit"],
+                            fontSize = 14.sp,
+                            color = colors.textPrimary
+                        )
+                    }
+
+                    // Minimize to tray
+                    val minimizeInteractionSource = remember { MutableInteractionSource() }
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(44.dp)
+                            .pointerHoverIcon(PointerIcon(java.awt.Cursor(java.awt.Cursor.HAND_CURSOR)))
+                            .clickable(interactionSource = minimizeInteractionSource, indication = null) {
+                                selectedAction = "minimize_to_tray"
+                            }
+                            .padding(horizontal = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(
+                            selected = selectedAction == "minimize_to_tray",
+                            onClick = { selectedAction = "minimize_to_tray" },
+                            colors = RadioButtonDefaults.colors(
+                                selectedColor = colors.accent,
+                                unselectedColor = colors.textSecondary
+                            )
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            text = Strings["settings_close_minimize_tray"],
+                            fontSize = 14.sp,
+                            color = colors.textPrimary
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    Settings.setCloseAction(selectedAction)
+                    showCloseBehaviorDialog = false
+                }) {
+                    Text(Strings["dialog_ok"], color = colors.accent)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showCloseBehaviorDialog = false }) {
                     Text(Strings["dialog_cancel"], color = colors.textSecondary)
                 }
             }
