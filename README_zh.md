@@ -1,40 +1,35 @@
-![podium](/images/title_light.png#gh-light-mode-only)
-![podium](/images/title_dark.png#gh-dark-mode-only)
+![Podara](/images/title_light.png#gh-light-mode-only)
+![Podara](/images/title_dark.png#gh-dark-mode-only)
 ---
-![GitHub](https://img.shields.io/github/license/kazimics/podium-windows?style=for-the-badge)
-![GitHub release (latest by date)](https://img.shields.io/github/v/release/kazimics/podium-windows?style=for-the-badge)
-![GitHub downloads](https://img.shields.io/github/downloads/kazimics/podium-windows/total?style=for-the-badge)
+![GitHub](https://img.shields.io/github/license/kazimics/podara?style=for-the-badge)
+![GitHub release (latest by date)](https://img.shields.io/github/v/release/kazimics/podara?style=for-the-badge)
+![GitHub downloads](https://img.shields.io/github/downloads/kazimics/podara/total?style=for-the-badge)
 
 [English](README.md) | 中文
 
-**podium-windows** 是一个现代化的开源播客应用，面向 **Windows** 平台，使用 Kotlin 和 Compose Multiplatform 开发。
-应用采用 **Material 3** 设计，音频播放基于 **libmpv**。
+**Podara** 是一个现代化的开源播客应用，面向 **Windows** 平台，使用 Kotlin 和 Compose Multiplatform 开发。
+
+> [!CAUTION]
+> 请注意，*Podara* 仍属于正在开发中的软件，功能远未完善，可能存在漏洞。
+
 
 > [!NOTE]
-> 这是 1.0.0-alpha 版本。功能已基本完善，但仍可能遇到边缘场景的 Bug。
-> 如果发现问题，请[提交 Issue](https://github.com/kazimics/podium-windows/issues)。
+> *Podara* 目前仍缺少一些核心功能
+> 如果您有相关建议，欢迎提交问题！:)
 
 ## 主要功能
 
-- **自定义 UI** — 沉浸式窗口、自定义标题栏、侧边栏导航、高级金色渐变按钮。
 - **下载与离线管理** — 支持暂停/恢复下载、管理已下载内容、查看存储占用与文件路径、单条或批量删除，**支持每任务下载限速**。
 - **发现** 新播客 — 在 *Discover* 标签页浏览 *(由 Apple Podcasts 提供支持)*，包含精选卡片和热门推荐。
-- **播放控制** — 播放/暂停、快进快退、播放速度调节、10s 跳转。
 - **睡眠定时器** — 设定时间后自动暂停播放。
 - **队列管理** — 创建和管理你的播放队列，支持封面显示，**支持拖拽排序及实时动画**。
 - **OPML 导入/导出** — 在不同应用之间迁移订阅。
 - **播放历史** — 记录你的收听历史。
 - **订阅管理** — 单个或批量取消订阅播客，**支持按名称/最近更新/最近收听排序**。
-- **设计系统** — 集中式设计 Token，确保间距、颜色、排版一致。
 
 ## 下载
 
-从 [Releases 页面](https://github.com/kazimics/podium-windows/releases) 下载最新安装包。
-
-| 格式 | 说明 |
-|------|------|
-| **MSI** | Windows 安装包 — 安装后可在"添加/删除程序"中管理 |
-| **EXE** | 可执行文件 — 直接运行，无需安装 |
+从 [Releases 页面](https://github.com/kazimics/podara/releases) 下载最新安装包。
 
 ## 从源码构建
 
@@ -72,11 +67,11 @@
 ## 项目结构
 
 ```
-podium-windows/
+podara/
 ├── desktop/                   # Windows 桌面入口
 │   ├── build.gradle.kts
 │   └── src/
-│       ├── desktopMain/kotlin/app/podiumpodcasts/podium/
+│       ├── desktopMain/kotlin/app/podara/
 │       │   ├── App.kt            # 主应用组合
 │       │   ├── Main.kt           # 入口
 │       │   ├── screen/           # UI 页面

@@ -37,7 +37,7 @@ jobs:
         shell: powershell
         run: |
           $dirs = @(
-            (Join-Path $env:USERPROFILE ".podium\native"),
+            (Join-Path $env:USERPROFILE ".podara\native"),
             (Join-Path $env:USERPROFILE ".skiko")
           )
           foreach ($dir in $dirs) {
@@ -49,7 +49,7 @@ jobs:
         shell: bash
         run: |
           START=$(date +%s)
-          ./gradlew :desktop:desktopTest --tests "app.podiumpodcasts.podium.desktop.ExportManagerTest" --tests "app.podiumpodcasts.podium.desktop.PodcastManagerTest" --tests "app.podiumpodcasts.podium.desktop.DownloadManagerTest" --tests "app.podiumpodcasts.podium.desktop.ImportManagerTest" --tests "app.podiumpodcasts.podium.desktop.MediaPlayerStateTest" --tests "app.podiumpodcasts.podium.desktop.HistoryDaoTest" --tests "app.podiumpodcasts.podium.desktop.AudioPlayerTest" --tests "app.podiumpodcasts.podium.desktop.MpvAudioPlayerEngineTest" --tests "app.podiumpodcasts.podium.desktop.UnsubscribeTest" --tests "app.podiumpodcasts.podium.desktop.PodcastDetailUtilTest"
+          ./gradlew :desktop:desktopTest --tests "app.podara.desktop.ExportManagerTest" --tests "app.podara.desktop.PodcastManagerTest" --tests "app.podara.desktop.DownloadManagerTest" --tests "app.podara.desktop.ImportManagerTest" --tests "app.podara.desktop.MediaPlayerStateTest" --tests "app.podara.desktop.HistoryDaoTest" --tests "app.podara.desktop.AudioPlayerTest" --tests "app.podara.desktop.MpvAudioPlayerEngineTest" --tests "app.podara.desktop.UnsubscribeTest" --tests "app.podara.desktop.PodcastDetailUtilTest"
           END=$(date +%s)
           echo "::notice::Tests took $((END - START)) seconds"
 
@@ -90,7 +90,7 @@ jobs:
         shell: powershell
         run: |
           $dirs = @(
-            (Join-Path $env:USERPROFILE ".podium\native"),
+            (Join-Path $env:USERPROFILE ".podara\native"),
             (Join-Path $env:USERPROFILE ".skiko")
           )
           foreach ($dir in $dirs) {
@@ -102,7 +102,7 @@ jobs:
         shell: bash
         run: |
           START=$(date +%s)
-          ./gradlew :desktop:desktopTest --tests "app.podiumpodcasts.podium.desktop.AppGUITest" --tests "app.podiumpodcasts.podium.desktop.DiscoverScreenTest" --tests "app.podiumpodcasts.podium.desktop.HistoryScreenTest" --tests "app.podiumpodcasts.podium.desktop.SettingsScreenTest"
+          ./gradlew :desktop:desktopTest --tests "app.podara.desktop.AppGUITest" --tests "app.podara.desktop.DiscoverScreenTest" --tests "app.podara.desktop.HistoryScreenTest" --tests "app.podara.desktop.SettingsScreenTest"
           END=$(date +%s)
           echo "::notice::Tests took $((END - START)) seconds"
 

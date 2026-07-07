@@ -15,5 +15,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "podium"
+rootProject.name = "podara"
 include(":desktop")

@@ -1,14 +1,28 @@
 # Changelog
 
-All notable changes to podium-windows will be documented in this file.
+All notable changes to podara will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
+
+## [1.0.0-alpha3] - 2026-07-07
+
+### Changed
+- **Project renamed to Podara** — full rename across the codebase:
+  - Package: `app.podiumpodcasts.podium` → `app.podara`
+  - Theme: `PodiumTheme` → `PodaraTheme`, `PodiumColors` → `PodaraColors`
+  - App display name: "Podium" → "Podara"
+  - Data directory: `~/.podium/` → `~/.podara/`
+  - Database file: `podium.db` → `podara.db`
+  - GitHub URLs updated to `kazimics/podara`
+  - Remote URL, CI test paths, AND documentation all synced
+- README / README_zh: removed Custom UI, Playback controls, Design system from Notable Features
+- README / README_zh: fixed EXE description (it is an installer, not a portable executable)
 
 ## [1.0.0-alpha2] - 2026-07-06
 
 ### Added
 - System tray icon with app logo (`SystemTrayManager.kt`) — always present while the app is running
-- Tray right-click menu: Show/Hide Podium, Play/Pause, Previous, Next, Quit (Swing JDialog with Podium dark theme styling)
+- Tray right-click menu: Show/Hide Podara, Play/Pause, Previous, Next, Quit (Swing JDialog with Podara dark theme styling)
 - Close behavior dialog: on first close, asks whether to quit or minimize to tray; "Remember my choice" checkbox persists the decision
 - Close behavior setting in Settings → Close Behavior: "Ask me every time" / "Quit the app" / "Minimize to tray"
 - `close_action` / `close_action_remembered` settings keys in `Settings.kt`
@@ -27,10 +41,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Changed
 - `packageVersion` bumped from `0.1.0` to `1.0.0-alpha`
 - Sidebar logo: replaced `Icons.Default.GraphicEq` with `logo-64.png` loaded via `BitmapPainter` + `decodeToImageBitmap()`, enlarged from 32dp → 40dp
-- Sidebar title: "Podify" → `Strings["app_name"]` ("Podium"), enlarged from 17sp → 20sp
+- Sidebar title: "Podify" → `Strings["app_name"]` ("Podara"), enlarged from 17sp → 20sp
 - Custom title bar icon: replaced `Icons.Default.GraphicEq` with `logo-64.png` (16dp)
 - Window/taskbar icon: `logo-256.png` set via `Window` composable `icon` parameter
-- Updated README / README_zh for 1.0.0-alpha release: removed "WIP" warnings, added download table, updated badge URLs to `kazimics/podium-windows`
+- Updated README / README_zh for 1.0.0-alpha release: removed "WIP" warnings, added download table, updated badge URLs to `kazimics/podara`
 
 ### Removed
 - Old `LaunchedEffect` + `ImageIO` window-icon fallback (replaced by `Window.icon` parameter)
@@ -42,7 +56,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 - Sidebar logo: replaced `Icons.Default.GraphicEq` with `logo-64.png` loaded via `BitmapPainter` + `decodeToImageBitmap()`, enlarged from 32dp → 40dp
-- Sidebar title: "Podify" → `Strings["app_name"]` ("Podium"), enlarged from 17sp → 20sp
+- Sidebar title: "Podify" → `Strings["app_name"]` ("Podara"), enlarged from 17sp → 20sp
 - Custom title bar icon: replaced `Icons.Default.GraphicEq` with `logo-64.png` (16dp)
 - Window/taskbar icon: `logo-256.png` set via `Window` composable `icon` parameter (`appIcon` file-level lazy `BitmapPainter`)
 - Removed 5 empty `feature-*` modules (discover, home, library, player, settings)
@@ -186,7 +200,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - HistoryScreen episode count toolbar position inconsistent with Subscriptions page (unified Column padding eliminates jitter when switching pages)
 - PodcastDetailScreen episode row hover background spanning full width (32dp horizontal padding applied before background)
 - PodcastDetailScreen downloading progress indicator color set to `colors.accent`
-- Material theme primary color reference (`colorScheme.primary`) replaced with PodiumTheme semantic colors
+- Material theme primary color reference (`colorScheme.primary`) replaced with PodaraTheme semantic colors
 
 ### Removed
 - `@OptIn(ExperimentalMaterial3Api)` from PodcastDetailScreen (no longer needed after Scaffold removal)
@@ -261,7 +275,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Migrated all hardcoded English UI strings to `Strings["key"]` localization system (App, Discover, Player, Settings, History screens)
 - Sidebar nav items now use string keys instead of literals for full i18n support
 - Error messages in DiscoverScreen and AddPodcastDialog use `Strings.get()` with format parameters
-- Window title in Main.kt uses `Strings["app_name"]` instead of hardcoded "Podium"
+- Window title in Main.kt uses `Strings["app_name"]` instead of hardcoded "Podara"
 - All Chinese code comments translated to English
 - `FetchPodcastClient.fetch()` made `open` for testability
 - `SubscriptionManager.unsubscribe()` now also cleans up the iTunes lookup mapping
@@ -298,7 +312,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Fixed
 - MiniPlayer skip step inconsistent with FullPlayer (MiniPlayer 15s/30s → unified to 10s)
 - MiniPlayer play button clickable when no track loaded, now disabled
-- FullPlayer background not filling content area, switched to PodiumTheme dark background
+- FullPlayer background not filling content area, switched to PodaraTheme dark background
 - FullPlayer sidebar navigation blocked while expanded, clicking nav items now closes FullPlayer
 - FullPlayer text and icon colors not applying dark theme palette
 
@@ -326,7 +340,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - MiniPlayer redesign: cover art, speed selector, 15s/30s skip, volume slider, progress slider
 
 ### Changed
-- Theme system upgraded: custom `PodiumColors` data class with `LocalPodiumColors` CompositionLocal
+- Theme system upgraded: custom `PodaraColors` data class with `LocalPodaraColors` CompositionLocal
 - Default screen changed from Home to Discover
 - Color palette updated to match design system (warm gold accent, dark surface tones)
 - All hardcoded dp/sp values in Sidebar, DiscoverScreen, PlayerUI replaced with `DesignTokens` references
@@ -409,7 +423,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 - Custom download path setting in Settings screen
-- Settings persistence via `~/.podium/settings.properties`
+- Settings persistence via `~/.podara/settings.properties`
 - Download progress indicator with determinate progress
 - Download state persists across navigation
 - Download completed icon shows CheckCircle
@@ -431,7 +445,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [0.1.0] - 2026-06-18
 
 ### Added
-- Initial release of podium-windows
+- Initial release of podara
 - Podcast subscription via RSS feed URL
 - Discover page with Apple Podcasts search and top podcasts
 - Podcast detail page with episode list
@@ -441,7 +455,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Listening history tracking
 - OPML import/export
 - Episode download for offline listening
-- Debug logging module (`~/.podium/debug.log`) for troubleshooting
+- Debug logging module (`~/.podara/debug.log`) for troubleshooting
 - CHANGELOG.md
 - Comprehensive test suite (67+ tests across 8 test classes)
 

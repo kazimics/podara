@@ -1,40 +1,36 @@
-![podium](/images/title_light.png#gh-light-mode-only)
-![podium](/images/title_dark.png#gh-dark-mode-only)
+![Podara](/images/title_light.png#gh-light-mode-only)
+![Podara](/images/title_dark.png#gh-dark-mode-only)
 ---
-![GitHub](https://img.shields.io/github/license/kazimics/podium-windows?style=for-the-badge)
-![GitHub release (latest by date)](https://img.shields.io/github/v/release/kazimics/podium-windows?style=for-the-badge)
-![GitHub downloads](https://img.shields.io/github/downloads/kazimics/podium-windows/total?style=for-the-badge)
+![GitHub](https://img.shields.io/github/license/kazimics/podara?style=for-the-badge)
+![GitHub release (latest by date)](https://img.shields.io/github/v/release/kazimics/podara?style=for-the-badge)
+![GitHub downloads](https://img.shields.io/github/downloads/kazimics/podara/total?style=for-the-badge)
 
 English | [中文](README_zh.md)
 
-**podium-windows** is a modern, open-source Podcast app for **Windows**, written in Kotlin using Compose Multiplatform.
-The app uses **Material 3** design and audio playback powered by **libmpv**.
+**Podara** is a modern, open-source Podcast app for **Windows**, written in Kotlin using Compose Multiplatform.
+
+> [!CAUTION]
+> Keep in mind that *Podara* is work in progress software.
+> It is far from feature complete and can contain bugs.
+
 
 > [!NOTE]
-> This is the 1.0.0-alpha release. Features are mostly complete, but you may still encounter edge-case bugs.
-> Please [open an issue](https://github.com/kazimics/podium-windows/issues) if you find one!
+> *Podara* is still lacking some essential features.
+> Please open up a issue if you have any ideas! :)
 
 ## Notable Features
 
-- **Custom UI** — Immersive window with custom title bar, sidebar navigation, and premium gold gradient buttons.
 - **Download & offline management** — download episodes with pause/resume support, manage downloaded content, view storage usage and file paths, single or batch delete, **speed limit per task**.
 - **Discover** new podcasts on the *Discover* tab *(powered by Apple Podcasts)* with featured cards and trending sections.
-- **Playback controls** - play/pause, seek, playback speed adjustment, 10s skip.
 - **Sleep timer** - automatically pause after a set duration.
 - **Queue management** — build and manage your playback queue with cover art, **drag-to-reorder** with real-time animation.
 - **OPML import/export** - transfer your subscriptions between apps.
 - **History** - track your listening history.
 - **Subscription management** — unsubscribe from podcasts individually or in batch, **sort by name / update / listen time**.
-- **Design system** — centralized design tokens for consistent spacing, colors, and typography.
 
 ## Download
 
-Download the latest installer from the [Releases page](https://github.com/kazimics/podium-windows/releases).
-
-| Format | Description |
-|--------|-------------|
-| **MSI** | Windows Installer — installs and registers in Add/Remove Programs |
-| **EXE** | Portable executable — run directly without installation |
+Download the latest installer from the [Releases page](https://github.com/kazimics/podara/releases).
 
 ## Building from Source
 
@@ -72,11 +68,11 @@ Download the latest installer from the [Releases page](https://github.com/kazimi
 ## Project Structure
 
 ```
-podium-windows/
+podara/
 ├── desktop/                   # Windows desktop entry point
 │   ├── build.gradle.kts
 │   └── src/
-│       ├── desktopMain/kotlin/app/podiumpodcasts/podium/
+│       ├── desktopMain/kotlin/app/podara/
 │       │   ├── App.kt            # Main application composable
 │       │   ├── Main.kt           # Entry point
 │       │   ├── screen/           # UI screens

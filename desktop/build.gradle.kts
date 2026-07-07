@@ -63,20 +63,20 @@ tasks.withType<Test>().configureEach {
 
 compose.desktop {
     application {
-        mainClass = "app.podiumpodcasts.podium.MainKt"
+        mainClass = "app.podara.MainKt"
 
         jvmArgs += "-Dfile.encoding=UTF-8"
         jvmArgs += "--add-modules=java.sql"
 
         nativeDistributions {
             targetFormats(TargetFormat.Msi, TargetFormat.Exe)
-            packageName = "podium"
+            packageName = "Podara"
             packageVersion = "1.0.0"
-            description = "Podium Podcasts"
-            vendor = "Podium Podcasts"
+            description = "Podara"
+            vendor = "Podara"
 
             windows {
-                menuGroup = "Podium Podcasts"
+                menuGroup = "Podara"
                 upgradeUuid = "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
                 dirChooser = true
                 shortcut = true
