@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 - **Real-time seek preview** — dragging the progress slider in MiniPlayer and FullPlayer now shows the scrub position live in the time display, instead of only revealing the position after releasing the drag
+- **Playback progress persistence** — app now saves playback position every 30 seconds and on quit; reopening resumes from where you left off. Queue and playback state (speed, volume) are also persisted across sessions
 
 ### Fixed
 - **FullPlayer episode details missing after queue switch** — collapsing the FullPlayer, selecting a different episode from the playback queue (MiniPlayer's Queue button → QueueDrawer), then re-expanding the FullPlayer would show no description, publish date, or duration metadata. Three-part fix:
