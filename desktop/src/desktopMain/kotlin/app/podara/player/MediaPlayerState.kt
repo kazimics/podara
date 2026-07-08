@@ -110,8 +110,14 @@ class MediaPlayerState(
         val existingIndex = queue.indexOfFirst { it.url == url }
         if (existingIndex >= 0) {
             queueIndex = existingIndex
+            // Keep the existing queue item's episodeId up-to-date.
+            // This covers cross-session scenarios where the item was restored from DB
+            // without an episodeId (from a previous build) and the same URL is played again.
+            if (episodeId != null) {
+                queue[existingIndex] = queue[existingIndex].copy(episodeId = episodeId)
+            }
         } else {
-            queue.add(QueueItem(url, title ?: "Unknown", subtitle = subtitle, artworkUrl = currentArtworkUrl, podcastArtworkUrl = podcastArtworkUrl))
+            queue.add(QueueItem(url, title ?: "Unknown", subtitle = subtitle, artworkUrl = currentArtworkUrl, podcastArtworkUrl = podcastArtworkUrl, episodeId = episodeId))
             queueIndex = queue.size - 1
         }
 
@@ -399,7 +405,7 @@ class MediaPlayerState(
         currentTitle = item.title
         currentSubtitle = item.subtitle
         currentArtworkUrl = item.artworkUrl ?: item.podcastArtworkUrl
-        currentEpisodeId = item.episodeId
+        currentEpisodeId = item.episodeId ?: session.currentEpisodeId
 
         // Load into player at saved position, then pause.
         // IMPORTANT: set isUserPaused BEFORE pause() so the onPlayStateChanged(false)

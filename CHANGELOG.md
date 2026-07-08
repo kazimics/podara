@@ -10,6 +10,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Real-time seek preview** — dragging the progress slider in MiniPlayer and FullPlayer now shows the scrub position live in the time display, instead of only revealing the position after releasing the drag
 
 ### Fixed
+- **FullPlayer episode details missing after queue switch** — collapsing the FullPlayer, selecting a different episode from the playback queue (MiniPlayer's Queue button → QueueDrawer), then re-expanding the FullPlayer would show no description, publish date, or duration metadata. Three-part fix:
+  - `MediaPlayerState.play()` now stores `episodeId` on `QueueItem` when adding to the queue, so `playFromQueue()` retrieves it later
+  - When `play()` finds an existing URL in the queue, it updates the stale `QueueItem.episodeId` (handles cross-session DB restore where pre-fix items had null ids)
+  - `restoreSession()` falls back to `session.currentEpisodeId` when the queue item's `episodeId` is null
 - **Auto-play-next not firing after track completion** — three-part fix:
   - `keep-open=yes` mpv option prevents mpv from unloading the file at EOF, ensuring `eof-reached=yes` is detectable on the next poll tick
   - Replaced `pendingPlay` flag with a timestamp-based guard (3s window) that reliably distinguishes false start-up transitions from real EOF, while also preventing the pause handler on the same poll tick from overriding the state just set by `playNext()`
