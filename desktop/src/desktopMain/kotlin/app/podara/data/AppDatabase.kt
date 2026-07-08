@@ -129,6 +129,30 @@ class AppDatabase private constructor(private val connection: Connection) {
                     rssUrl TEXT NOT NULL
                 )
             """)
+            stmt.executeUpdate("""
+                CREATE TABLE IF NOT EXISTS playerSession (
+                    id INTEGER NOT NULL PRIMARY KEY DEFAULT 1 CHECK (id = 1),
+                    queueIndex INTEGER NOT NULL DEFAULT -1,
+                    currentPositionMs INTEGER NOT NULL DEFAULT 0,
+                    playbackSpeed REAL NOT NULL DEFAULT 1.0,
+                    volume INTEGER NOT NULL DEFAULT 100,
+                    currentEpisodeId TEXT,
+                    lastUpdate INTEGER NOT NULL DEFAULT 0
+                )
+            """)
+            stmt.executeUpdate("""
+                CREATE TABLE IF NOT EXISTS playerQueueItem (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    queueOrder INTEGER NOT NULL,
+                    url TEXT NOT NULL,
+                    title TEXT NOT NULL,
+                    subtitle TEXT,
+                    artworkUrl TEXT,
+                    podcastArtworkUrl TEXT,
+                    episodeId TEXT,
+                    isDownloaded INTEGER NOT NULL DEFAULT 0
+                )
+            """)
         }
     }
 
@@ -141,6 +165,8 @@ class AppDatabase private constructor(private val connection: Connection) {
     val downloads = DownloadDao(connection)
     val downloadTasks = DownloadTaskDao(connection)
     val itunesLookup = ItunesLookupDao(connection)
+    val playerSession = PlayerSessionDao(connection)
+    val playerQueue = PlayerQueueDao(connection)
 
     fun close() { connection.close() }
 }
@@ -666,5 +692,93 @@ class ItunesLookupDao(private val conn: Connection) {
         conn.prepareStatement("DELETE FROM podcastItunesLookup WHERE rssUrl = ?").apply {
             setString(1, rssUrl); executeUpdate()
         }
+    }
+}
+
+data class PlayerSession(
+    val id: Int = 1,
+    val queueIndex: Int = -1,
+    val currentPositionMs: Long = 0L,
+    val playbackSpeed: Float = 1.0f,
+    val volume: Int = 100,
+    val currentEpisodeId: String? = null,
+    val lastUpdate: Long = 0L
+)
+
+data class PlayerQueueRow(
+    val id: Int = 0,
+    val queueOrder: Int,
+    val url: String,
+    val title: String,
+    val subtitle: String? = null,
+    val artworkUrl: String? = null,
+    val podcastArtworkUrl: String? = null,
+    val episodeId: String? = null,
+    val isDownloaded: Boolean = false
+)
+
+class PlayerSessionDao(private val conn: Connection) {
+    suspend fun saveSession(queueIndex: Int, currentPositionMs: Long, playbackSpeed: Float, volume: Int, currentEpisodeId: String?) = withContext(Dispatchers.IO) {
+        val ts = System.currentTimeMillis()
+        conn.prepareStatement(
+            "INSERT OR REPLACE INTO playerSession (id, queueIndex, currentPositionMs, playbackSpeed, volume, currentEpisodeId, lastUpdate) VALUES (1, ?, ?, ?, ?, ?, ?)"
+        ).apply {
+            setInt(1, queueIndex); setLong(2, currentPositionMs); setFloat(3, playbackSpeed)
+            setInt(4, volume); setString(5, currentEpisodeId); setLong(6, ts); executeUpdate()
+        }
+    }
+
+    suspend fun loadSession(): PlayerSession? = withContext(Dispatchers.IO) {
+        val rs = conn.createStatement().executeQuery("SELECT * FROM playerSession WHERE id = 1")
+        if (rs.next()) PlayerSession(
+            id = rs.getInt("id"), queueIndex = rs.getInt("queueIndex"),
+            currentPositionMs = rs.getLong("currentPositionMs"),
+            playbackSpeed = rs.getFloat("playbackSpeed"), volume = rs.getInt("volume"),
+            currentEpisodeId = rs.getString("currentEpisodeId"), lastUpdate = rs.getLong("lastUpdate")
+        ) else null
+    }
+
+    suspend fun updatePosition(currentPositionMs: Long) = withContext(Dispatchers.IO) {
+        val ts = System.currentTimeMillis()
+        conn.prepareStatement("UPDATE playerSession SET currentPositionMs = ?, lastUpdate = ? WHERE id = 1").apply {
+            setLong(1, currentPositionMs); setLong(2, ts); executeUpdate()
+        }
+    }
+
+    suspend fun deleteSession() = withContext(Dispatchers.IO) {
+        conn.createStatement().executeUpdate("DELETE FROM playerSession WHERE id = 1")
+    }
+}
+
+class PlayerQueueDao(private val conn: Connection) {
+    suspend fun saveQueue(items: List<PlayerQueueRow>) = withContext(Dispatchers.IO) {
+        conn.createStatement().executeUpdate("DELETE FROM playerQueueItem")
+        val ps = conn.prepareStatement(
+            "INSERT INTO playerQueueItem (queueOrder, url, title, subtitle, artworkUrl, podcastArtworkUrl, episodeId, isDownloaded) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+        )
+        items.forEach { item ->
+            ps.setInt(1, item.queueOrder); ps.setString(2, item.url); ps.setString(3, item.title)
+            ps.setString(4, item.subtitle); ps.setString(5, item.artworkUrl)
+            ps.setString(6, item.podcastArtworkUrl); ps.setString(7, item.episodeId)
+            ps.setInt(8, if (item.isDownloaded) 1 else 0)
+            ps.addBatch()
+        }
+        ps.executeBatch()
+    }
+
+    suspend fun loadQueue(): List<PlayerQueueRow> = withContext(Dispatchers.IO) {
+        val rs = conn.createStatement().executeQuery("SELECT * FROM playerQueueItem ORDER BY queueOrder ASC")
+        val list = mutableListOf<PlayerQueueRow>()
+        while (rs.next()) list.add(PlayerQueueRow(
+            id = rs.getInt("id"), queueOrder = rs.getInt("queueOrder"), url = rs.getString("url"),
+            title = rs.getString("title"), subtitle = rs.getString("subtitle"),
+            artworkUrl = rs.getString("artworkUrl"), podcastArtworkUrl = rs.getString("podcastArtworkUrl"),
+            episodeId = rs.getString("episodeId"), isDownloaded = rs.getInt("isDownloaded") == 1
+        ))
+        list
+    }
+
+    suspend fun clearQueue() = withContext(Dispatchers.IO) {
+        conn.createStatement().executeUpdate("DELETE FROM playerQueueItem")
     }
 }

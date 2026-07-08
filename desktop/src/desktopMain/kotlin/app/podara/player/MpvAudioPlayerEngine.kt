@@ -34,6 +34,9 @@ class MpvAudioPlayerEngine : AudioPlayerEngine {
         MpvApi.INSTANCE.mpv_set_option_string(mpvHandle, "audio-only", "yes")
         MpvApi.INSTANCE.mpv_set_option_string(mpvHandle, "video", "no")
         MpvApi.INSTANCE.mpv_set_option_string(mpvHandle, "ao", "wasapi")
+        // Keep the file loaded after EOF so eof-reached=yes can be reliably
+        // detected on the next poll tick before mpv unloads the file.
+        MpvApi.INSTANCE.mpv_set_option_string(mpvHandle, "keep-open", "yes")
 
         val initResult = MpvApi.INSTANCE.mpv_initialize(mpvHandle)
         if (initResult < 0) {
@@ -106,6 +109,7 @@ class MpvAudioPlayerEngine : AudioPlayerEngine {
             try {
                 val eofStr = eofPtr.getString(0)
                 if (eofStr == "yes" && isPlaying) {
+                    Logger.i(TAG, "EOF detected, calling playNext()")
                     isPlaying = false
                     playbackState = PlaybackState.STOPPED
                     onPlayStateChanged?.invoke(false)
@@ -126,6 +130,13 @@ class MpvAudioPlayerEngine : AudioPlayerEngine {
                     onPlayStateChanged?.invoke(false)
                 } else if (!paused && !isPlaying && playbackState == PlaybackState.PLAYING) {
                     isPlaying = true
+                    onPlayStateChanged?.invoke(true)
+                } else if (!paused && !isPlaying && playbackState == PlaybackState.PAUSED) {
+                    // mpv has resumed (e.g. after the brief pause=yes during initial loading
+                    // that set playbackState to PAUSED). Restore isPlaying and notify the
+                    // callback so the EOF handler can fire later.
+                    isPlaying = true
+                    playbackState = PlaybackState.PLAYING
                     onPlayStateChanged?.invoke(true)
                 }
             } finally {
@@ -149,9 +160,9 @@ class MpvAudioPlayerEngine : AudioPlayerEngine {
         MpvApi.INSTANCE.mpv_set_property_string(mpvHandle, "pause", "no")
         MpvApi.INSTANCE.mpv_set_property_string(mpvHandle, "speed", speed.toString())
 
-        if (startPositionMs > 0) {
-            MpvApi.INSTANCE.mpv_set_property_string(mpvHandle, "start", "${startPositionMs / 1000.0}")
-        }
+        // Always set start (even to "0") to clear any stale value from a previous
+        // play() — otherwise mpv persists the option into subsequent loadfile calls.
+        MpvApi.INSTANCE.mpv_set_property_string(mpvHandle, "start", "${startPositionMs / 1000.0}")
 
         isPlaying = true
         playbackState = PlaybackState.PLAYING

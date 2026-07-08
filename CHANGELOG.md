@@ -4,6 +4,18 @@ All notable changes to podara will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.0-alpha4] - 2026-07-08
+
+### Fixed
+- **Auto-play-next not firing after track completion** — three-part fix:
+  - `keep-open=yes` mpv option prevents mpv from unloading the file at EOF, ensuring `eof-reached=yes` is detectable on the next poll tick
+  - Replaced `pendingPlay` flag with a timestamp-based guard (3s window) that reliably distinguishes false start-up transitions from real EOF, while also preventing the pause handler on the same poll tick from overriding the state just set by `playNext()`
+  - Added PAUSED→PLAYING resume detection in the pause handler so that `isPlaying` is restored after the brief `pause=yes` during initial file loading, ensuring the EOF handler can fire later
+- **Play/Pause button icon stuck after track ends** — caused by the same root issue: EOF was never detected so `isPlaying` never transitioned to `false`; fixed by the three-part fix above
+
+### Changed
+- `lastPlayStartMs` timestamp recorded in `MediaPlayerState.play()` for discriminating stale vs real state transitions
+
 ## [1.0.0-alpha3] - 2026-07-07
 
 ### Changed

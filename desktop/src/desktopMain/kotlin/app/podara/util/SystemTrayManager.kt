@@ -35,6 +35,8 @@ class SystemTrayManager(
     private val window: Window,
     private val playerState: MediaPlayerState
 ) {
+    /** Called right before the app quits from the tray menu. */
+    var onBeforeQuit: (() -> Unit)? = null
     private var trayIcon: TrayIcon? = null
     private var trayAdded = false
 
@@ -224,6 +226,7 @@ class SystemTrayManager(
     }
 
     private fun quitApp() {
+        onBeforeQuit?.invoke()
         remove(); playerState.release(); window.dispose(); System.exit(0)
     }
 

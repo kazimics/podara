@@ -79,7 +79,9 @@ import app.podara.util.Settings
 import app.podara.util.Strings
 import app.podara.util.SystemTrayManager
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import java.io.File
 import java.io.PrintWriter
 import java.text.SimpleDateFormat
@@ -329,7 +331,27 @@ fun WindowScope.App(windowState: androidx.compose.ui.window.WindowState, awtWind
         DownloadManager(database, downloadsDir, downloadSpeedLimitKbps)
     }
     val playerState = remember { MediaPlayerState() }
+
+    // Restore saved queue and playback state on startup
+    LaunchedEffect(Unit) {
+        playerState.restoreSession(database)
+    }
+
     val trayManager = remember { SystemTrayManager(awtWindow, playerState) }
+    // Save session before quitting from tray
+    trayManager.onBeforeQuit = {
+        runBlocking { playerState.saveSession(database) }
+    }
+
+    // Periodic heartbeat: save playback position every 30 seconds
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(30_000)
+            if (playerState.currentUrl != null) {
+                playerState.savePosition(database)
+            }
+        }
+    }
 
     DisposableEffect(Unit) {
         trayManager.setup()
@@ -592,7 +614,10 @@ fun WindowScope.App(windowState: androidx.compose.ui.window.WindowState, awtWind
                             val action = Settings.getCloseAction()
                             if (Settings.isCloseActionRemembered()) {
                                 when (action) {
-                                    "quit" -> { awtWindow.dispose(); System.exit(0) }
+                                    "quit" -> {
+                                        runBlocking { playerState.saveSession(database) }
+                                        awtWindow.dispose(); System.exit(0)
+                                    }
                                     "minimize_to_tray" -> {
                                         awtWindow.isVisible = false
                                         trayManager.updateShowHideLabel(false)
@@ -922,7 +947,10 @@ fun WindowScope.App(windowState: androidx.compose.ui.window.WindowState, awtWind
                         Settings.setCloseActionRemembered(true)
                     }
                     when (chosenAction) {
-                        "quit" -> { awtWindow.dispose(); System.exit(0) }
+                        "quit" -> {
+                            runBlocking { playerState.saveSession(database) }
+                            awtWindow.dispose(); System.exit(0)
+                        }
                         "minimize_to_tray" -> {
                             awtWindow.isVisible = false
                             trayManager.updateShowHideLabel(false)

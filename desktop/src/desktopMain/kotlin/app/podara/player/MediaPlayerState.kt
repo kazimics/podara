@@ -1,5 +1,7 @@
 package app.podara.player
 
+import app.podara.data.AppDatabase
+import app.podara.data.PlayerQueueRow
 import app.podara.util.Logger
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -45,7 +47,7 @@ class MediaPlayerState(
     var error by mutableStateOf<String?>(null)
         private set
     private var isUserPaused = false
-    private var pendingPlay = false
+    private var lastPlayStartMs = 0L
 
     var currentUrl by mutableStateOf<String?>(null)
         private set
@@ -74,10 +76,11 @@ class MediaPlayerState(
             isPlaying = playing
             isLoading = false
             if (!playing) {
-                if (pendingPlay) {
-                    // Ignore transition false triggered by polling thread right after play()
-                    pendingPlay = false
+                val elapsed = System.currentTimeMillis() - lastPlayStartMs
+                if (elapsed < 3000) {
+                    Logger.d(TAG, "Ignoring playState(false) — $elapsed ms since last play(), likely stale")
                 } else if (!isUserPaused) {
+                    Logger.i(TAG, "Auto-advancing to next track")
                     playNext()
                 }
             }
@@ -113,7 +116,11 @@ class MediaPlayerState(
         }
 
         player.play(url, durationMs = durationMs)
-        pendingPlay = true
+        // Record when playback started so the onPlayStateChanged(false) handler
+        // can distinguish false transitions (loading glitches, stale EOF from a
+        // previous file after playNext()) from real EOF. Transitions within 3s
+        // are considered stale and ignored.
+        lastPlayStartMs = System.currentTimeMillis()
     }
 
     fun playFromQueue(index: Int) {
@@ -315,6 +322,100 @@ class MediaPlayerState(
         return if (duration > 0) {
             currentPosition.toFloat() / duration
         } else 0f
+    }
+
+    // ── Session persistence ──
+
+    /**
+     * Save current queue and playback state to database.
+     */
+    suspend fun saveSession(database: AppDatabase) {
+        Logger.d(TAG, "saveSession: saving queue (${queue.size} items), queueIndex=$queueIndex, pos=${currentPosition}ms")
+        val rows = queue.mapIndexed { index, item ->
+            PlayerQueueRow(
+                queueOrder = index,
+                url = item.url,
+                title = item.title,
+                subtitle = item.subtitle,
+                artworkUrl = item.artworkUrl,
+                podcastArtworkUrl = item.podcastArtworkUrl,
+                episodeId = item.episodeId,
+                isDownloaded = item.isDownloaded
+            )
+        }
+        database.playerQueue.saveQueue(rows)
+        database.playerSession.saveSession(
+            queueIndex = queueIndex,
+            currentPositionMs = currentPosition,
+            playbackSpeed = playbackSpeed,
+            volume = volume,
+            currentEpisodeId = currentEpisodeId
+        )
+    }
+
+    /**
+     * Restore queue and playback state from database.
+     * Restores to a paused state at the saved position, ready for the user to tap play.
+     */
+    suspend fun restoreSession(database: AppDatabase) {
+        val session = database.playerSession.loadSession() ?: run {
+            Logger.d(TAG, "restoreSession: no saved session found")
+            return
+        }
+        val rows = database.playerQueue.loadQueue()
+        Logger.d(TAG, "restoreSession: loaded ${rows.size} queue items, queueIndex=${session.queueIndex}")
+
+        // Restore speed and volume regardless
+        playbackSpeed = session.playbackSpeed
+        volume = session.volume
+        changePlaybackSpeed(session.playbackSpeed)
+        changeVolume(session.volume)
+
+        if (rows.isEmpty()) {
+            Logger.d(TAG, "restoreSession: empty queue, nothing to restore")
+            return
+        }
+
+        // Rebuild queue in-memory
+        queue.clear()
+        rows.forEach { row ->
+            queue.add(QueueItem(
+                url = row.url,
+                title = row.title,
+                subtitle = row.subtitle,
+                artworkUrl = row.artworkUrl,
+                podcastArtworkUrl = row.podcastArtworkUrl,
+                episodeId = row.episodeId,
+                isDownloaded = row.isDownloaded
+            ))
+        }
+
+        val idx = session.queueIndex.coerceIn(0, queue.size - 1)
+        queueIndex = idx
+        val item = queue[idx]
+
+        // Restore current display state
+        currentUrl = item.url
+        currentTitle = item.title
+        currentSubtitle = item.subtitle
+        currentArtworkUrl = item.artworkUrl ?: item.podcastArtworkUrl
+        currentEpisodeId = item.episodeId
+
+        // Load into player at saved position, then pause.
+        // IMPORTANT: set isUserPaused BEFORE pause() so the onPlayStateChanged(false)
+        // callback does NOT trigger playNext().
+        Logger.i(TAG, "restoreSession: restoring playback at idx=$idx, pos=${session.currentPositionMs}ms")
+        isUserPaused = true
+        player.play(item.url, startPositionMs = session.currentPositionMs, durationMs = 0L)
+        player.pause()
+        isPlaying = false
+    }
+
+    /**
+     * Lightweight position-only save for periodic heartbeats.
+     */
+    suspend fun savePosition(database: AppDatabase) {
+        database.playerSession.updatePosition(currentPositionMs = currentPosition)
     }
 
     fun release() {
