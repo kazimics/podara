@@ -274,7 +274,7 @@ fun MiniPlayer(
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         Text(
-                            text = formatTime(state.currentPosition),
+                            text = formatTime(if (isDragged) (sliderPosition * state.duration).toLong() else state.currentPosition),
                             color = colors.textMuted,
                             fontSize = 12.sp
                         )
@@ -595,7 +595,7 @@ fun FullPlayer(
                     )
                 )
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text(text = formatTime(state.currentPosition), color = colors.textMuted, fontSize = 12.sp)
+                    Text(text = formatTime(if (isDragging) (sliderPosition * state.duration).toLong() else state.currentPosition), color = colors.textMuted, fontSize = 12.sp)
                     Text(text = formatTime(state.duration), color = colors.textMuted, fontSize = 12.sp)
                 }
             }
