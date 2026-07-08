@@ -6,6 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [1.0.0-alpha4] - 2026-07-08
 
+### Added
+- **Real-time seek preview** — dragging the progress slider in MiniPlayer and FullPlayer now shows the scrub position live in the time display, instead of only revealing the position after releasing the drag
+
 ### Fixed
 - **Auto-play-next not firing after track completion** — three-part fix:
   - `keep-open=yes` mpv option prevents mpv from unloading the file at EOF, ensuring `eof-reached=yes` is detectable on the next poll tick
