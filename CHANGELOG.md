@@ -71,6 +71,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Window can be hidden to system tray while audio continues playing (requires "Minimize to tray" setting)
 - Tray left-click restores hidden window and brings it to front
 
+## [1.0.0-alpha1] - 2026-07-05
+
 ### Added
 - Release workflow (`.github/workflows/release.yml`): triggered by `v*` tags, builds MSI + EXE installers and uploads to GitHub Releases as draft
 - Custom app logo and window icon: `desktop/src/desktopMain/resources/` — replaces default Material `GraphicEq` icons and Java coffee-cup taskbar icon
@@ -217,7 +219,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `testMiniPlayerExpandButtonDisabledWhenNoPlayback` — expand disabled with no URL
 - `testFullPlayerShowsCloseButton`, `testFullPlayerShowsPodcastName` — basic rendering
 
-## [0.3.0] - 2026-07-03
+## [0.1.0] - 2026-07-03
 
 ### Changed
 - HistoryScreen redesigned: unified Column padding (28dp top, 32dp sides, 8dp bottom) matching Subscriptions page layout, serif PageHeader (32sp) + subtitle, date grouping (Today/Yesterday/This Week/Earlier), search bar (320dp), hover-highlighted cards with duration badges and action buttons, relative time display, clear-all dialog
