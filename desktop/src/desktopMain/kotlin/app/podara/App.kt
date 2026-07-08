@@ -55,6 +55,7 @@ import app.podara.api.apple.ApplePodcastClient
 import app.podara.api.model.PodcastPreviewModel
 import app.podara.api.rss.FetchPodcastClient
 import app.podara.api.rss.FetchPodcastClientResult
+import app.podara.component.FavoriteEpisodeButton
 import app.podara.data.AppDatabase
 import app.podara.data.model.Podcast
 import app.podara.data.model.PodcastEpisode
@@ -64,6 +65,7 @@ import app.podara.player.MiniPlayer
 import app.podara.player.QueueDrawer
 import app.podara.screen.DiscoverScreen
 import app.podara.screen.DownloadsScreen
+import app.podara.screen.FavoritesScreen
 import app.podara.screen.HistoryScreen
 import app.podara.screen.SettingsScreen
 import app.podara.manager.AddPodcastResult
@@ -94,6 +96,7 @@ private fun Sidebar(
     currentScreen: String,
     onDiscover: () -> Unit,
     onShows: () -> Unit,
+    onFavorites: () -> Unit,
     onHistory: () -> Unit,
     onSettings: () -> Unit,
     onDownloads: () -> Unit = {}
@@ -103,6 +106,7 @@ private fun Sidebar(
     val navItems = listOf(
         NavItem(Icons.Default.Explore, "nav_discover", "discover"),
         NavItem(Icons.Default.LibraryMusic, "nav_subscriptions", "home"),
+        NavItem(Icons.Default.Favorite, "nav_favorites", "favorites"),
         NavItem(Icons.Default.QueueMusic, "nav_history", "history"),
         NavItem(Icons.Default.Folder, "nav_downloads", "downloads")
     )
@@ -168,6 +172,7 @@ private fun Sidebar(
                                 when (item.screen) {
                                     "discover" -> onDiscover()
                                     "home" -> onShows()
+                                    "favorites" -> onFavorites()
                                     "history" -> onHistory()
                                     "settings" -> onSettings()
                                     "downloads" -> onDownloads()
@@ -379,6 +384,7 @@ fun WindowScope.App(windowState: androidx.compose.ui.window.WindowState, awtWind
     var downloadProgress by remember { mutableStateOf(mapOf<String, Pair<Long, Long>>()) }
     var downloadingEpisodes by remember { mutableStateOf(setOf<String>()) }
     var downloadVersion by remember { mutableIntStateOf(0) }
+    var favoritesVersion by remember { mutableIntStateOf(0) }
     var completedDownloads by remember { mutableStateOf(setOf<String>()) }
     var downloadJobs by remember { mutableStateOf(mapOf<String, Job>()) }
     var activeDownloadMeta by remember { mutableStateOf(mapOf<String, Pair<String, String>>()) } // episodeId -> (podcastTitle, episodeTitle)
@@ -640,6 +646,7 @@ fun WindowScope.App(windowState: androidx.compose.ui.window.WindowState, awtWind
                         currentScreen = currentScreen,
                         onDiscover = { currentScreen = "discover"; showFullPlayer = false; selectedPodcast = null },
                         onShows = { currentScreen = "home"; showFullPlayer = false; selectedPodcast = null },
+                        onFavorites = { currentScreen = "favorites"; showFullPlayer = false; selectedPodcast = null },
                         onHistory = { currentScreen = "history"; showFullPlayer = false; selectedPodcast = null },
                         onSettings = { currentScreen = "settings"; showFullPlayer = false; selectedPodcast = null },
                         onDownloads = { currentScreen = "downloads"; showFullPlayer = false; selectedPodcast = null }
@@ -660,9 +667,11 @@ fun WindowScope.App(windowState: androidx.compose.ui.window.WindowState, awtWind
                             downloadProgress = downloadProgress,
                             downloadVersion = downloadVersion,
                             completedDownloads = completedDownloads,
+                            favoriteVersion = favoritesVersion,
                             onStartDownload = startDownload,
                             onPauseDownload = pauseDownload,
                             onResumeDownload = resumeDownload,
+                            onFavoriteChanged = { favoritesVersion++ },
                             onBack = {
                                 selectedPodcast = null
                                 discoverRefreshKey++
@@ -712,7 +721,17 @@ fun WindowScope.App(windowState: androidx.compose.ui.window.WindowState, awtWind
                         currentScreen == "history" -> HistoryScreen(
                             database = database,
                             playerState = playerState,
+                            favoriteVersion = favoritesVersion,
                             onBack = { currentScreen = "home" },
+                            onFavoriteChanged = { favoritesVersion++ },
+                            onShowPodcastDetail = { podcast -> selectedPodcast = podcast }
+                        )
+                        currentScreen == "favorites" -> FavoritesScreen(
+                            database = database,
+                            playerState = playerState,
+                            favoriteVersion = favoritesVersion,
+                            onBack = { currentScreen = "home" },
+                            onFavoriteChanged = { favoritesVersion++ },
                             onShowPodcastDetail = { podcast -> selectedPodcast = podcast }
                         )
                         currentScreen == "downloads" -> DownloadsScreen(
@@ -724,11 +743,13 @@ fun WindowScope.App(windowState: androidx.compose.ui.window.WindowState, awtWind
                             downloadVersion = downloadVersion,
                             completedDownloads = completedDownloads,
                             activeDownloadMeta = activeDownloadMeta,
+                            favoriteVersion = favoritesVersion,
                             onPauseDownload = pauseDownload,
                             onResumeDownload = resumeDownload,
                             onCancelDownload = cancelDownload,
                             onDeleteDownloaded = deleteDownloaded,
                             onDeleteDownloadedByOrigin = deleteDownloadedByOrigin,
+                            onFavoriteChanged = { favoritesVersion++ },
                             onBack = { currentScreen = "home" },
                             onOpenSettings = { currentScreen = "settings" }
                         )   // DownloadsScreen
@@ -750,6 +771,8 @@ fun WindowScope.App(windowState: androidx.compose.ui.window.WindowState, awtWind
                                 FullPlayer(
                                     state = playerState,
                                     database = database,
+                                    favoriteVersion = favoritesVersion,
+                                    onFavoriteChanged = { favoritesVersion++ },
                                     onClose = { showFullPlayer = false }
                                 )
                             }
@@ -786,6 +809,9 @@ fun WindowScope.App(windowState: androidx.compose.ui.window.WindowState, awtWind
     ) {
         QueueDrawer(
             state = playerState,
+            database = database,
+            favoriteVersion = favoritesVersion,
+            onFavoriteChanged = { favoritesVersion++ },
             onDismiss = { showQueueFromMini = false }
         )
     }
@@ -1458,9 +1484,11 @@ private fun PodcastDetailScreen(
     downloadProgress: Map<String, Pair<Long, Long>>,
     downloadVersion: Int,
     completedDownloads: Set<String>,
+    favoriteVersion: Int,
     onStartDownload: (PodcastEpisode, String) -> Unit,
     onPauseDownload: (String) -> Unit = {},
     onResumeDownload: (String) -> Unit = {},
+    onFavoriteChanged: () -> Unit = {},
     onBack: () -> Unit,
     onUnsubscribed: suspend () -> Unit = { },
     onSubscribed: suspend () -> Unit = { }
@@ -1470,6 +1498,7 @@ private fun PodcastDetailScreen(
     var isLoading by remember { mutableStateOf(true) }
     var isSubscribed by remember { mutableStateOf(false) }
     var showUnsubscribeDialog by remember { mutableStateOf(false) }
+    var favoriteIds by remember { mutableStateOf(setOf<String>()) }
     val scope = rememberCoroutineScope()
 
     // ── Active download progress from DB (for robustness across page navigation) ──
@@ -1483,6 +1512,10 @@ private fun PodcastDetailScreen(
                 t.episodeId to (t.downloadedBytes to t.totalBytes)
             }
         } catch (_: Exception) { }
+    }
+
+    LaunchedEffect(favoriteVersion) {
+        favoriteIds = database.favorites.getAllEpisodeIds()
     }
 
     // Combined check: memory state OR DB task.
@@ -1861,6 +1894,15 @@ private fun PodcastDetailScreen(
 
                             // Action buttons
                             Row(verticalAlignment = Alignment.CenterVertically) {
+                                FavoriteEpisodeButton(isFavorite = episode.id in favoriteIds) {
+                                    scope.launch {
+                                        database.episodes.insert(episode)
+                                        val isFavorite = database.favorites.toggle(episode)
+                                        favoriteIds = if (isFavorite) favoriteIds + episode.id else favoriteIds - episode.id
+                                        onFavoriteChanged()
+                                    }
+                                }
+
                                 // Add to queue
                                 val qInteractionSource = remember { MutableInteractionSource() }
                                 val isQHovered by qInteractionSource.collectIsHoveredAsState()

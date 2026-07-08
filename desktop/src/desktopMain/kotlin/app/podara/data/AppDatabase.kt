@@ -76,6 +76,20 @@ class AppDatabase private constructor(private val connection: Connection) {
                 )
             """)
             stmt.executeUpdate("""
+                CREATE TABLE IF NOT EXISTS podcastFavorite (
+                    episodeId TEXT NOT NULL PRIMARY KEY,
+                    origin TEXT NOT NULL,
+                    timestamp INTEGER NOT NULL,
+                    title TEXT NOT NULL DEFAULT '',
+                    podcastTitle TEXT NOT NULL DEFAULT '',
+                    imageUrl TEXT,
+                    audioUrl TEXT NOT NULL DEFAULT '',
+                    duration INTEGER NOT NULL DEFAULT 0,
+                    pubDate INTEGER NOT NULL DEFAULT 0
+                )
+            """)
+            stmt.executeUpdate("CREATE INDEX IF NOT EXISTS idx_podcastFavorite_timestamp ON podcastFavorite(timestamp DESC)")
+            stmt.executeUpdate("""
                 CREATE TABLE IF NOT EXISTS podcastSubscription (
                     origin TEXT NOT NULL PRIMARY KEY,
                     enableNotifications INTEGER NOT NULL DEFAULT 0,
@@ -160,6 +174,7 @@ class AppDatabase private constructor(private val connection: Connection) {
     val episodes = EpisodeDao(connection)
     val playStates = PlayStateDao(connection)
     val history = HistoryDao(connection)
+    val favorites = FavoriteDao(connection)
     val subscriptions = SubscriptionDao(connection)
     val syncActions = SyncActionDao(connection)
     val downloads = DownloadDao(connection)
@@ -381,6 +396,135 @@ class HistoryDao(private val conn: Connection) {
     suspend fun deleteAll() = withContext(Dispatchers.IO) {
         conn.createStatement().executeUpdate("DELETE FROM podcastHistory")
     }
+}
+
+class FavoriteDao(private val conn: Connection) {
+    suspend fun getAllSync(): List<PodcastFavorite> = withContext(Dispatchers.IO) {
+        val rs = conn.createStatement().executeQuery("SELECT * FROM podcastFavorite ORDER BY timestamp DESC")
+        val list = mutableListOf<PodcastFavorite>()
+        while (rs.next()) list.add(readFavorite(rs))
+        list
+    }
+
+    suspend fun getAllEpisodeIds(): Set<String> = withContext(Dispatchers.IO) {
+        val rs = conn.createStatement().executeQuery("SELECT episodeId FROM podcastFavorite")
+        val ids = mutableSetOf<String>()
+        while (rs.next()) ids.add(rs.getString("episodeId"))
+        ids
+    }
+
+    suspend fun isFavorite(episodeId: String): Boolean = withContext(Dispatchers.IO) {
+        val ps = conn.prepareStatement("SELECT 1 FROM podcastFavorite WHERE episodeId = ? LIMIT 1")
+        ps.setString(1, episodeId)
+        ps.executeQuery().next()
+    }
+
+    suspend fun getAllWithEpisode(): List<Pair<PodcastFavorite, PodcastEpisode?>> = withContext(Dispatchers.IO) {
+        val rs = conn.createStatement().executeQuery(
+            """SELECT f.episodeId, f.origin, f.timestamp,
+               f.title as favTitle, f.podcastTitle as favPodcastTitle, f.imageUrl as favImageUrl,
+               f.audioUrl as favAudioUrl, f.duration as favDuration, f.pubDate as favPubDate,
+               e.guid as epGuid, e.link as epLink, e.title as epTitle, e.description as epDescription,
+               e.imageUrl as epImageUrl, e.author as epAuthor, e.pubDate as epPubDate,
+               e.duration as epDuration, e.audioUrl as epAudioUrl, e.podcastTitle as epPodcastTitle,
+               e.imageSeedColor as epImageSeedColor, e.new as epNew,
+               p.imageUrl as podcastImageUrl
+               FROM podcastFavorite f
+               LEFT JOIN podcastEpisode e ON f.episodeId = e.id
+               LEFT JOIN podcast p ON f.origin = p.origin
+               ORDER BY f.timestamp DESC"""
+        )
+        val list = mutableListOf<Pair<PodcastFavorite, PodcastEpisode?>>()
+        while (rs.next()) {
+            val favorite = PodcastFavorite(
+                episodeId = rs.getString("episodeId"),
+                origin = rs.getString("origin"),
+                timestamp = rs.getLong("timestamp"),
+                title = rs.getString("favTitle") ?: "",
+                podcastTitle = rs.getString("favPodcastTitle") ?: "",
+                imageUrl = rs.getString("favImageUrl"),
+                audioUrl = rs.getString("favAudioUrl") ?: "",
+                duration = rs.getInt("favDuration"),
+                pubDate = rs.getLong("favPubDate")
+            )
+            val title = rs.getString("epTitle") ?: favorite.title
+            val episode = if (title.isNotBlank()) PodcastEpisode(
+                id = favorite.episodeId,
+                guid = rs.getString("epGuid") ?: "",
+                origin = favorite.origin,
+                link = rs.getString("epLink") ?: "",
+                title = title,
+                description = rs.getString("epDescription") ?: "",
+                imageUrl = rs.getString("epImageUrl") ?: favorite.imageUrl ?: rs.getString("podcastImageUrl"),
+                author = rs.getString("epAuthor") ?: "",
+                pubDate = rs.getLong("epPubDate").takeIf { rs.getString("epTitle") != null } ?: favorite.pubDate,
+                duration = rs.getInt("epDuration").takeIf { rs.getString("epTitle") != null } ?: favorite.duration,
+                audioUrl = rs.getString("epAudioUrl") ?: favorite.audioUrl,
+                podcastTitle = rs.getString("epPodcastTitle") ?: favorite.podcastTitle,
+                imageSeedColor = rs.getInt("epImageSeedColor"),
+                isNew = rs.getInt("epNew") == 1
+            ) else null
+            list.add(favorite to episode)
+        }
+        list
+    }
+
+    suspend fun insert(episode: PodcastEpisode) = insert(
+        PodcastFavorite(
+            episodeId = episode.id,
+            origin = episode.origin,
+            timestamp = System.currentTimeMillis(),
+            title = episode.title,
+            podcastTitle = episode.podcastTitle,
+            imageUrl = episode.imageUrl,
+            audioUrl = episode.audioUrl,
+            duration = episode.duration,
+            pubDate = episode.pubDate
+        )
+    )
+
+    suspend fun insert(favorite: PodcastFavorite) = withContext(Dispatchers.IO) {
+        conn.prepareStatement(
+            "INSERT OR REPLACE INTO podcastFavorite (episodeId, origin, timestamp, title, podcastTitle, imageUrl, audioUrl, duration, pubDate) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+        ).apply {
+            setString(1, favorite.episodeId); setString(2, favorite.origin); setLong(3, favorite.timestamp)
+            setString(4, favorite.title); setString(5, favorite.podcastTitle); setString(6, favorite.imageUrl)
+            setString(7, favorite.audioUrl); setInt(8, favorite.duration); setLong(9, favorite.pubDate)
+            executeUpdate()
+        }
+    }
+
+    suspend fun toggle(episode: PodcastEpisode): Boolean {
+        return if (isFavorite(episode.id)) {
+            delete(episode.id)
+            false
+        } else {
+            insert(episode)
+            true
+        }
+    }
+
+    suspend fun delete(episodeId: String) = withContext(Dispatchers.IO) {
+        conn.prepareStatement("DELETE FROM podcastFavorite WHERE episodeId = ?").apply {
+            setString(1, episodeId); executeUpdate()
+        }
+    }
+
+    suspend fun deleteAll() = withContext(Dispatchers.IO) {
+        conn.createStatement().executeUpdate("DELETE FROM podcastFavorite")
+    }
+
+    private fun readFavorite(rs: java.sql.ResultSet) = PodcastFavorite(
+        episodeId = rs.getString("episodeId"),
+        origin = rs.getString("origin"),
+        timestamp = rs.getLong("timestamp"),
+        title = rs.getString("title") ?: "",
+        podcastTitle = rs.getString("podcastTitle") ?: "",
+        imageUrl = rs.getString("imageUrl"),
+        audioUrl = rs.getString("audioUrl") ?: "",
+        duration = rs.getInt("duration"),
+        pubDate = rs.getLong("pubDate")
+    )
 }
 
 class SubscriptionDao(private val conn: Connection) {

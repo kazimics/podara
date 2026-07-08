@@ -49,6 +49,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupPositionProvider
 import androidx.compose.ui.window.PopupProperties
+import app.podara.component.FavoriteEpisodeButton
 import app.podara.data.AppDatabase
 import app.podara.data.model.PodcastEpisode
 import app.podara.theme.DesignTokens
@@ -369,6 +370,8 @@ fun MiniPlayer(
 fun FullPlayer(
     state: MediaPlayerState,
     database: AppDatabase,
+    favoriteVersion: Int = 0,
+    onFavoriteChanged: () -> Unit = {},
     onClose: () -> Unit,
     onStartDownload: ((PodcastEpisode) -> Unit)? = null,
     modifier: Modifier = Modifier
@@ -388,6 +391,11 @@ fun FullPlayer(
     var recommendations by remember { mutableStateOf<List<PodcastEpisode>>(emptyList()) }
     var currentOrigin by remember { mutableStateOf<String?>(null) }
     var isDownloaded by remember { mutableStateOf(false) }
+    var favoriteIds by remember { mutableStateOf(setOf<String>()) }
+
+    LaunchedEffect(favoriteVersion) {
+        favoriteIds = database.favorites.getAllEpisodeIds()
+    }
 
     LaunchedEffect(state.currentEpisodeId) {
         val episodeId = state.currentEpisodeId ?: return@LaunchedEffect
@@ -531,6 +539,14 @@ fun FullPlayer(
                     ) {
                         val epToDownload = currentEpisode
                         if (epToDownload != null) {
+                            FavoriteEpisodeButton(isFavorite = epToDownload.id in favoriteIds) {
+                                scope.launch {
+                                    database.episodes.insert(epToDownload)
+                                    val isFavorite = database.favorites.toggle(epToDownload)
+                                    favoriteIds = if (isFavorite) favoriteIds + epToDownload.id else favoriteIds - epToDownload.id
+                                    onFavoriteChanged()
+                                }
+                            }
                             DownloadActionButton(
                                 isDownloaded = isDownloaded,
                                 onClick = { onStartDownload?.invoke(epToDownload); isDownloaded = true }
@@ -765,6 +781,15 @@ fun FullPlayer(
                                 subtitle = ep.podcastTitle,
                                 duration = formatDuration(ep.duration),
                                 imageUrl = ep.imageUrl,
+                                isFavorite = ep.id in favoriteIds,
+                                onToggleFavorite = {
+                                    scope.launch {
+                                        database.episodes.insert(ep)
+                                        val isFavorite = database.favorites.toggle(ep)
+                                        favoriteIds = if (isFavorite) favoriteIds + ep.id else favoriteIds - ep.id
+                                        onFavoriteChanged()
+                                    }
+                                },
                                 onClick = {
                                     scope.launch {
                                         state.play(url = ep.audioUrl, title = ep.title, subtitle = ep.podcastTitle, artworkUrl = ep.imageUrl, durationMs = ep.duration * 1000L, episodeId = ep.id)
@@ -779,7 +804,13 @@ fun FullPlayer(
     }
 
     if (showQueue) {
-        QueueDrawer(state = state, onDismiss = { showQueue = false })
+        QueueDrawer(
+            state = state,
+            database = database,
+            favoriteVersion = favoriteVersion,
+            onFavoriteChanged = onFavoriteChanged,
+            onDismiss = { showQueue = false }
+        )
     }
     if (showSleepTimer) {
         SleepTimerSheet(state = state, onDismiss = { showSleepTimer = false })
@@ -817,7 +848,15 @@ private fun DownloadActionButton(isDownloaded: Boolean, onClick: () -> Unit) {
 }
 
 @Composable
-private fun RecommendationCard(title: String, subtitle: String, duration: String, imageUrl: String?, onClick: () -> Unit) {
+private fun RecommendationCard(
+    title: String,
+    subtitle: String,
+    duration: String,
+    imageUrl: String?,
+    isFavorite: Boolean,
+    onToggleFavorite: () -> Unit,
+    onClick: () -> Unit
+) {
     val colors = PodaraTheme.colors
     val interactionSource = remember { MutableInteractionSource() }
     val isHovered by interactionSource.collectIsHoveredAsState()
@@ -829,7 +868,7 @@ private fun RecommendationCard(title: String, subtitle: String, duration: String
 
     Row(
         modifier = Modifier
-            .width(200.dp).height(72.dp)
+            .width(240.dp).height(72.dp)
             .clip(RoundedCornerShape(10.dp))
             .background(animatedBg)
             .border(1.dp, colors.border, RoundedCornerShape(10.dp))
@@ -848,6 +887,7 @@ private fun RecommendationCard(title: String, subtitle: String, duration: String
             Text(text = subtitle, color = colors.textMuted, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(text = duration, color = colors.textDisabled, fontSize = 11.sp)
         }
+        FavoriteEpisodeButton(isFavorite = isFavorite, onToggle = onToggleFavorite)
     }
 }
 
@@ -1014,6 +1054,9 @@ private fun formatDuration(seconds: Int): String {
 fun QueueDrawer(
     state: MediaPlayerState,
     onDismiss: () -> Unit,
+    database: AppDatabase? = null,
+    favoriteVersion: Int = 0,
+    onFavoriteChanged: () -> Unit = {},
     onDownload: ((QueueItem) -> Unit)? = null,
     onDeleteDownload: ((QueueItem) -> Unit)? = null
 ) {
@@ -1025,6 +1068,12 @@ fun QueueDrawer(
     var draggingIndex by remember { mutableIntStateOf(-1) }
     var dragAccumulated by remember { mutableFloatStateOf(0f) }
     var dragTargetIndex by remember { mutableIntStateOf(-1) }
+    var favoriteIds by remember { mutableStateOf(setOf<String>()) }
+    val scope = rememberCoroutineScope()
+
+    LaunchedEffect(database, favoriteVersion) {
+        favoriteIds = database?.favorites?.getAllEpisodeIds() ?: emptySet()
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         Surface(
@@ -1237,6 +1286,19 @@ fun QueueDrawer(
 
                                 // Drag handle with drag-to-reorder
                                 if (!isSelectionMode) {
+                                    val episodeId = item.episodeId
+                                    if (database != null && episodeId != null) {
+                                        FavoriteEpisodeButton(isFavorite = episodeId in favoriteIds) {
+                                            scope.launch {
+                                                val episode = database.episodes.getById(episodeId)
+                                                if (episode != null) {
+                                                    val isFavorite = database.favorites.toggle(episode)
+                                                    favoriteIds = if (isFavorite) favoriteIds + episodeId else favoriteIds - episodeId
+                                                    onFavoriteChanged()
+                                                }
+                                            }
+                                        }
+                                    }
                                     Icon(
                                         Icons.Default.DragHandle,
                                         contentDescription = null,

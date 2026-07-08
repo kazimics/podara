@@ -4,6 +4,23 @@ All notable changes to podara will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.0-alpha5] - 2026-07-08
+
+### Added
+- **Episode favorites** — added persistent episode-level favorites with a new Favorites sidebar page matching the History page layout and styling
+- **Favorite buttons across episode lists** — users can favorite/unfavorite episodes from PodcastDetailScreen, History, Downloads, FullPlayer recommendations/current episode, and QueueDrawer where a concrete episode is available
+- **Favorites persistence** — new `podcastFavorite` table, `PodcastFavorite` model, and `FavoriteDao` store favorites by `episodeId` with snapshot metadata so favorites remain visible even when the source episode row is missing
+- **Favorite UI components** — shared `EpisodeActionIconButton` and `FavoriteEpisodeButton` for consistent 36dp circular hover actions across screens
+
+### Changed
+- Sidebar navigation now includes Favorites between Subscriptions and History
+- CI test allowlists now include `FavoriteDaoTest` and `FavoritesScreenTest`
+
+### Tests
+- Added `FavoriteDaoTest` for insert, replace, delete, toggle, clear, snapshot fallback, and persistence across database reopen
+- Added `FavoritesScreenTest` for empty state, title/search rendering, hidden clear action when empty, and saved episode rendering
+- Updated History, Downloads, and App GUI tests for the new favorites-aware screen signatures
+
 ## [1.0.0-alpha4] - 2026-07-08
 
 ### Added

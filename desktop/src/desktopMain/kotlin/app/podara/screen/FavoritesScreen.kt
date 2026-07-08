@@ -1,27 +1,30 @@
 package app.podara.screen
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.DeleteSweep
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.PlaylistAdd
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.layout.ContentScale
@@ -30,28 +33,31 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import app.podara.data.AppDatabase
+import app.podara.component.EpisodeActionIconButton
 import app.podara.component.FavoriteEpisodeButton
+import app.podara.data.AppDatabase
 import app.podara.data.model.Podcast
 import app.podara.data.model.PodcastEpisode
-import app.podara.data.model.PodcastHistory
+import app.podara.data.model.PodcastFavorite
 import app.podara.player.MediaPlayerState
-import app.podara.util.Strings
 import app.podara.theme.DesignTokens
 import app.podara.theme.PodaraTheme
+import app.podara.util.Strings
 import coil3.compose.AsyncImage
-import java.awt.Cursor
 import kotlinx.coroutines.launch
+import java.awt.Cursor
 import java.text.SimpleDateFormat
-import java.util.*
+import java.util.Calendar
+import java.util.Date
+import java.util.Locale
 
-private data class HistorySection(
+private data class FavoriteSection(
     val title: String,
-    val items: List<Pair<PodcastHistory, PodcastEpisode>>
+    val items: List<Pair<PodcastFavorite, PodcastEpisode>>
 )
 
 @Composable
-fun HistoryScreen(
+fun FavoritesScreen(
     database: AppDatabase,
     playerState: MediaPlayerState,
     favoriteVersion: Int,
@@ -64,44 +70,35 @@ fun HistoryScreen(
     val searchToken = DesignTokens.SearchBar
     val scope = rememberCoroutineScope()
 
-    var allHistoryItems by remember { mutableStateOf(emptyList<Pair<PodcastHistory, PodcastEpisode?>>()) }
+    var allFavoriteItems by remember { mutableStateOf(emptyList<Pair<PodcastFavorite, PodcastEpisode?>>()) }
     var podcastMap by remember { mutableStateOf(mapOf<String, Podcast>()) }
-    var favoriteIds by remember { mutableStateOf(setOf<String>()) }
     var searchQuery by remember { mutableStateOf("") }
     var showClearDialog by remember { mutableStateOf(false) }
 
-    LaunchedEffect(Unit) {
-        allHistoryItems = database.history.getAllWithEpisode()
+    LaunchedEffect(favoriteVersion) {
+        allFavoriteItems = database.favorites.getAllWithEpisode()
         podcastMap = database.podcasts.getAllSync().associateBy { it.origin }
     }
 
-    LaunchedEffect(favoriteVersion) {
-        favoriteIds = database.favorites.getAllEpisodeIds()
-    }
-
-    // Filter by search query
-    val filteredPairs = remember(allHistoryItems, searchQuery) {
+    val filteredPairs = remember(allFavoriteItems, searchQuery) {
         if (searchQuery.isBlank()) {
-            allHistoryItems
+            allFavoriteItems
         } else {
-            allHistoryItems.filter { (_, episode) ->
-                episode != null && (episode.title.contains(searchQuery, ignoreCase = true)
-                        || episode.podcastTitle.contains(searchQuery, ignoreCase = true))
+            allFavoriteItems.filter { (favorite, episode) ->
+                val title = episode?.title ?: favorite.title
+                val podcastTitle = episode?.podcastTitle ?: favorite.podcastTitle
+                title.contains(searchQuery, ignoreCase = true) || podcastTitle.contains(searchQuery, ignoreCase = true)
             }
         }
     }
 
-    // Keep only non-null episodes for display
     val displayItems = remember(filteredPairs) {
-        filteredPairs.mapNotNull { (history, episode) ->
-            episode?.let { history to it }
+        filteredPairs.mapNotNull { (favorite, episode) ->
+            episode?.let { favorite to it }
         }
     }
 
-    // Group by date
-    val sections = remember(displayItems) {
-        groupByDate(displayItems)
-    }
+    val sections = remember(displayItems) { groupFavoritesByDate(displayItems) }
 
     Column(
         modifier = Modifier
@@ -109,16 +106,14 @@ fun HistoryScreen(
             .background(colors.background)
             .padding(top = 28.dp, start = 32.dp, end = 32.dp, bottom = 8.dp)
     ) {
-        // ── Header: Title + Subtitle + Search — always visible ──
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.Top
         ) {
-            // Left: Title + Subtitle
             Column {
                 Text(
-                    text = Strings["history_title"],
+                    text = Strings["favorites_title"],
                     fontSize = header.TitleSize,
                     fontWeight = FontWeight.Bold,
                     fontFamily = FontFamily.Serif,
@@ -126,13 +121,12 @@ fun HistoryScreen(
                 )
                 Spacer(modifier = Modifier.height(header.Gap))
                 Text(
-                    text = Strings["history_subtitle"],
+                    text = Strings["favorites_subtitle"],
                     fontSize = header.SubtitleSize,
                     color = colors.textMuted
                 )
             }
 
-            // Right: Search bar
             Surface(
                 modifier = Modifier
                     .width(searchToken.Width)
@@ -161,7 +155,7 @@ fun HistoryScreen(
                     Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
                         if (searchQuery.isEmpty()) {
                             Text(
-                                text = Strings["history_search_placeholder"],
+                                text = Strings["favorites_search_placeholder"],
                                 color = colors.textDisabled,
                                 fontSize = searchToken.TextSize
                             )
@@ -185,9 +179,7 @@ fun HistoryScreen(
                             tint = colors.textMuted,
                             modifier = Modifier
                                 .size(searchToken.ClearIconSize)
-                                .clickable {
-                                    searchQuery = ""
-                                }
+                                .clickable { searchQuery = "" }
                         )
                     }
                 }
@@ -197,47 +189,44 @@ fun HistoryScreen(
         Spacer(modifier = Modifier.height(DesignTokens.Spacing.md))
 
         if (displayItems.isEmpty()) {
-            // ── Empty state in remaining space ──
             Box(
                 modifier = Modifier.fillMaxWidth().weight(1f),
                 contentAlignment = Alignment.Center
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Icon(
-                        Icons.Default.History,
+                        Icons.Default.Favorite,
                         contentDescription = null,
                         modifier = Modifier.size(64.dp),
                         tint = colors.textMuted
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
-                        text = Strings["history_empty"],
+                        text = Strings["favorites_empty"],
                         style = MaterialTheme.typography.headlineSmall,
                         color = colors.textPrimary
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = Strings["history_empty_hint"],
+                        text = Strings["favorites_empty_hint"],
                         style = MaterialTheme.typography.bodyMedium,
                         color = colors.textSecondary
                     )
                 }
             }
         } else {
-            // ── Toolbar: count + clear all ──
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
-                    text = Strings.get("history_count", allHistoryItems.size),
+                    text = Strings.get("favorites_count", displayItems.size),
                     color = colors.textPrimary,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Medium
                 )
 
-                // Clear All button
                 val clearInteractionSource = remember { MutableInteractionSource() }
                 val isClearHovered by clearInteractionSource.collectIsHoveredAsState()
                 val clearAnimatedBg by animateColorAsState(
@@ -258,7 +247,7 @@ fun HistoryScreen(
                 ) {
                     Icon(
                         Icons.Default.DeleteSweep,
-                        contentDescription = Strings["history_clear"],
+                        contentDescription = Strings["favorites_clear"],
                         tint = colors.textSecondary,
                         modifier = Modifier.size(16.dp)
                     )
@@ -266,16 +255,11 @@ fun HistoryScreen(
             }
 
             Spacer(modifier = Modifier.height(DesignTokens.Spacing.sm))
-
-            // ── Divider ──
             HorizontalDivider(color = colors.divider)
-
             Spacer(modifier = Modifier.height(6.dp))
 
-            // ── History list grouped by date ──
             LazyColumn(modifier = Modifier.fillMaxSize()) {
                 sections.forEach { section ->
-                    // Section header
                     item(key = "section_${section.title}") {
                         Spacer(modifier = Modifier.height(DesignTokens.Spacing.md))
                         Text(
@@ -288,22 +272,17 @@ fun HistoryScreen(
                         Spacer(modifier = Modifier.height(DesignTokens.Spacing.sm))
                     }
 
-                    // Section items
-                    items(section.items, key = { it.first.id }) { (history, episode) ->
-                        HistoryItem(
-                            history = history,
+                    items(section.items, key = { it.first.episodeId }) { (favorite, episode) ->
+                        FavoriteItem(
+                            favorite = favorite,
                             episode = episode,
                             podcast = podcastMap[episode.origin],
-                            colors = colors,
-                            scope = scope,
                             database = database,
                             playerState = playerState,
-                            isFavorite = episode.id in favoriteIds,
-                            onFavoriteToggled = { isFavorite ->
-                                favoriteIds = if (isFavorite) favoriteIds + episode.id else favoriteIds - episode.id
+                            onFavoritesChanged = {
+                                allFavoriteItems = it
                                 onFavoriteChanged()
                             },
-                            onHistoryChanged = { allHistoryItems = it },
                             onShowPodcastDetail = onShowPodcastDetail
                         )
                         HorizontalDivider(color = colors.divider)
@@ -313,21 +292,21 @@ fun HistoryScreen(
         }
     }
 
-    // ── Clear history dialog ──
     if (showClearDialog) {
         AlertDialog(
             onDismissRequest = { showClearDialog = false },
-            title = { Text(Strings["history_clear"], color = colors.textPrimary) },
-            text = { Text(Strings["history_clear_confirm"], color = colors.textSecondary) },
+            title = { Text(Strings["favorites_clear"], color = colors.textPrimary) },
+            text = { Text(Strings["favorites_clear_confirm"], color = colors.textSecondary) },
             confirmButton = {
                 TextButton(onClick = {
                     scope.launch {
-                        database.history.deleteAll()
-                        allHistoryItems = emptyList()
+                        database.favorites.deleteAll()
+                        allFavoriteItems = emptyList()
+                        onFavoriteChanged()
                     }
                     showClearDialog = false
                 }) {
-                    Text(Strings["history_clear_action"], color = colors.danger)
+                    Text(Strings["favorites_clear_action"], color = colors.danger)
                 }
             },
             dismissButton = {
@@ -340,24 +319,21 @@ fun HistoryScreen(
     }
 }
 
-// ── History Item ──
 @Composable
-private fun HistoryItem(
-    history: PodcastHistory,
+private fun FavoriteItem(
+    favorite: PodcastFavorite,
     episode: PodcastEpisode,
     podcast: Podcast?,
-    colors: app.podara.theme.PodaraColors,
-    scope: kotlinx.coroutines.CoroutineScope,
     database: AppDatabase,
     playerState: MediaPlayerState,
-    isFavorite: Boolean,
-    onFavoriteToggled: (Boolean) -> Unit,
-    onHistoryChanged: (List<Pair<PodcastHistory, PodcastEpisode?>>) -> Unit,
+    onFavoritesChanged: (List<Pair<PodcastFavorite, PodcastEpisode?>>) -> Unit,
     onShowPodcastDetail: (Podcast) -> Unit
 ) {
+    val colors = PodaraTheme.colors
+    val scope = rememberCoroutineScope()
     val interactionSource = remember { MutableInteractionSource() }
     val isHovered by interactionSource.collectIsHoveredAsState()
-    val historyItemBg by animateColorAsState(
+    val itemBg by animateColorAsState(
         targetValue = if (isHovered) colors.elevated else Color.Transparent,
         animationSpec = tween(durationMillis = 150)
     )
@@ -367,28 +343,26 @@ private fun HistoryItem(
         modifier = Modifier
             .fillMaxWidth()
             .height(88.dp)
-            .background(historyItemBg)
+            .background(itemBg)
             .clickable(
+                enabled = episode.audioUrl.isNotBlank(),
                 interactionSource = interactionSource,
                 indication = null
             ) {
-                scope.launch {
-                    playerState.play(
-                        url = episode.audioUrl,
-                        title = episode.title,
-                        subtitle = episode.podcastTitle,
-                        artworkUrl = episode.imageUrl,
-                        podcastArtworkUrl = podcast?.imageUrl,
-                        durationMs = episode.duration * 1000L,
-                        episodeId = episode.id
-                    )
-                }
+                playerState.play(
+                    url = episode.audioUrl,
+                    title = episode.title,
+                    subtitle = episode.podcastTitle,
+                    artworkUrl = episode.imageUrl,
+                    podcastArtworkUrl = podcast?.imageUrl,
+                    durationMs = episode.duration * 1000L,
+                    episodeId = episode.id
+                )
             }
             .padding(start = 12.dp, end = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        // Cover art (clickable → play)
         Box(
             modifier = Modifier
                 .size(er.CoverSize)
@@ -400,7 +374,6 @@ private fun HistoryItem(
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize()
             )
-            // Duration badge
             if (episode.duration > 0) {
                 Box(
                     modifier = Modifier
@@ -411,7 +384,7 @@ private fun HistoryItem(
                         .padding(horizontal = 4.dp, vertical = 1.dp)
                 ) {
                     Text(
-                        text = formatDurationCompact(episode.duration),
+                        text = formatFavoriteDuration(episode.duration),
                         color = Color.White,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Medium
@@ -422,7 +395,6 @@ private fun HistoryItem(
 
         Spacer(modifier = Modifier.width(DesignTokens.Spacing.md))
 
-        // Info column
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = episode.title,
@@ -433,36 +405,30 @@ private fun HistoryItem(
                 overflow = TextOverflow.Ellipsis
             )
             Spacer(modifier = Modifier.height(2.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = episode.podcastTitle,
-                    color = colors.accent,
-                    fontSize = er.AuthorSize,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier
-                        .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
-                        .clickable(enabled = podcast != null) {
+            Text(
+                text = episode.podcastTitle,
+                color = colors.accent,
+                fontSize = er.AuthorSize,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier
+                    .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
+                    .clickable(enabled = podcast != null) {
                         if (podcast != null) onShowPodcastDetail(podcast)
                     }
-                )
-            }
+            )
             Spacer(modifier = Modifier.height(2.dp))
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
-                    text = formatRelativeTime(history.timestamp),
+                    text = formatFavoriteRelativeTime(favorite.timestamp),
                     color = colors.textMuted,
                     fontSize = 11.sp,
                     maxLines = 1
                 )
                 if (episode.duration > 0) {
+                    Text(text = "·", color = colors.textMuted, fontSize = 11.sp)
                     Text(
-                        text = "·",
-                        color = colors.textMuted,
-                        fontSize = 11.sp
-                    )
-                    Text(
-                        text = formatDurationCompact(episode.duration),
+                        text = formatFavoriteDuration(episode.duration),
                         color = colors.textMuted,
                         fontSize = 11.sp
                     )
@@ -470,98 +436,44 @@ private fun HistoryItem(
             }
         }
 
-        // Action buttons
         Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-            FavoriteEpisodeButton(isFavorite = isFavorite) {
+            EpisodeActionIconButton(
+                icon = Icons.Default.PlaylistAdd,
+                contentDescription = Strings["episode_add_to_queue"],
+                enabled = episode.audioUrl.isNotBlank()
+            ) {
+                playerState.addToQueue(
+                    url = episode.audioUrl,
+                    title = episode.title,
+                    artworkUrl = episode.imageUrl,
+                    podcastArtworkUrl = podcast?.imageUrl,
+                    episodeId = episode.id
+                )
+            }
+            FavoriteEpisodeButton(isFavorite = true) {
                 scope.launch {
-                    database.episodes.insert(episode)
-                    onFavoriteToggled(database.favorites.toggle(episode))
+                    database.favorites.delete(episode.id)
+                    onFavoritesChanged(database.favorites.getAllWithEpisode())
                 }
-            }
-
-            // Add to queue
-            val qInteractionSource = remember { MutableInteractionSource() }
-            val isQHovered by qInteractionSource.collectIsHoveredAsState()
-            val queueAnimatedBg by animateColorAsState(
-                targetValue = if (isQHovered) colors.elevated else Color.Transparent,
-                animationSpec = tween(durationMillis = 150)
-            )
-            Box(
-                modifier = Modifier
-                    .size(36.dp)
-                    .clip(CircleShape)
-                    .background(queueAnimatedBg)
-                    .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
-                    .clickable(interactionSource = qInteractionSource, indication = null) {
-                        scope.launch {
-                            playerState.addToQueue(
-                                url = episode.audioUrl,
-                                title = episode.title,
-                                artworkUrl = episode.imageUrl,
-                                podcastArtworkUrl = podcast?.imageUrl,
-                                episodeId = episode.id
-                            )
-                        }
-                    },
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    Icons.Default.PlaylistAdd,
-                    contentDescription = Strings["episode_add_to_queue"],
-                    tint = colors.textSecondary,
-                    modifier = Modifier.size(20.dp)
-                )
-            }
-
-            // Remove from history
-            val rInteractionSource = remember { MutableInteractionSource() }
-            val isRHovered by rInteractionSource.collectIsHoveredAsState()
-            val removeAnimatedBg by animateColorAsState(
-                targetValue = if (isRHovered) colors.elevated else Color.Transparent,
-                animationSpec = tween(durationMillis = 150)
-            )
-            Box(
-                modifier = Modifier
-                    .size(36.dp)
-                    .clip(CircleShape)
-                    .background(removeAnimatedBg)
-                    .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
-                    .clickable(interactionSource = rInteractionSource, indication = null) {
-                        scope.launch {
-                            database.history.delete(episode.id)
-                            onHistoryChanged(database.history.getAllWithEpisode())
-                        }
-                    },
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    Icons.Default.Close,
-                    contentDescription = Strings["player_remove"],
-                    tint = colors.textMuted,
-                    modifier = Modifier.size(20.dp)
-                )
             }
         }
     }
 }
 
-// ── Group history items by date ──
-private fun groupByDate(items: List<Pair<PodcastHistory, PodcastEpisode>>): List<HistorySection> {
+private fun groupFavoritesByDate(items: List<Pair<PodcastFavorite, PodcastEpisode>>): List<FavoriteSection> {
     val calendar = Calendar.getInstance()
     val todayDayOfYear = calendar.get(Calendar.DAY_OF_YEAR)
     val currentYear = calendar.get(Calendar.YEAR)
     val yesterdayDayOfYear = todayDayOfYear - 1
-
-    // Monday of this week (Calendar: SUNDAY=1, MONDAY=2, ..., SATURDAY=7)
     val dayOfWeek = calendar.get(Calendar.DAY_OF_WEEK)
     val daysSinceMonday = if (dayOfWeek == Calendar.SUNDAY) 6 else dayOfWeek - Calendar.MONDAY
     calendar.add(Calendar.DAY_OF_YEAR, -daysSinceMonday)
     val weekStartDayOfYear = calendar.get(Calendar.DAY_OF_YEAR)
 
-    val todayItems = mutableListOf<Pair<PodcastHistory, PodcastEpisode>>()
-    val yesterdayItems = mutableListOf<Pair<PodcastHistory, PodcastEpisode>>()
-    val weekItems = mutableListOf<Pair<PodcastHistory, PodcastEpisode>>()
-    val earlierItems = mutableListOf<Pair<PodcastHistory, PodcastEpisode>>()
+    val todayItems = mutableListOf<Pair<PodcastFavorite, PodcastEpisode>>()
+    val yesterdayItems = mutableListOf<Pair<PodcastFavorite, PodcastEpisode>>()
+    val weekItems = mutableListOf<Pair<PodcastFavorite, PodcastEpisode>>()
+    val earlierItems = mutableListOf<Pair<PodcastFavorite, PodcastEpisode>>()
 
     for (item in items) {
         val cal = Calendar.getInstance().apply { time = Date(item.first.timestamp) }
@@ -576,19 +488,18 @@ private fun groupByDate(items: List<Pair<PodcastHistory, PodcastEpisode>>): List
         }
     }
 
-    val sections = mutableListOf<HistorySection>()
-    if (todayItems.isNotEmpty()) sections.add(HistorySection(Strings["history_today"], todayItems))
-    if (yesterdayItems.isNotEmpty()) sections.add(HistorySection(Strings["history_yesterday"], yesterdayItems))
-    if (weekItems.isNotEmpty()) sections.add(HistorySection(Strings["history_this_week"], weekItems))
-    if (earlierItems.isNotEmpty()) sections.add(HistorySection(Strings["history_earlier"], earlierItems))
+    val sections = mutableListOf<FavoriteSection>()
+    if (todayItems.isNotEmpty()) sections.add(FavoriteSection(Strings["history_today"], todayItems))
+    if (yesterdayItems.isNotEmpty()) sections.add(FavoriteSection(Strings["history_yesterday"], yesterdayItems))
+    if (weekItems.isNotEmpty()) sections.add(FavoriteSection(Strings["history_this_week"], weekItems))
+    if (earlierItems.isNotEmpty()) sections.add(FavoriteSection(Strings["history_earlier"], earlierItems))
     return sections
 }
 
-// ── Relative time formatting ──
-private fun formatRelativeTime(timestamp: Long): String {
+private fun formatFavoriteRelativeTime(timestamp: Long): String {
     val now = System.currentTimeMillis()
     val diff = now - timestamp
-    if (diff < 0) return formatDateAbsolute(timestamp)
+    if (diff < 0) return formatFavoriteDateAbsolute(timestamp)
 
     val minutes = diff / 60_000
     val hours = minutes / 60
@@ -602,18 +513,17 @@ private fun formatRelativeTime(timestamp: Long): String {
             val today = cal.get(Calendar.DAY_OF_YEAR)
             cal.time = Date(timestamp)
             val tsDay = cal.get(Calendar.DAY_OF_YEAR)
-            if (today - tsDay == 1) "Yesterday"
-            else formatDateAbsolute(timestamp)
+            if (today - tsDay == 1) "Yesterday" else formatFavoriteDateAbsolute(timestamp)
         }
     }
 }
 
-private fun formatDateAbsolute(timestamp: Long): String {
+private fun formatFavoriteDateAbsolute(timestamp: Long): String {
     val sdf = SimpleDateFormat("MMM dd", Locale.getDefault())
     return sdf.format(Date(timestamp))
 }
 
-private fun formatDurationCompact(totalSeconds: Int): String {
+private fun formatFavoriteDuration(totalSeconds: Int): String {
     val hours = totalSeconds / 3600
     val minutes = (totalSeconds % 3600) / 60
     val seconds = totalSeconds % 60

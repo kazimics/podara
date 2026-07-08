@@ -78,6 +78,7 @@ class DownloadsScreenTest {
                     downloadVersion = downloadVersion,
                     completedDownloads = completedDownloads,
                     activeDownloadMeta = activeDownloadMeta,
+                    favoriteVersion = 0,
                     onPauseDownload = onPauseDownload,
                     onResumeDownload = onResumeDownload,
                     onCancelDownload = onCancelDownload,

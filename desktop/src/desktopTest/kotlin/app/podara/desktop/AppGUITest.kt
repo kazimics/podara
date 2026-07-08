@@ -245,7 +245,7 @@ class AppGUITest {
     fun testHistoryScreenEmpty() {
         composeTestRule.setContent {
             PodaraTheme {
-                HistoryScreen(database = database, playerState = MediaPlayerState(), onBack = {})
+                HistoryScreen(database = database, playerState = MediaPlayerState(), favoriteVersion = 0, onBack = {})
             }
         }
         composeTestRule.onNodeWithText(Strings["history_empty"]).assertIsDisplayed()
@@ -255,7 +255,7 @@ class AppGUITest {
     fun testHistoryScreenTitle() {
         composeTestRule.setContent {
             PodaraTheme {
-                HistoryScreen(database = database, playerState = MediaPlayerState(), onBack = {})
+                HistoryScreen(database = database, playerState = MediaPlayerState(), favoriteVersion = 0, onBack = {})
             }
         }
         composeTestRule.onNodeWithText(Strings["history_title"]).assertIsDisplayed()

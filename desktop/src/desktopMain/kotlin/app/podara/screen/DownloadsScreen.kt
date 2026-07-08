@@ -27,12 +27,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import app.podara.component.FavoriteEpisodeButton
 import app.podara.data.AppDatabase
 import app.podara.data.PodcastDownload
+import app.podara.data.model.PodcastFavorite
 import app.podara.manager.DownloadManager
 import app.podara.util.Strings
 import app.podara.theme.DesignTokens
 import app.podara.theme.PodaraTheme
+import kotlinx.coroutines.launch
 import java.awt.Cursor
 import java.awt.Desktop
 import java.io.File
@@ -55,11 +58,13 @@ fun DownloadsScreen(
     downloadVersion: Int,
     completedDownloads: Set<String>,
     activeDownloadMeta: Map<String, Pair<String, String>>,
+    favoriteVersion: Int,
     onPauseDownload: (String) -> Unit,
     onResumeDownload: (String) -> Unit,
     onCancelDownload: (String) -> Unit,
     onDeleteDownloaded: (String) -> Unit,
     onDeleteDownloadedByOrigin: (String) -> Unit,
+    onFavoriteChanged: () -> Unit = {},
     onBack: () -> Unit,
     onOpenSettings: () -> Unit
 ) {
@@ -73,6 +78,8 @@ fun DownloadsScreen(
     var groupedByPodcast by remember { mutableStateOf(emptyList<PodcastGroup>()) }
     var showDeleteConfirm by remember { mutableStateOf<String?>(null) }
     var showBatchDeleteConfirm by remember { mutableStateOf<Pair<String, String>?>(null) }
+    var favoriteIds by remember { mutableStateOf(setOf<String>()) }
+    val scope = rememberCoroutineScope()
 
     // Reload completed list when downloadVersion changes
     LaunchedEffect(downloadVersion) {
@@ -88,6 +95,10 @@ fun DownloadsScreen(
     var activeTasks by remember { mutableStateOf(listOf<app.podara.data.DownloadTask>()) }
     LaunchedEffect(downloadVersion) {
         activeTasks = database.downloadTasks.getAllActive()
+    }
+
+    LaunchedEffect(favoriteVersion) {
+        favoriteIds = database.favorites.getAllEpisodeIds()
     }
 
     val hasInProgress = downloadingEpisodes.isNotEmpty() || activeTasks.isNotEmpty()
@@ -248,6 +259,40 @@ fun DownloadsScreen(
                             episodeTitle = meta?.second ?: task?.episodeTitle ?: "",
                             currentBytes = current,
                             totalBytes = total,
+                            isFavorite = episodeId in favoriteIds,
+                            onToggleFavorite = {
+                                val source = task ?: app.podara.data.DownloadTask(
+                                    episodeId = episodeId,
+                                    origin = "",
+                                    audioUrl = "",
+                                    podcastTitle = meta?.first ?: "",
+                                    episodeTitle = meta?.second ?: episodeId,
+                                    createdAt = 0L,
+                                    updatedAt = 0L
+                                )
+                                scope.launch {
+                                    val favorite = PodcastFavorite(
+                                        episodeId = source.episodeId,
+                                        origin = source.origin,
+                                        timestamp = System.currentTimeMillis(),
+                                        title = source.episodeTitle.ifEmpty { source.episodeId },
+                                        podcastTitle = source.podcastTitle,
+                                        audioUrl = source.audioUrl,
+                                        imageUrl = null,
+                                        duration = 0,
+                                        pubDate = 0L
+                                    )
+                                    val nowFavorite = if (source.episodeId in favoriteIds) {
+                                        database.favorites.delete(source.episodeId)
+                                        false
+                                    } else {
+                                        database.favorites.insert(favorite)
+                                        true
+                                    }
+                                    favoriteIds = if (nowFavorite) favoriteIds + source.episodeId else favoriteIds - source.episodeId
+                                    onFavoriteChanged()
+                                }
+                            },
                             onPause = onPauseDownload,
                             onResume = onResumeDownload,
                             onCancel = onCancelDownload,
@@ -264,6 +309,31 @@ fun DownloadsScreen(
                         items(pausedTasks, key = { "paused_${it.episodeId}" }) { task ->
                             PausedTaskRow(
                                 task = task,
+                                isFavorite = task.episodeId in favoriteIds,
+                                onToggleFavorite = {
+                                    scope.launch {
+                                        val favorite = PodcastFavorite(
+                                            episodeId = task.episodeId,
+                                            origin = task.origin,
+                                            timestamp = System.currentTimeMillis(),
+                                            title = task.episodeTitle.ifEmpty { task.episodeId },
+                                            podcastTitle = task.podcastTitle,
+                                            audioUrl = task.audioUrl,
+                                            imageUrl = null,
+                                            duration = 0,
+                                            pubDate = 0L
+                                        )
+                                        val nowFavorite = if (task.episodeId in favoriteIds) {
+                                            database.favorites.delete(task.episodeId)
+                                            false
+                                        } else {
+                                            database.favorites.insert(favorite)
+                                            true
+                                        }
+                                        favoriteIds = if (nowFavorite) favoriteIds + task.episodeId else favoriteIds - task.episodeId
+                                        onFavoriteChanged()
+                                    }
+                                },
                                 onResume = onResumeDownload,
                                 onCancel = onCancelDownload,
                                 colors = colors
@@ -290,6 +360,34 @@ fun DownloadsScreen(
                     items(groupedByPodcast, key = { "group_${it.origin}" }) { group ->
                         PodcastDownloadGroup(
                             group = group,
+                            favoriteIds = favoriteIds,
+                            onToggleFavorite = { download ->
+                                scope.launch {
+                                    val episode = database.episodes.getById(download.episodeId)
+                                    val nowFavorite = if (download.episodeId in favoriteIds) {
+                                        database.favorites.delete(download.episodeId)
+                                        false
+                                    } else if (episode != null) {
+                                        database.favorites.insert(episode)
+                                        true
+                                    } else {
+                                        database.favorites.insert(PodcastFavorite(
+                                            episodeId = download.episodeId,
+                                            origin = download.origin,
+                                            timestamp = System.currentTimeMillis(),
+                                            title = download.episodeTitle.ifEmpty { download.episodeId },
+                                            podcastTitle = download.podcastTitle,
+                                            imageUrl = null,
+                                            audioUrl = download.filePath,
+                                            duration = 0,
+                                            pubDate = 0L
+                                        ))
+                                        true
+                                    }
+                                    favoriteIds = if (nowFavorite) favoriteIds + download.episodeId else favoriteIds - download.episodeId
+                                    onFavoriteChanged()
+                                }
+                            },
                             onDeleteSingle = onDeleteDownloaded,
                             onDeleteAll = {
                                 showBatchDeleteConfirm = group.origin to group.podcastTitle
@@ -363,6 +461,8 @@ private fun InProgressRow(
     episodeTitle: String,
     currentBytes: Long,
     totalBytes: Long,
+    isFavorite: Boolean,
+    onToggleFavorite: () -> Unit,
     onPause: (String) -> Unit,
     onResume: (String) -> Unit,
     onCancel: (String) -> Unit,
@@ -447,6 +547,9 @@ private fun InProgressRow(
 
         // Action buttons
         Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+            FavoriteEpisodeButton(isFavorite = isFavorite, enabled = episodeTitle.isNotBlank() || podcastTitle.isNotBlank()) {
+                onToggleFavorite()
+            }
             // Pause / Resume toggle (resume only if paused state from DB — already handled elsewhere)
             if (currentBytes > 0) {
                 ActionIconButton(
@@ -471,6 +574,8 @@ private fun InProgressRow(
 @Composable
 private fun PausedTaskRow(
     task: app.podara.data.DownloadTask,
+    isFavorite: Boolean,
+    onToggleFavorite: () -> Unit,
     onResume: (String) -> Unit,
     onCancel: (String) -> Unit,
     colors: app.podara.theme.PodaraColors
@@ -543,6 +648,9 @@ private fun PausedTaskRow(
         }
 
         Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+            FavoriteEpisodeButton(isFavorite = isFavorite) {
+                onToggleFavorite()
+            }
             if (isPaused || isFailed) {
                 ActionIconButton(
                     icon = Icons.Default.PlayArrow,
@@ -565,6 +673,8 @@ private fun PausedTaskRow(
 @Composable
 private fun PodcastDownloadGroup(
     group: PodcastGroup,
+    favoriteIds: Set<String>,
+    onToggleFavorite: (PodcastDownload) -> Unit,
     onDeleteSingle: (String) -> Unit,
     onDeleteAll: () -> Unit,
     colors: app.podara.theme.PodaraColors
@@ -629,6 +739,8 @@ private fun PodcastDownloadGroup(
         group.items.forEachIndexed { index, download ->
             CompletedDownloadRow(
                 download = download,
+                isFavorite = download.episodeId in favoriteIds,
+                onToggleFavorite = { onToggleFavorite(download) },
                 onDelete = { onDeleteSingle(download.episodeId) },
                 isLast = index == group.items.lastIndex,
                 colors = colors
@@ -641,6 +753,8 @@ private fun PodcastDownloadGroup(
 @Composable
 private fun CompletedDownloadRow(
     download: PodcastDownload,
+    isFavorite: Boolean,
+    onToggleFavorite: () -> Unit,
     onDelete: () -> Unit,
     isLast: Boolean,
     colors: app.podara.theme.PodaraColors
@@ -725,6 +839,9 @@ private fun CompletedDownloadRow(
 
         // Actions
         Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+            FavoriteEpisodeButton(isFavorite = isFavorite) {
+                onToggleFavorite()
+            }
             // Open folder
             val ofInteractionSource = remember { MutableInteractionSource() }
             val isOfHovered by ofInteractionSource.collectIsHoveredAsState()
