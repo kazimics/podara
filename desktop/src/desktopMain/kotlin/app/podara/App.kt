@@ -56,6 +56,7 @@ import app.podara.api.model.PodcastPreviewModel
 import app.podara.api.rss.FetchPodcastClient
 import app.podara.api.rss.FetchPodcastClientResult
 import app.podara.component.AddToQueueButton
+import app.podara.component.EpisodeActionIconButton
 import app.podara.component.FavoriteEpisodeButton
 import app.podara.data.AppDatabase
 import app.podara.data.model.Podcast
@@ -1606,8 +1607,11 @@ private fun HomeScreen(
         } else {
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
-                verticalArrangement = Arrangement.spacedBy(DesignTokens.Spacing.sm),
-                contentPadding = PaddingValues(bottom = DesignTokens.Spacing.md)
+                verticalArrangement = Arrangement.spacedBy(DesignTokens.FavoriteEpisodeList.CardGap),
+                contentPadding = PaddingValues(
+                    top = DesignTokens.FavoriteEpisodeList.ListPaddingTop,
+                    bottom = DesignTokens.FavoriteEpisodeList.ListPaddingBottom
+                )
             ) {
                 items(sortedPodcasts) { podcast ->
                     val sub = subscriptionMap[podcast.origin]
@@ -1688,16 +1692,27 @@ private fun SubscriptionCard(
     onMore: () -> Unit
 ) {
     val colors = PodaraTheme.colors
+    val card = DesignTokens.FavoriteEpisodeList
     val row = DesignTokens.SubscriptionRow
-    val glass = DesignTokens.Glass
     val badge = DesignTokens.Badge
     val interactionSource = remember { MutableInteractionSource() }
     val isHovered by interactionSource.collectIsHoveredAsState()
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val shape = RoundedCornerShape(card.CardRadius)
     val animatedBg by animateColorAsState(
         when {
-            isSelected -> glass.SelectedOverlayColor
-            isHovered && !isEditing -> glass.HoverOverlayColor
-            else -> Color.Transparent
+            isSelected -> card.PlayingBackgroundColor
+            isPressed && !isEditing -> card.PressedBackgroundColor
+            isHovered && !isEditing -> card.HoverBackgroundColor
+            else -> card.BackgroundColor
+        },
+        tween(DesignTokens.Animation.HoverMs)
+    )
+    val borderColor by animateColorAsState(
+        when {
+            isSelected -> card.PlayingBorderColor
+            isHovered && !isEditing -> card.HoverBorderColor
+            else -> card.BorderColor
         },
         tween(DesignTokens.Animation.HoverMs)
     )
@@ -1705,16 +1720,13 @@ private fun SubscriptionCard(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(row.Height)
-            .shadow(glass.CompactShadowElevation, RoundedCornerShape(glass.CompactRadius), ambientColor = glass.CompactShadowColor, spotColor = glass.CompactShadowColor)
-            .clip(RoundedCornerShape(glass.CompactRadius))
-            .background(glass.CompactGradient)
+            .height(card.CardHeight)
+            .clip(shape)
             .background(animatedBg)
-            .border(glass.CompactBorderWidth, if (isSelected) glass.SelectedBorderColor else glass.CompactBorderColor, RoundedCornerShape(glass.CompactRadius))
+            .border(card.BorderWidth, borderColor, shape)
             .clickable(interactionSource = interactionSource, indication = null) { onClick() }
-            .padding(horizontal = row.PaddingHorizontal, vertical = row.PaddingVertical),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(row.Spacing)
+            .padding(horizontal = card.CardPaddingHorizontal, vertical = card.CardPaddingVertical),
+        verticalAlignment = Alignment.CenterVertically
     ) {
         if (isEditing) {
             Checkbox(
@@ -1722,33 +1734,72 @@ private fun SubscriptionCard(
                 onCheckedChange = onToggleSelect,
                 modifier = Modifier.size(row.CheckboxSize)
             )
+            Spacer(modifier = Modifier.width(card.CoverContentGap))
         }
 
         // Cover
-        Box(modifier = Modifier.size(row.CoverSize).clip(RoundedCornerShape(row.CoverRadius)).background(colors.elevated)) {
+        Box(
+            modifier = Modifier
+                .size(card.CoverSize)
+                .shadow(
+                    card.CoverShadowElevation,
+                    RoundedCornerShape(card.CoverRadius),
+                    ambientColor = card.CoverShadowColor,
+                    spotColor = card.CoverShadowColor
+                )
+                .clip(RoundedCornerShape(card.CoverRadius))
+                .background(colors.elevated)
+        ) {
             AsyncImage(model = podcast.imageUrl, contentDescription = podcast.title,
                 contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
         }
 
+        Spacer(modifier = Modifier.width(card.CoverContentGap))
+
         // Info
         Column(modifier = Modifier.weight(1f)) {
-            Text(text = podcast.fetchTitle(), color = colors.textPrimary, fontSize = row.TitleSize, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Spacer(modifier = Modifier.height(row.LineGap))
-            Text(text = podcast.author, color = colors.textMuted, fontSize = row.AuthorSize, lineHeight = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(
+                text = podcast.fetchTitle(),
+                color = card.TitleColor,
+                fontSize = card.TitleSize,
+                lineHeight = card.TitleLineHeight,
+                fontWeight = card.TitleWeight,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Spacer(modifier = Modifier.height(card.PodcastNameMarginTop))
+            Text(
+                text = podcast.author,
+                color = card.PodcastNameColor,
+                fontSize = card.PodcastNameSize,
+                lineHeight = card.PodcastNameLineHeight,
+                fontWeight = card.PodcastNameWeight,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
             if (podcast.description.isNotBlank()) {
-                Spacer(modifier = Modifier.height(row.LineGap))
-                Text(text = stripHtml(podcast.description), color = colors.textDisabled, fontSize = row.DescSize, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Spacer(modifier = Modifier.height(card.MetadataMarginTop))
+                Text(
+                    text = stripHtml(podcast.description),
+                    color = card.MetadataColor,
+                    fontSize = card.MetadataSize,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.widthIn(max = row.DescriptionMaxWidth)
+                )
             }
         }
+
+        Spacer(modifier = Modifier.width(card.ContentActionsGap))
 
         // Meta: episode count + New badge (horizontal row)
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(row.MetaGap),
+            horizontalArrangement = Arrangement.spacedBy(DesignTokens.Spacing.sm),
             modifier = Modifier.padding(end = row.MetaEndPadding)
         ) {
             if (episodeCount > 0) {
-                Text(text = Strings.get("home_episode_count", episodeCount), color = colors.textSecondary, fontSize = row.DescSize)
+                Text(text = Strings.get("home_episode_count", episodeCount), color = card.MetadataColor, fontSize = card.MetadataSize)
             }
             if (newCount > 0) {
                 Box(
@@ -1767,24 +1818,21 @@ private fun SubscriptionCard(
             }
         }
 
+        Spacer(modifier = Modifier.width(card.ActionsGap))
+
         // More button
         if (!isEditing) {
-            val toolbarButton = DesignTokens.ToolbarButton
-            val moreInteractionSource = remember { MutableInteractionSource() }
-            val isMoreHovered by moreInteractionSource.collectIsHoveredAsState()
-            val moreAnimatedBg by animateColorAsState(if (isMoreHovered) toolbarButton.HoverBackgroundColor else toolbarButton.BackgroundColor, tween(DesignTokens.Animation.HoverMs))
-            Box(
-                modifier = Modifier
-                    .size(row.ActionButtonSize)
-                    .clip(RoundedCornerShape(toolbarButton.Radius))
-                    .background(moreAnimatedBg)
-                    .border(toolbarButton.BorderWidth, toolbarButton.BorderColor, RoundedCornerShape(toolbarButton.Radius))
-                    .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
-                    .clickable(interactionSource = moreInteractionSource, indication = null) { onMore() },
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(Icons.Default.Delete, contentDescription = Strings["unsubscribe"], tint = colors.textSecondary, modifier = Modifier.size(row.ActionIconSize))
-            }
+            EpisodeActionIconButton(
+                icon = Icons.Default.Delete,
+                contentDescription = Strings["unsubscribe"],
+                size = card.ActionButtonSize,
+                radius = card.ActionButtonRadius,
+                iconSize = card.ActionIconSize,
+                hoverBackgroundColor = card.ActionButtonHoverBackgroundColor,
+                defaultIconColor = card.ActionIconColor,
+                hoverIconColor = card.ActionIconHoverColor,
+                onClick = onMore
+            )
         }
     }
 }

@@ -7,6 +7,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -22,6 +23,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.pointer.PointerIcon
@@ -50,11 +52,6 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
-
-private data class FavoriteSection(
-    val title: String,
-    val items: List<Pair<PodcastFavorite, PodcastEpisode>>
-)
 
 @Composable
 fun FavoritesScreen(
@@ -97,8 +94,6 @@ fun FavoritesScreen(
             episode?.let { favorite to it }
         }
     }
-
-    val sections = remember(displayItems) { groupFavoritesByDate(displayItems) }
 
     val contextItems = remember(displayItems) {
         displayItems.map { (_, episode) ->
@@ -195,29 +190,77 @@ fun FavoritesScreen(
         Spacer(modifier = Modifier.height(DesignTokens.Spacing.md))
 
         if (displayItems.isEmpty()) {
-            Box(
-                modifier = Modifier.fillMaxWidth().weight(1f),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(
-                        Icons.Default.Favorite,
-                        contentDescription = null,
-                        modifier = Modifier.size(64.dp),
-                        tint = colors.textMuted
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text(
-                        text = Strings["favorites_empty"],
-                        style = MaterialTheme.typography.headlineSmall,
-                        color = colors.textPrimary
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = Strings["favorites_empty_hint"],
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = colors.textSecondary
-                    )
+            if (searchQuery.isBlank()) {
+                Box(
+                    modifier = Modifier.fillMaxWidth().weight(1f),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(
+                            Icons.Default.Favorite,
+                            contentDescription = null,
+                            modifier = Modifier.size(64.dp),
+                            tint = colors.textMuted
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(
+                            text = Strings["favorites_empty"],
+                            style = MaterialTheme.typography.headlineSmall,
+                            color = colors.textPrimary
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = Strings["favorites_empty_hint"],
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = colors.textSecondary
+                        )
+                    }
+                }
+            } else {
+                val glass = DesignTokens.Glass
+                Box(
+                    modifier = Modifier.fillMaxWidth().weight(1f),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(
+                            Icons.Default.Search,
+                            contentDescription = null,
+                            modifier = Modifier.size(DesignTokens.EmptyState.IconSize),
+                            tint = colors.textMuted
+                        )
+                        Spacer(modifier = Modifier.height(DesignTokens.EmptyState.Gap))
+                        Box(
+                            modifier = Modifier
+                                .width(DesignTokens.EmptyState.PanelWidth)
+                                .shadow(
+                                    glass.CompactShadowElevation,
+                                    RoundedCornerShape(DesignTokens.EmptyState.PanelRadius),
+                                    ambientColor = glass.CompactShadowColor,
+                                    spotColor = glass.CompactShadowColor
+                                )
+                                .clip(RoundedCornerShape(DesignTokens.EmptyState.PanelRadius))
+                                .background(glass.CompactGradient)
+                                .border(glass.CompactBorderWidth, glass.CompactBorderColor, RoundedCornerShape(DesignTokens.EmptyState.PanelRadius))
+                                .padding(DesignTokens.EmptyState.PanelPadding),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(
+                                    text = Strings["favorites_search_empty"],
+                                    color = colors.textPrimary,
+                                    fontSize = DesignTokens.EmptyState.TitleSize,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                                Spacer(modifier = Modifier.height(DesignTokens.Spacing.xs))
+                                Text(
+                                    text = Strings["favorites_search_empty_hint"],
+                                    color = colors.textSecondary,
+                                    fontSize = DesignTokens.EmptyState.SubtitleSize
+                                )
+                            }
+                        }
+                    }
                 }
             }
         } else {
@@ -233,30 +276,61 @@ fun FavoritesScreen(
                     fontWeight = FontWeight.Medium
                 )
 
+                val toolbarButton = DesignTokens.ToolbarButton
                 val clearInteractionSource = remember { MutableInteractionSource() }
                 val isClearHovered by clearInteractionSource.collectIsHoveredAsState()
-                val clearAnimatedBg by animateColorAsState(
-                    targetValue = if (isClearHovered) colors.elevated else Color.Transparent,
-                    animationSpec = tween(durationMillis = 150)
-                )
+                val isClearPressed by clearInteractionSource.collectIsPressedAsState()
+                val clearShape = RoundedCornerShape(toolbarButton.PillRadius)
+                val clearTextColor = if (isClearHovered || isClearPressed) toolbarButton.PillHoverTextColor else toolbarButton.PillTextColor
+                val clearIconColor = if (isClearHovered || isClearPressed) toolbarButton.PillHoverIconColor else toolbarButton.PillIconColor
                 Box(
                     modifier = Modifier
-                        .size(32.dp)
-                        .clip(RoundedCornerShape(6.dp))
-                        .background(clearAnimatedBg)
-                        .border(1.dp, colors.border, RoundedCornerShape(6.dp))
+                        .height(toolbarButton.PillHeight)
+                        .widthIn(min = toolbarButton.ManageMinWidth)
+                        .shadow(
+                            if (isClearHovered) toolbarButton.PillHoverShadowElevation else 0.dp,
+                            clearShape,
+                            ambientColor = toolbarButton.PillHoverShadowColor,
+                            spotColor = toolbarButton.PillHoverShadowColor
+                        )
+                        .clip(clearShape)
+                        .background(
+                            when {
+                                isClearPressed -> toolbarButton.PillPressedBackgroundColor
+                                isClearHovered -> toolbarButton.PillHoverBackgroundColor
+                                else -> toolbarButton.PillDefaultBackgroundColor
+                            }
+                        )
+                        .border(
+                            toolbarButton.BorderWidth,
+                            if (isClearHovered || isClearPressed) toolbarButton.PillHoverBorderColor else toolbarButton.PillDefaultBorderColor,
+                            clearShape
+                        )
                         .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
                         .clickable(interactionSource = clearInteractionSource, indication = null) {
                             showClearDialog = true
-                        },
+                        }
+                        .padding(horizontal = toolbarButton.PillPaddingHorizontal),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(
-                        Icons.Default.DeleteSweep,
-                        contentDescription = Strings["favorites_clear"],
-                        tint = colors.textSecondary,
-                        modifier = Modifier.size(16.dp)
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(toolbarButton.PillIconTextGap)
+                    ) {
+                        Icon(
+                            Icons.Default.DeleteSweep,
+                            contentDescription = Strings["favorites_clear"],
+                            tint = clearIconColor,
+                            modifier = Modifier.size(toolbarButton.PillIconSize)
+                        )
+                        Text(
+                            text = Strings["favorites_clear_button"],
+                            color = clearTextColor,
+                            fontSize = toolbarButton.PillTextSize,
+                            lineHeight = toolbarButton.PillLineHeight,
+                            fontWeight = toolbarButton.PillTextWeight
+                        )
+                    }
                 }
             }
 
@@ -264,36 +338,28 @@ fun FavoritesScreen(
             HorizontalDivider(color = colors.divider)
             Spacer(modifier = Modifier.height(6.dp))
 
-            LazyColumn(modifier = Modifier.fillMaxSize()) {
-                sections.forEach { section ->
-                    item(key = "section_${section.title}") {
-                        Spacer(modifier = Modifier.height(DesignTokens.Spacing.md))
-                        Text(
-                            text = section.title,
-                            fontSize = DesignTokens.SectionHeader.TitleSize,
-                            fontWeight = FontWeight.SemiBold,
-                            fontFamily = FontFamily.Serif,
-                            color = colors.textPrimary
-                        )
-                        Spacer(modifier = Modifier.height(DesignTokens.Spacing.sm))
-                    }
-
-                    items(section.items, key = { it.first.episodeId }) { (favorite, episode) ->
-                        FavoriteItem(
-                            favorite = favorite,
-                            episode = episode,
-                            podcast = podcastMap[episode.origin],
-                            contextItems = contextItems,
-                            database = database,
-                            playerState = playerState,
-                            onFavoritesChanged = {
-                                allFavoriteItems = it
-                                onFavoriteChanged()
-                            },
-                            onShowPodcastDetail = onShowPodcastDetail
-                        )
-                        HorizontalDivider(color = colors.divider)
-                    }
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(
+                    top = DesignTokens.FavoriteEpisodeList.ListPaddingTop,
+                    bottom = DesignTokens.FavoriteEpisodeList.ListPaddingBottom
+                ),
+                verticalArrangement = Arrangement.spacedBy(DesignTokens.FavoriteEpisodeList.CardGap)
+            ) {
+                items(displayItems, key = { it.first.episodeId }) { (favorite, episode) ->
+                    FavoriteItem(
+                        favorite = favorite,
+                        episode = episode,
+                        podcast = podcastMap[episode.origin],
+                        contextItems = contextItems,
+                        database = database,
+                        playerState = playerState,
+                        onFavoritesChanged = {
+                            allFavoriteItems = it
+                            onFavoriteChanged()
+                        },
+                        onShowPodcastDetail = onShowPodcastDetail
+                    )
                 }
             }
         }
@@ -337,21 +403,38 @@ private fun FavoriteItem(
     onFavoritesChanged: (List<Pair<PodcastFavorite, PodcastEpisode?>>) -> Unit,
     onShowPodcastDetail: (Podcast) -> Unit
 ) {
-    val colors = PodaraTheme.colors
     val scope = rememberCoroutineScope()
     val interactionSource = remember { MutableInteractionSource() }
     val isHovered by interactionSource.collectIsHoveredAsState()
+    val favoriteList = DesignTokens.FavoriteEpisodeList
+    val shape = RoundedCornerShape(favoriteList.CardRadius)
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val isPlaying = playerState.currentEpisodeId == episode.id || playerState.currentUrl == episode.audioUrl
     val itemBg by animateColorAsState(
-        targetValue = if (isHovered) colors.elevated else Color.Transparent,
-        animationSpec = tween(durationMillis = 150)
+        targetValue = when {
+            isPlaying -> favoriteList.PlayingBackgroundColor
+            isPressed -> favoriteList.PressedBackgroundColor
+            isHovered -> favoriteList.HoverBackgroundColor
+            else -> favoriteList.BackgroundColor
+        },
+        animationSpec = tween(durationMillis = DesignTokens.Animation.HoverMs)
     )
-    val er = DesignTokens.EpisodeRow
+    val borderColor by animateColorAsState(
+        targetValue = when {
+            isPlaying -> favoriteList.PlayingBorderColor
+            isHovered -> favoriteList.HoverBorderColor
+            else -> favoriteList.BorderColor
+        },
+        animationSpec = tween(durationMillis = DesignTokens.Animation.HoverMs)
+    )
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(88.dp)
+            .height(favoriteList.CardHeight)
+            .clip(shape)
             .background(itemBg)
+            .border(favoriteList.BorderWidth, borderColor, shape)
             .clickable(
                 enabled = episode.audioUrl.isNotBlank(),
                 interactionSource = interactionSource,
@@ -368,14 +451,19 @@ private fun FavoriteItem(
                     episodeId = episode.id
                 )
             }
-            .padding(start = 12.dp, end = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
+            .padding(horizontal = favoriteList.CardPaddingHorizontal, vertical = favoriteList.CardPaddingVertical),
+        verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
             modifier = Modifier
-                .size(er.CoverSize)
-                .clip(RoundedCornerShape(er.CoverRadius))
+                .size(favoriteList.CoverSize)
+                .shadow(
+                    elevation = favoriteList.CoverShadowElevation,
+                    shape = RoundedCornerShape(favoriteList.CoverRadius),
+                    ambientColor = favoriteList.CoverShadowColor,
+                    spotColor = favoriteList.CoverShadowColor
+                )
+                .clip(RoundedCornerShape(favoriteList.CoverRadius))
         ) {
             AsyncImage(
                 model = episode.imageUrl ?: podcast?.imageUrl,
@@ -387,37 +475,42 @@ private fun FavoriteItem(
                 Box(
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
-                        .padding(4.dp)
-                        .clip(RoundedCornerShape(4.dp))
-                        .background(Color.Black.copy(alpha = 0.7f))
-                        .padding(horizontal = 4.dp, vertical = 1.dp)
+                        .padding(favoriteList.DurationInset)
+                        .height(favoriteList.DurationHeight)
+                        .clip(RoundedCornerShape(favoriteList.DurationRadius))
+                        .background(favoriteList.DurationBackgroundColor)
+                        .padding(horizontal = favoriteList.DurationPaddingHorizontal),
+                    contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = formatFavoriteDuration(episode.duration),
-                        color = Color.White,
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Medium
+                        color = favoriteList.DurationTextColor,
+                        fontSize = favoriteList.DurationTextSize,
+                        fontWeight = favoriteList.DurationTextWeight
                     )
                 }
             }
         }
 
-        Spacer(modifier = Modifier.width(DesignTokens.Spacing.md))
+        Spacer(modifier = Modifier.width(favoriteList.CoverContentGap))
 
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = episode.title,
-                color = colors.textPrimary,
-                fontSize = er.TitleSize,
-                fontWeight = FontWeight.Medium,
+                color = favoriteList.TitleColor,
+                fontSize = favoriteList.TitleSize,
+                lineHeight = favoriteList.TitleLineHeight,
+                fontWeight = favoriteList.TitleWeight,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
-            Spacer(modifier = Modifier.height(2.dp))
+            Spacer(modifier = Modifier.height(favoriteList.PodcastNameMarginTop))
             Text(
                 text = episode.podcastTitle,
-                color = colors.accent,
-                fontSize = er.AuthorSize,
+                color = favoriteList.PodcastNameColor,
+                fontSize = favoriteList.PodcastNameSize,
+                lineHeight = favoriteList.PodcastNameLineHeight,
+                fontWeight = favoriteList.PodcastNameWeight,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier
@@ -426,27 +519,36 @@ private fun FavoriteItem(
                         if (podcast != null) onShowPodcastDetail(podcast)
                     }
             )
-            Spacer(modifier = Modifier.height(2.dp))
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Spacer(modifier = Modifier.height(favoriteList.MetadataMarginTop))
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(DesignTokens.Spacing.sm)) {
                 Text(
                     text = formatFavoriteRelativeTime(favorite.timestamp),
-                    color = colors.textMuted,
-                    fontSize = 11.sp,
+                    color = favoriteList.MetadataColor,
+                    fontSize = favoriteList.MetadataSize,
                     maxLines = 1
                 )
                 if (episode.duration > 0) {
-                    Text(text = "·", color = colors.textMuted, fontSize = 11.sp)
+                    Text(text = "·", color = favoriteList.MetadataColor, fontSize = favoriteList.MetadataSize)
                     Text(
                         text = formatFavoriteDuration(episode.duration),
-                        color = colors.textMuted,
-                        fontSize = 11.sp
+                        color = favoriteList.MetadataColor,
+                        fontSize = favoriteList.MetadataSize
                     )
                 }
             }
         }
 
-        Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-            AddToQueueButton {
+        Spacer(modifier = Modifier.width(favoriteList.ContentActionsGap))
+
+        Row(horizontalArrangement = Arrangement.spacedBy(favoriteList.ActionsGap)) {
+            AddToQueueButton(
+                size = favoriteList.ActionButtonSize,
+                radius = favoriteList.ActionButtonRadius,
+                iconSize = favoriteList.ActionIconSize,
+                hoverBackgroundColor = favoriteList.ActionButtonHoverBackgroundColor,
+                defaultIconColor = favoriteList.QueueIconColor,
+                hoverIconColor = favoriteList.QueueIconHoverColor
+            ) {
                 playerState.addToQueue(
                     url = episode.audioUrl,
                     title = episode.title,
@@ -455,7 +557,16 @@ private fun FavoriteItem(
                     episodeId = episode.id
                 )
             }
-            FavoriteEpisodeButton(isFavorite = true) {
+            FavoriteEpisodeButton(
+                isFavorite = true,
+                size = favoriteList.ActionButtonSize,
+                radius = favoriteList.ActionButtonRadius,
+                iconSize = favoriteList.FavoriteIconSize,
+                hoverBackgroundColor = favoriteList.ActionButtonHoverBackgroundColor,
+                defaultIconColor = favoriteList.FavoriteInactiveColor,
+                hoverIconColor = favoriteList.ActionIconHoverColor,
+                selectedIconColor = favoriteList.FavoriteActiveColor
+            ) {
                 scope.launch {
                     database.favorites.delete(episode.id)
                     onFavoritesChanged(database.favorites.getAllWithEpisode())
@@ -463,42 +574,6 @@ private fun FavoriteItem(
             }
         }
     }
-}
-
-private fun groupFavoritesByDate(items: List<Pair<PodcastFavorite, PodcastEpisode>>): List<FavoriteSection> {
-    val calendar = Calendar.getInstance()
-    val todayDayOfYear = calendar.get(Calendar.DAY_OF_YEAR)
-    val currentYear = calendar.get(Calendar.YEAR)
-    val yesterdayDayOfYear = todayDayOfYear - 1
-    val dayOfWeek = calendar.get(Calendar.DAY_OF_WEEK)
-    val daysSinceMonday = if (dayOfWeek == Calendar.SUNDAY) 6 else dayOfWeek - Calendar.MONDAY
-    calendar.add(Calendar.DAY_OF_YEAR, -daysSinceMonday)
-    val weekStartDayOfYear = calendar.get(Calendar.DAY_OF_YEAR)
-
-    val todayItems = mutableListOf<Pair<PodcastFavorite, PodcastEpisode>>()
-    val yesterdayItems = mutableListOf<Pair<PodcastFavorite, PodcastEpisode>>()
-    val weekItems = mutableListOf<Pair<PodcastFavorite, PodcastEpisode>>()
-    val earlierItems = mutableListOf<Pair<PodcastFavorite, PodcastEpisode>>()
-
-    for (item in items) {
-        val cal = Calendar.getInstance().apply { time = Date(item.first.timestamp) }
-        val dayOfYear = cal.get(Calendar.DAY_OF_YEAR)
-        val year = cal.get(Calendar.YEAR)
-
-        when {
-            year == currentYear && dayOfYear == todayDayOfYear -> todayItems.add(item)
-            year == currentYear && dayOfYear == yesterdayDayOfYear -> yesterdayItems.add(item)
-            year == currentYear && dayOfYear >= weekStartDayOfYear -> weekItems.add(item)
-            else -> earlierItems.add(item)
-        }
-    }
-
-    val sections = mutableListOf<FavoriteSection>()
-    if (todayItems.isNotEmpty()) sections.add(FavoriteSection(Strings["history_today"], todayItems))
-    if (yesterdayItems.isNotEmpty()) sections.add(FavoriteSection(Strings["history_yesterday"], yesterdayItems))
-    if (weekItems.isNotEmpty()) sections.add(FavoriteSection(Strings["history_this_week"], weekItems))
-    if (earlierItems.isNotEmpty()) sections.add(FavoriteSection(Strings["history_earlier"], earlierItems))
-    return sections
 }
 
 private fun formatFavoriteRelativeTime(timestamp: Long): String {

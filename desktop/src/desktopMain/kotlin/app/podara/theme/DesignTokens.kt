@@ -227,6 +227,15 @@ object DesignTokens {
         val IconSize = 20.dp
     }
 
+    object EpisodeActionButton {
+        val Size = 36.dp
+        val Radius = 18.dp
+        val IconSize = 20.dp
+        val FlyawayDurationMs = 600
+        val FlyawayOffsetX = 25.dp
+        val FlyawayOffsetY = 60.dp
+    }
+
     // ── MiniPlayer ──
     object MiniPlayer {
         val Height = 88.dp
@@ -316,6 +325,77 @@ object DesignTokens {
         val IconSize = 20.dp
     }
 
+    // ── Favorite episode list ──
+    object FavoriteEpisodeList {
+        private const val SourceTitleSize = 16f
+        val Scale = EpisodeRow.TitleSize.value / SourceTitleSize
+
+        val CardGap = (12f * Scale).dp
+        val ListPaddingTop = CardGap
+        val ListPaddingBottom = (120f * Scale).dp
+
+        val CardHeight = (112f * Scale).dp
+        val CardRadius = (16f * Scale).dp
+        val CardPaddingHorizontal = (18f * Scale).dp
+        val CardPaddingVertical = (16f * Scale).dp
+        val CoverContentGap = (20f * Scale).dp
+        val ContentActionsGap = (24f * Scale).dp
+
+        val BackgroundColor = Color(0xFF15181D)
+        val HoverBackgroundColor = Color(0xFF1B1F25)
+        val PressedBackgroundColor = Color(0xFF22262D)
+        val PlayingBackgroundColor = Color(0x1FE0B183)
+
+        val BorderWidth = (1f * Scale).dp
+        val BorderColor = Color.White.copy(alpha = 0.06f)
+        val HoverBorderColor = Color.White.copy(alpha = 0.12f)
+        val PlayingBorderColor = Color(0x73E0B183)
+
+        val CoverSize = (72f * Scale).dp
+        val CoverRadius = (14f * Scale).dp
+        val CoverShadowElevation = (12f * Scale).dp
+        val CoverShadowColor = Color.Black.copy(alpha = 0.35f)
+
+        val DurationInset = (6f * Scale).dp
+        val DurationHeight = (20f * Scale).dp
+        val DurationPaddingHorizontal = (6f * Scale).dp
+        val DurationRadius = (6f * Scale).dp
+        val DurationBackgroundColor = Color.Black.copy(alpha = 0.65f)
+        val DurationTextSize = (12f * Scale).sp
+        val DurationTextWeight = FontWeight.Medium
+        val DurationTextColor = Color.White
+
+        val TitleSize = EpisodeRow.TitleSize
+        val TitleLineHeight = (22f * Scale).sp
+        val TitleWeight = FontWeight.SemiBold
+        val TitleColor = Color(0xFFF5F5F7)
+        val PodcastNameMarginTop = (6f * Scale).dp
+        val PodcastNameSize = (14f * Scale).sp
+        val PodcastNameLineHeight = (20f * Scale).sp
+        val PodcastNameWeight = FontWeight.Medium
+        val PodcastNameColor = Color(0xFFE0B183)
+        val AuthorMarginTop = (2f * Scale).dp
+        val AuthorSize = (13f * Scale).sp
+        val AuthorLineHeight = (18f * Scale).sp
+        val AuthorColor = Color(0xFF858892)
+        val MetadataMarginTop = (6f * Scale).dp
+        val MetadataSize = (13f * Scale).sp
+        val MetadataColor = Color(0xFF858892)
+
+        val ActionsGap = (24f * Scale).dp
+        val ActionButtonSize = (36f * Scale).dp
+        val ActionButtonRadius = (10f * Scale).dp
+        val ActionButtonHoverBackgroundColor = Color.White.copy(alpha = 0.08f)
+        val ActionIconSize = (22f * Scale).dp
+        val ActionIconColor = Color(0xFFA5A8B0)
+        val ActionIconHoverColor = Color.White
+        val QueueIconColor = Color(0xFFA5A8B0)
+        val QueueIconHoverColor = Color(0xFFE0B183)
+        val FavoriteIconSize = (24f * Scale).dp
+        val FavoriteActiveColor = Color(0xFFE0B183)
+        val FavoriteInactiveColor = Color(0xFF858892)
+    }
+
     // ── Subscription rows ──
     object SubscriptionRow {
         val Height = 96.dp
@@ -329,6 +409,7 @@ object DesignTokens {
         val TitleSize = 14.sp
         val AuthorSize = 12.sp
         val DescSize = 11.sp
+        val DescriptionMaxWidth = (480f * FavoriteEpisodeList.Scale).dp
         val LineGap = 2.dp
         val CheckboxSize = 24.dp
         val ActionButtonSize = 32.dp

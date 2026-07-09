@@ -10,7 +10,7 @@ import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
@@ -30,7 +30,8 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.Dp
+import app.podara.theme.DesignTokens
 import app.podara.theme.PodaraTheme
 import app.podara.util.Strings
 import java.awt.Cursor
@@ -43,20 +44,36 @@ fun EpisodeActionIconButton(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     selected: Boolean = false,
+    size: Dp = DesignTokens.EpisodeActionButton.Size,
+    radius: Dp = DesignTokens.EpisodeActionButton.Radius,
+    iconSize: Dp = DesignTokens.EpisodeActionButton.IconSize,
+    hoverBackgroundColor: Color? = null,
+    defaultIconColor: Color? = null,
+    hoverIconColor: Color? = null,
+    selectedIconColor: Color? = null,
     onClick: () -> Unit
 ) {
     val colors = PodaraTheme.colors
     val interactionSource = remember { MutableInteractionSource() }
     val isHovered by interactionSource.collectIsHoveredAsState()
     val bg by animateColorAsState(
-        targetValue = if (enabled && isHovered) colors.elevated else Color.Transparent,
-        animationSpec = tween(durationMillis = 150)
+        targetValue = if (enabled && isHovered) hoverBackgroundColor ?: colors.elevated else Color.Transparent,
+        animationSpec = tween(durationMillis = DesignTokens.Animation.HoverMs)
+    )
+    val iconTint by animateColorAsState(
+        targetValue = when {
+            !enabled -> colors.textDisabled
+            selected -> selectedIconColor ?: colors.accent
+            isHovered -> hoverIconColor ?: defaultIconColor ?: colors.textSecondary
+            else -> defaultIconColor ?: colors.textSecondary
+        },
+        animationSpec = tween(durationMillis = DesignTokens.Animation.HoverMs)
     )
 
     Box(
         modifier = modifier
-            .size(36.dp)
-            .clip(CircleShape)
+            .size(size)
+            .clip(RoundedCornerShape(radius))
             .background(bg)
             .then(if (enabled) Modifier.pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR))) else Modifier)
             .clickable(
@@ -70,12 +87,8 @@ fun EpisodeActionIconButton(
         Icon(
             icon,
             contentDescription = contentDescription,
-            tint = when {
-                !enabled -> colors.textDisabled
-                selected -> colors.accent
-                else -> colors.textSecondary
-            },
-            modifier = Modifier.size(20.dp)
+            tint = iconTint,
+            modifier = Modifier.size(iconSize)
         )
     }
 }
@@ -85,6 +98,13 @@ fun FavoriteEpisodeButton(
     isFavorite: Boolean,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    size: Dp = DesignTokens.EpisodeActionButton.Size,
+    radius: Dp = DesignTokens.EpisodeActionButton.Radius,
+    iconSize: Dp = DesignTokens.EpisodeActionButton.IconSize,
+    hoverBackgroundColor: Color? = null,
+    defaultIconColor: Color? = null,
+    hoverIconColor: Color? = null,
+    selectedIconColor: Color? = null,
     onToggle: () -> Unit
 ) {
     EpisodeActionIconButton(
@@ -93,6 +113,13 @@ fun FavoriteEpisodeButton(
         modifier = modifier,
         enabled = enabled,
         selected = isFavorite,
+        size = size,
+        radius = radius,
+        iconSize = iconSize,
+        hoverBackgroundColor = hoverBackgroundColor,
+        defaultIconColor = defaultIconColor,
+        hoverIconColor = hoverIconColor,
+        selectedIconColor = selectedIconColor,
         onClick = onToggle
     )
 }
@@ -106,6 +133,12 @@ fun FavoriteEpisodeButton(
 fun AddToQueueButton(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    size: Dp = DesignTokens.EpisodeActionButton.Size,
+    radius: Dp = DesignTokens.EpisodeActionButton.Radius,
+    iconSize: Dp = DesignTokens.EpisodeActionButton.IconSize,
+    hoverBackgroundColor: Color? = null,
+    defaultIconColor: Color? = null,
+    hoverIconColor: Color? = null,
     onClick: () -> Unit
 ) {
     val colors = PodaraTheme.colors
@@ -114,16 +147,24 @@ fun AddToQueueButton(
     val interactionSource = remember { MutableInteractionSource() }
     val isHovered by interactionSource.collectIsHoveredAsState()
     val bg by animateColorAsState(
-        targetValue = if (enabled && isHovered) colors.elevated else Color.Transparent,
-        animationSpec = tween(durationMillis = 150)
+        targetValue = if (enabled && isHovered) hoverBackgroundColor ?: colors.elevated else Color.Transparent,
+        animationSpec = tween(durationMillis = DesignTokens.Animation.HoverMs)
+    )
+    val iconTint by animateColorAsState(
+        targetValue = when {
+            !enabled -> colors.textDisabled
+            isHovered -> hoverIconColor ?: defaultIconColor ?: colors.textSecondary
+            else -> defaultIconColor ?: colors.textSecondary
+        },
+        animationSpec = tween(durationMillis = DesignTokens.Animation.HoverMs)
     )
 
     Box(modifier = modifier) {
         // Main button
         Box(
             modifier = Modifier
-                .size(36.dp)
-                .clip(CircleShape)
+                .size(size)
+                .clip(RoundedCornerShape(radius))
                 .background(bg)
                 .then(if (enabled) Modifier.pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR))) else Modifier)
                 .clickable(
@@ -133,7 +174,7 @@ fun AddToQueueButton(
                     onClick = {
                         scope.launch {
                             flyProgress.snapTo(0f)
-                            flyProgress.animateTo(1f, tween(600))
+                            flyProgress.animateTo(1f, tween(DesignTokens.EpisodeActionButton.FlyawayDurationMs))
                             flyProgress.snapTo(0f)
                         }
                         onClick()
@@ -144,8 +185,8 @@ fun AddToQueueButton(
             Icon(
                 Icons.Default.PlaylistAdd,
                 contentDescription = Strings["episode_add_to_queue"],
-                tint = if (enabled) colors.textSecondary else colors.textDisabled,
-                modifier = Modifier.size(20.dp)
+                tint = iconTint,
+                modifier = Modifier.size(iconSize)
             )
         }
 
@@ -159,9 +200,12 @@ fun AddToQueueButton(
                 tint = colors.accent.copy(alpha = alpha),
                 contentDescription = null,
                 modifier = Modifier
-                    .offset(x = (p * 25).dp, y = (p * 60).dp)
+                    .offset(
+                        x = DesignTokens.EpisodeActionButton.FlyawayOffsetX * p,
+                        y = DesignTokens.EpisodeActionButton.FlyawayOffsetY * p
+                    )
                     .graphicsLayer(alpha = alpha, scaleX = 1f - p * 0.4f, scaleY = 1f - p * 0.4f)
-                    .size(20.dp)
+                    .size(iconSize)
             )
         }
     }
