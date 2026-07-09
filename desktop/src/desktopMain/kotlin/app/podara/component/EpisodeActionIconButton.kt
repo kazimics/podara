@@ -111,7 +111,6 @@ fun AddToQueueButton(
     val colors = PodaraTheme.colors
     val scope = rememberCoroutineScope()
     val flyProgress = remember { Animatable(0f) }
-    var showFly by remember { mutableStateOf(false) }
     val interactionSource = remember { MutableInteractionSource() }
     val isHovered by interactionSource.collectIsHoveredAsState()
     val bg by animateColorAsState(
@@ -120,6 +119,7 @@ fun AddToQueueButton(
     )
 
     Box(modifier = modifier) {
+        // Main button
         Box(
             modifier = Modifier
                 .size(36.dp)
@@ -132,12 +132,9 @@ fun AddToQueueButton(
                     indication = null,
                     onClick = {
                         scope.launch {
-                            showFly = true
                             flyProgress.snapTo(0f)
-                            launch {
-                                flyProgress.animateTo(1f, tween(600))
-                            }
-                            showFly = false
+                            flyProgress.animateTo(1f, tween(600))
+                            flyProgress.snapTo(0f)
                         }
                         onClick()
                     }
@@ -152,20 +149,18 @@ fun AddToQueueButton(
             )
         }
 
-        // Fly-away animation overlay
-        if (showFly) {
-            val offsetX = -(flyProgress.value * 60).dp
-            val offsetY = -(flyProgress.value * 40).dp
-            val alpha = (1f - flyProgress.value) * 0.8f
-            val scale = 1f - flyProgress.value * 0.5f
+        // Fly-away icon — uses offset so it paints outside parent bounds without clipping
+        if (flyProgress.value > 0f) {
+            val p = flyProgress.value
+            val alpha = (1f - p) * 0.7f
 
             Icon(
                 Icons.Default.PlaylistAdd,
                 tint = colors.accent.copy(alpha = alpha),
                 contentDescription = null,
                 modifier = Modifier
-                    .offset(x = offsetX, y = offsetY)
-                    .graphicsLayer(alpha = alpha, scaleX = scale, scaleY = scale)
+                    .offset(x = -(p * 70).dp, y = -(p * 50).dp)
+                    .graphicsLayer(alpha = alpha, scaleX = 1f - p * 0.4f, scaleY = 1f - p * 0.4f)
                     .size(20.dp)
             )
         }
