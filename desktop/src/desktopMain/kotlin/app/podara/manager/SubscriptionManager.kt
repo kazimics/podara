@@ -36,10 +36,11 @@ class SubscriptionManager(
                 val episodes = response.rssChannel.items.map { RssConverter.toPodcastEpisode(it, podcast) }
 
                 db.subscriptions.updateCache(origin, response.eTag, response.lastModified, response.contentLength)
+                db.podcasts.insert(podcast)
 
-                val existingIds = db.episodes.getEpisodeIds(origin)
+                val existingIds = db.episodes.getEpisodeIds(origin).toSet()
                 val newEpisodes = episodes.filter { it.id !in existingIds }
-                newEpisodes.forEach { db.episodes.insert(it) }
+                episodes.forEach { db.episodes.insert(it) }
                 newEpisodes.forEach { db.playStates.initState(it.id) }
 
                 UpdatePodcastResult.Updated(podcast, newEpisodes.size)

@@ -97,6 +97,33 @@ class UpdatePodcastTest {
             "Play states should be preserved after repeated updatePodcast")
     }
 
+    @Test
+    fun testUpdatePodcastUpdatesExistingPodcastAndEpisodeMetadata() = runBlocking {
+        subscriptionManager.subscribe(origin)
+        subscriptionManager.updatePodcast(origin, null)
+
+        subscriptionManager = SubscriptionManager(
+            database,
+            fetchPodcastClient = FakeFetchPodcastClient(
+                podcastTitle = "Updated Fake Podcast",
+                episode1Title = "Updated Episode 1",
+                episode1AudioUrl = "https://example.com/audio1-updated.mp3"
+            )
+        )
+
+        val result = subscriptionManager.updatePodcast(origin, null)
+
+        assertTrue(result is UpdatePodcastResult.Updated)
+        assertEquals(0, result.newEpisodesCount)
+        assertEquals("Updated Fake Podcast", database.podcasts.getByOrigin(origin)?.title)
+
+        val episode = database.episodes.getById("$origin:ep-1")
+        assertNotNull(episode)
+        assertEquals("Updated Episode 1", episode.title)
+        assertEquals("https://example.com/audio1-updated.mp3", episode.audioUrl)
+        assertEquals("Updated Fake Podcast", episode.podcastTitle)
+    }
+
     private fun countPlayStates(): Int {
         var count = 0
         DriverManager.getConnection("jdbc:sqlite:${testDbFile.absolutePath}").use { conn ->

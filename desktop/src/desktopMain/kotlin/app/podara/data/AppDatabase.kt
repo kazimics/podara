@@ -226,7 +226,19 @@ class PodcastDao(private val conn: Connection) {
 
     suspend fun insert(podcast: Podcast) = withContext(Dispatchers.IO) {
         val ps = conn.prepareStatement(
-            "INSERT OR IGNORE INTO podcast (origin, link, title, description, author, imageUrl, imageSeedColor, languageCode, fileSize, overrideTitle, skipBeginning, skipEnding) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+            """
+            INSERT INTO podcast (origin, link, title, description, author, imageUrl, imageSeedColor, languageCode, fileSize, overrideTitle, skipBeginning, skipEnding)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(origin) DO UPDATE SET
+                link = excluded.link,
+                title = excluded.title,
+                description = excluded.description,
+                author = excluded.author,
+                imageUrl = excluded.imageUrl,
+                imageSeedColor = excluded.imageSeedColor,
+                languageCode = excluded.languageCode,
+                fileSize = excluded.fileSize
+            """.trimIndent()
         )
         ps.setString(1, podcast.origin); ps.setString(2, podcast.link); ps.setString(3, podcast.title)
         ps.setString(4, podcast.description); ps.setString(5, podcast.author); ps.setString(6, podcast.imageUrl)
@@ -276,7 +288,23 @@ class EpisodeDao(private val conn: Connection) {
 
     suspend fun insert(episode: PodcastEpisode) = withContext(Dispatchers.IO) {
         val ps = conn.prepareStatement(
-            "INSERT OR IGNORE INTO podcastEpisode (id, guid, origin, link, title, description, imageUrl, author, pubDate, duration, audioUrl, podcastTitle, imageSeedColor, new) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+            """
+            INSERT INTO podcastEpisode (id, guid, origin, link, title, description, imageUrl, author, pubDate, duration, audioUrl, podcastTitle, imageSeedColor, new)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(id) DO UPDATE SET
+                guid = excluded.guid,
+                origin = excluded.origin,
+                link = excluded.link,
+                title = excluded.title,
+                description = excluded.description,
+                imageUrl = excluded.imageUrl,
+                author = excluded.author,
+                pubDate = excluded.pubDate,
+                duration = excluded.duration,
+                audioUrl = excluded.audioUrl,
+                podcastTitle = excluded.podcastTitle,
+                imageSeedColor = excluded.imageSeedColor
+            """.trimIndent()
         )
         ps.setString(1, episode.id); ps.setString(2, episode.guid); ps.setString(3, episode.origin)
         ps.setString(4, episode.link); ps.setString(5, episode.title); ps.setString(6, episode.description)

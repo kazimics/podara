@@ -44,8 +44,6 @@ open class FetchPodcastClient(
             }
 
             val newContentLength = headRequest.headers[HttpHeaders.ContentLength]
-            if (contentLength == newContentLength)
-                if (newContentLength.length > 2) return FetchPodcastClientResult.Unchanged("content-length equal, $newContentLength")
 
             when (headRequest.status) {
                 HttpStatusCode.OK -> {
