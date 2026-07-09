@@ -3,8 +3,10 @@ package app.podara.desktop
 import app.podara.data.AppDatabase
 import app.podara.data.DownloadTask
 import app.podara.manager.DownloadManager
+import com.sun.net.httpserver.HttpServer
 import kotlinx.coroutines.runBlocking
 import java.io.File
+import java.net.InetSocketAddress
 import kotlin.test.*
 
 class DownloadManagerTest {
@@ -157,6 +159,52 @@ class DownloadManagerTest {
         val partialFile = File(task.targetFilePath)
         assertTrue(partialFile.exists(), "Partial file should exist after pause")
         assertTrue(partialFile.length() > 0, "Partial file should have some content")
+    }
+
+    @Test
+    fun testResumeRestartsWhenServerIgnoresRange() = runBlocking {
+        val bytes = "complete audio".toByteArray()
+        var receivedRange: String? = null
+        val server = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0).apply {
+            createContext("/audio.mp3") { exchange ->
+                receivedRange = exchange.requestHeaders.getFirst("Range")
+                exchange.sendResponseHeaders(200, bytes.size.toLong())
+                exchange.responseBody.use { it.write(bytes) }
+            }
+            start()
+        }
+
+        try {
+            val partialDir = File(testDownloadsDir, "Range Podcast")
+            partialDir.mkdirs()
+            val partialFile = File(partialDir, "Range Episode.mp3")
+            partialFile.writeText("part")
+
+            val now = System.currentTimeMillis()
+            database.downloadTasks.insert(DownloadTask(
+                episodeId = "range-restart-ep",
+                origin = "https://example.com/range.xml",
+                audioUrl = "http://127.0.0.1:${server.address.port}/audio.mp3",
+                podcastTitle = "Range Podcast",
+                episodeTitle = "Range Episode",
+                targetFilePath = partialFile.absolutePath,
+                downloadedBytes = partialFile.length(),
+                totalBytes = bytes.size.toLong(),
+                state = "PAUSED",
+                createdAt = now,
+                updatedAt = now
+            ))
+
+            val result = downloadManager.resumeDownload("range-restart-ep")
+
+            assertTrue(result.isSuccess, "Resume should restart and complete when server ignores Range")
+            val downloadedFile = result.getOrThrow()
+            assertEquals("bytes=4-", receivedRange)
+            assertContentEquals(bytes, downloadedFile.readBytes())
+            assertEquals(bytes.size.toLong(), downloadedFile.length())
+        } finally {
+            server.stop(0)
+        }
     }
 
     @Test

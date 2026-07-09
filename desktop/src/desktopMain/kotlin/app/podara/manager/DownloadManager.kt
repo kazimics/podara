@@ -79,14 +79,22 @@ class DownloadManager(
                 connection.setRequestProperty("Range", "bytes=$downloadedBytes-")
             }
 
+            val responseCode = connection.responseCode
+            if (downloadedBytes > 0 && responseCode != HttpURLConnection.HTTP_PARTIAL) {
+                Logger.w(TAG, "Server did not honor Range request (HTTP $responseCode); restarting download")
+                downloadedBytes = 0L
+                totalBytes = 0L
+                if (outputFile.exists()) outputFile.delete()
+            }
+
             val contentLength = connection.contentLength.toLong()
-            if (totalBytes == 0L) totalBytes = contentLength
+            if (totalBytes == 0L && contentLength > 0L) totalBytes = contentLength
             if (totalBytes == 0L && downloadedBytes > 0) {
                 // Server may not return content-length with Range — use original task total
                 totalBytes = existingTask?.totalBytes ?: 0L
             }
 
-            Logger.i(TAG, "Content-Length: $contentLength, total: $totalBytes, resume offset: $downloadedBytes")
+            Logger.i(TAG, "HTTP $responseCode, Content-Length: $contentLength, total: $totalBytes, resume offset: $downloadedBytes")
 
             // Open input stream (for Range response, server returns 206 — inputStream reads from offset)
             val inputStream = connection.inputStream
