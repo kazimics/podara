@@ -5,12 +5,12 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
@@ -20,6 +20,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerIcon
@@ -240,37 +241,67 @@ fun HistoryScreen(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
-                    text = Strings.get("history_count", allHistoryItems.size),
+                    text = Strings.get("history_count", displayItems.size),
                     color = colors.textPrimary,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Medium
                 )
 
-                // Clear All button
+                val toolbarButton = DesignTokens.ToolbarButton
                 val clearInteractionSource = remember { MutableInteractionSource() }
                 val isClearHovered by clearInteractionSource.collectIsHoveredAsState()
-                val clearAnimatedBg by animateColorAsState(
-                    targetValue = if (isClearHovered) colors.elevated else Color.Transparent,
-                    animationSpec = tween(durationMillis = 150)
-                )
+                val isClearPressed by clearInteractionSource.collectIsPressedAsState()
+                val clearShape = RoundedCornerShape(toolbarButton.PillRadius)
+                val clearTextColor = if (isClearHovered || isClearPressed) toolbarButton.PillHoverTextColor else toolbarButton.PillTextColor
+                val clearIconColor = if (isClearHovered || isClearPressed) toolbarButton.PillHoverIconColor else toolbarButton.PillIconColor
                 Box(
                     modifier = Modifier
-                        .size(32.dp)
-                        .clip(RoundedCornerShape(6.dp))
-                        .background(clearAnimatedBg)
-                        .border(1.dp, colors.border, RoundedCornerShape(6.dp))
+                        .height(toolbarButton.PillHeight)
+                        .widthIn(min = toolbarButton.ManageMinWidth)
+                        .shadow(
+                            if (isClearHovered) toolbarButton.PillHoverShadowElevation else 0.dp,
+                            clearShape,
+                            ambientColor = toolbarButton.PillHoverShadowColor,
+                            spotColor = toolbarButton.PillHoverShadowColor
+                        )
+                        .clip(clearShape)
+                        .background(
+                            when {
+                                isClearPressed -> toolbarButton.PillPressedBackgroundColor
+                                isClearHovered -> toolbarButton.PillHoverBackgroundColor
+                                else -> toolbarButton.PillDefaultBackgroundColor
+                            }
+                        )
+                        .border(
+                            toolbarButton.BorderWidth,
+                            if (isClearHovered || isClearPressed) toolbarButton.PillHoverBorderColor else toolbarButton.PillDefaultBorderColor,
+                            clearShape
+                        )
                         .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
                         .clickable(interactionSource = clearInteractionSource, indication = null) {
                             showClearDialog = true
-                        },
+                        }
+                        .padding(horizontal = toolbarButton.PillPaddingHorizontal),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(
-                        Icons.Default.DeleteSweep,
-                        contentDescription = Strings["history_clear"],
-                        tint = colors.textSecondary,
-                        modifier = Modifier.size(16.dp)
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(toolbarButton.PillIconTextGap)
+                    ) {
+                        Icon(
+                            Icons.Default.DeleteSweep,
+                            contentDescription = Strings["history_clear"],
+                            tint = clearIconColor,
+                            modifier = Modifier.size(toolbarButton.PillIconSize)
+                        )
+                        Text(
+                            text = Strings["history_clear_action"],
+                            color = clearTextColor,
+                            fontSize = toolbarButton.PillTextSize,
+                            lineHeight = toolbarButton.PillLineHeight,
+                            fontWeight = toolbarButton.PillTextWeight
+                        )
+                    }
                 }
             }
 
@@ -282,11 +313,17 @@ fun HistoryScreen(
             Spacer(modifier = Modifier.height(6.dp))
 
             // ── History list grouped by date ──
-            LazyColumn(modifier = Modifier.fillMaxSize()) {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(
+                    top = DesignTokens.FavoriteEpisodeList.ListPaddingTop,
+                    bottom = DesignTokens.FavoriteEpisodeList.ListPaddingBottom
+                ),
+                verticalArrangement = Arrangement.spacedBy(DesignTokens.FavoriteEpisodeList.CardGap)
+            ) {
                 sections.forEach { section ->
                     // Section header
                     item(key = "section_${section.title}") {
-                        Spacer(modifier = Modifier.height(DesignTokens.Spacing.md))
                         Text(
                             text = section.title,
                             fontSize = DesignTokens.SectionHeader.TitleSize,
@@ -294,7 +331,6 @@ fun HistoryScreen(
                             fontFamily = FontFamily.Serif,
                             color = colors.textPrimary
                         )
-                        Spacer(modifier = Modifier.height(DesignTokens.Spacing.sm))
                     }
 
                     // Section items
@@ -304,7 +340,6 @@ fun HistoryScreen(
                             episode = episode,
                             podcast = podcastMap[episode.origin],
                             contextItems = contextItems,
-                            colors = colors,
                             scope = scope,
                             database = database,
                             playerState = playerState,
@@ -316,7 +351,6 @@ fun HistoryScreen(
                             onHistoryChanged = { allHistoryItems = it },
                             onShowPodcastDetail = onShowPodcastDetail
                         )
-                        HorizontalDivider(color = colors.divider)
                     }
                 }
             }
@@ -357,7 +391,6 @@ private fun HistoryItem(
     episode: PodcastEpisode,
     podcast: Podcast?,
     contextItems: List<QueueItem>,
-    colors: app.podara.theme.PodaraColors,
     scope: kotlinx.coroutines.CoroutineScope,
     database: AppDatabase,
     playerState: MediaPlayerState,
@@ -368,43 +401,64 @@ private fun HistoryItem(
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isHovered by interactionSource.collectIsHoveredAsState()
-    val historyItemBg by animateColorAsState(
-        targetValue = if (isHovered) colors.elevated else Color.Transparent,
-        animationSpec = tween(durationMillis = 150)
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val favoriteList = DesignTokens.FavoriteEpisodeList
+    val shape = RoundedCornerShape(favoriteList.CardRadius)
+    val isPlaying = playerState.currentEpisodeId == episode.id || playerState.currentUrl == episode.audioUrl
+    val itemBg by animateColorAsState(
+        targetValue = when {
+            isPlaying -> favoriteList.PlayingBackgroundColor
+            isPressed -> favoriteList.PressedBackgroundColor
+            isHovered -> favoriteList.HoverBackgroundColor
+            else -> favoriteList.BackgroundColor
+        },
+        animationSpec = tween(durationMillis = DesignTokens.Animation.HoverMs)
     )
-    val er = DesignTokens.EpisodeRow
+    val borderColor by animateColorAsState(
+        targetValue = when {
+            isPlaying -> favoriteList.PlayingBorderColor
+            isHovered -> favoriteList.HoverBorderColor
+            else -> favoriteList.BorderColor
+        },
+        animationSpec = tween(durationMillis = DesignTokens.Animation.HoverMs)
+    )
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(88.dp)
-            .background(historyItemBg)
+            .height(favoriteList.CardHeight)
+            .clip(shape)
+            .background(itemBg)
+            .border(favoriteList.BorderWidth, borderColor, shape)
             .clickable(
+                enabled = episode.audioUrl.isNotBlank(),
                 interactionSource = interactionSource,
                 indication = null
             ) {
-                scope.launch {
-                    playerState.playWithContext(
-                        context = contextItems,
-                        targetUrl = episode.audioUrl,
-                        title = episode.title,
-                        subtitle = episode.podcastTitle,
-                        artworkUrl = episode.imageUrl,
-                        podcastArtworkUrl = podcast?.imageUrl,
-                        durationMs = episode.duration * 1000L,
-                        episodeId = episode.id
-                    )
-                }
+                playerState.playWithContext(
+                    context = contextItems,
+                    targetUrl = episode.audioUrl,
+                    title = episode.title,
+                    subtitle = episode.podcastTitle,
+                    artworkUrl = episode.imageUrl,
+                    podcastArtworkUrl = podcast?.imageUrl,
+                    durationMs = episode.duration * 1000L,
+                    episodeId = episode.id
+                )
             }
-            .padding(start = 12.dp, end = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
+            .padding(horizontal = favoriteList.CardPaddingHorizontal, vertical = favoriteList.CardPaddingVertical),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        // Cover art (clickable → play)
         Box(
             modifier = Modifier
-                .size(er.CoverSize)
-                .clip(RoundedCornerShape(er.CoverRadius))
+                .size(favoriteList.CoverSize)
+                .shadow(
+                    elevation = favoriteList.CoverShadowElevation,
+                    shape = RoundedCornerShape(favoriteList.CoverRadius),
+                    ambientColor = favoriteList.CoverShadowColor,
+                    spotColor = favoriteList.CoverShadowColor
+                )
+                .clip(RoundedCornerShape(favoriteList.CoverRadius))
         ) {
             AsyncImage(
                 model = episode.imageUrl ?: podcast?.imageUrl,
@@ -412,86 +466,84 @@ private fun HistoryItem(
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize()
             )
-            // Duration badge
             if (episode.duration > 0) {
                 Box(
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
-                        .padding(4.dp)
-                        .clip(RoundedCornerShape(4.dp))
-                        .background(Color.Black.copy(alpha = 0.7f))
-                        .padding(horizontal = 4.dp, vertical = 1.dp)
+                        .padding(favoriteList.DurationInset)
+                        .height(favoriteList.DurationHeight)
+                        .clip(RoundedCornerShape(favoriteList.DurationRadius))
+                        .background(favoriteList.DurationBackgroundColor)
+                        .padding(horizontal = favoriteList.DurationPaddingHorizontal),
+                    contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = formatDurationCompact(episode.duration),
-                        color = Color.White,
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Medium
+                        color = favoriteList.DurationTextColor,
+                        fontSize = favoriteList.DurationTextSize,
+                        fontWeight = favoriteList.DurationTextWeight
                     )
                 }
             }
         }
 
-        Spacer(modifier = Modifier.width(DesignTokens.Spacing.md))
+        Spacer(modifier = Modifier.width(favoriteList.CoverContentGap))
 
-        // Info column
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = episode.title,
-                color = colors.textPrimary,
-                fontSize = er.TitleSize,
-                fontWeight = FontWeight.Medium,
+                color = favoriteList.TitleColor,
+                fontSize = favoriteList.TitleSize,
+                lineHeight = favoriteList.TitleLineHeight,
+                fontWeight = favoriteList.TitleWeight,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
-            Spacer(modifier = Modifier.height(2.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = episode.podcastTitle,
-                    color = colors.accent,
-                    fontSize = er.AuthorSize,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier
-                        .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
-                        .clickable(enabled = podcast != null) {
+            Spacer(modifier = Modifier.height(favoriteList.PodcastNameMarginTop))
+            Text(
+                text = episode.podcastTitle,
+                color = favoriteList.PodcastNameColor,
+                fontSize = favoriteList.PodcastNameSize,
+                lineHeight = favoriteList.PodcastNameLineHeight,
+                fontWeight = favoriteList.PodcastNameWeight,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier
+                    .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
+                    .clickable(enabled = podcast != null) {
                         if (podcast != null) onShowPodcastDetail(podcast)
                     }
-                )
-            }
-            Spacer(modifier = Modifier.height(2.dp))
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            )
+            Spacer(modifier = Modifier.height(favoriteList.MetadataMarginTop))
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(DesignTokens.Spacing.sm)) {
                 Text(
                     text = formatRelativeTime(history.timestamp),
-                    color = colors.textMuted,
-                    fontSize = 11.sp,
+                    color = favoriteList.MetadataColor,
+                    fontSize = favoriteList.MetadataSize,
                     maxLines = 1
                 )
                 if (episode.duration > 0) {
-                    Text(
-                        text = "·",
-                        color = colors.textMuted,
-                        fontSize = 11.sp
-                    )
+                    Text(text = "·", color = favoriteList.MetadataColor, fontSize = favoriteList.MetadataSize)
                     Text(
                         text = formatDurationCompact(episode.duration),
-                        color = colors.textMuted,
-                        fontSize = 11.sp
+                        color = favoriteList.MetadataColor,
+                        fontSize = favoriteList.MetadataSize
                     )
                 }
             }
         }
 
-        // Action buttons
-        Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-            FavoriteEpisodeButton(isFavorite = isFavorite) {
-                scope.launch {
-                    database.episodes.insert(episode)
-                    onFavoriteToggled(database.favorites.toggle(episode))
-                }
-            }
+        Spacer(modifier = Modifier.width(favoriteList.ContentActionsGap))
 
-            AddToQueueButton {
+        Row(horizontalArrangement = Arrangement.spacedBy(favoriteList.ActionsGap)) {
+            AddToQueueButton(
+                size = favoriteList.ActionButtonSize,
+                radius = favoriteList.ActionButtonRadius,
+                iconSize = favoriteList.ActionIconSize,
+                hoverBackgroundColor = favoriteList.ActionButtonHoverBackgroundColor,
+                defaultIconColor = favoriteList.QueueIconColor,
+                hoverIconColor = favoriteList.QueueIconHoverColor
+            ) {
                 playerState.addToQueue(
                     url = episode.audioUrl,
                     title = episode.title,
@@ -500,21 +552,33 @@ private fun HistoryItem(
                     episodeId = episode.id
                 )
             }
+            FavoriteEpisodeButton(
+                isFavorite = isFavorite,
+                size = favoriteList.ActionButtonSize,
+                radius = favoriteList.ActionButtonRadius,
+                iconSize = favoriteList.FavoriteIconSize,
+                hoverBackgroundColor = favoriteList.ActionButtonHoverBackgroundColor,
+                defaultIconColor = favoriteList.FavoriteInactiveColor,
+                hoverIconColor = favoriteList.ActionIconHoverColor,
+                selectedIconColor = favoriteList.FavoriteActiveColor
+            ) {
+                scope.launch {
+                    database.episodes.insert(episode)
+                    onFavoriteToggled(database.favorites.toggle(episode))
+                }
+            }
 
-            // Remove from history
-            val rInteractionSource = remember { MutableInteractionSource() }
-            val isRHovered by rInteractionSource.collectIsHoveredAsState()
-            val removeAnimatedBg by animateColorAsState(
-                targetValue = if (isRHovered) colors.elevated else Color.Transparent,
-                animationSpec = tween(durationMillis = 150)
-            )
+            val removeInteractionSource = remember { MutableInteractionSource() }
+            val isRemoveHovered by removeInteractionSource.collectIsHoveredAsState()
+            val isRemovePressed by removeInteractionSource.collectIsPressedAsState()
+            val removeIconColor = if (isRemoveHovered || isRemovePressed) favoriteList.ActionIconHoverColor else favoriteList.ActionIconColor
             Box(
                 modifier = Modifier
-                    .size(36.dp)
-                    .clip(CircleShape)
-                    .background(removeAnimatedBg)
+                    .size(favoriteList.ActionButtonSize)
+                    .clip(RoundedCornerShape(favoriteList.ActionButtonRadius))
+                    .background(if (isRemoveHovered || isRemovePressed) favoriteList.ActionButtonHoverBackgroundColor else Color.Transparent)
                     .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
-                    .clickable(interactionSource = rInteractionSource, indication = null) {
+                    .clickable(interactionSource = removeInteractionSource, indication = null) {
                         scope.launch {
                             database.history.delete(episode.id)
                             onHistoryChanged(database.history.getAllWithEpisode())
@@ -525,8 +589,8 @@ private fun HistoryItem(
                 Icon(
                     Icons.Default.Close,
                     contentDescription = Strings["player_remove"],
-                    tint = colors.textMuted,
-                    modifier = Modifier.size(20.dp)
+                    tint = removeIconColor,
+                    modifier = Modifier.size(favoriteList.ActionIconSize)
                 )
             }
         }
