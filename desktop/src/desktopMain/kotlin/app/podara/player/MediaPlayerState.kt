@@ -22,7 +22,8 @@ data class QueueItem(
     val artworkUrl: String? = null,
     val podcastArtworkUrl: String? = null,
     val episodeId: String? = null,
-    val isDownloaded: Boolean = false
+    val isDownloaded: Boolean = false,
+    val historyId: Int? = null
 )
 
 class MediaPlayerState(
@@ -143,7 +144,8 @@ class MediaPlayerState(
         artworkUrl: String? = null,
         podcastArtworkUrl: String? = null,
         durationMs: Long = 0L,
-        episodeId: String? = null
+        episodeId: String? = null,
+        targetHistoryId: Int? = null
     ) {
         Logger.i(TAG, "playWithContext() targetUrl=$targetUrl, contextSize=${context.size}")
         currentUrl = targetUrl
@@ -157,9 +159,14 @@ class MediaPlayerState(
 
         queue.clear()
         queue.addAll(context)
-        queueIndex = queue.indexOfFirst { it.url == targetUrl }
+        queueIndex = targetHistoryId?.let { historyId ->
+            queue.indexOfFirst { it.historyId == historyId }
+        } ?: -1
         if (queueIndex < 0) {
-            queue.add(QueueItem(targetUrl, title ?: "Unknown", subtitle = subtitle, artworkUrl = currentArtworkUrl, podcastArtworkUrl = podcastArtworkUrl, episodeId = episodeId))
+            queueIndex = queue.indexOfFirst { it.url == targetUrl }
+        }
+        if (queueIndex < 0) {
+            queue.add(QueueItem(targetUrl, title ?: "Unknown", subtitle = subtitle, artworkUrl = currentArtworkUrl, podcastArtworkUrl = podcastArtworkUrl, episodeId = episodeId, historyId = targetHistoryId))
             queueIndex = queue.size - 1
         }
 
@@ -175,7 +182,16 @@ class MediaPlayerState(
         queueIndex = index
         val item = queue[index]
         Logger.i(TAG, "playFromQueue: index=$index, title=${item.title}")
-        play(item.url, item.title, item.subtitle, item.artworkUrl, item.podcastArtworkUrl, episodeId = item.episodeId)
+        currentUrl = item.url
+        currentTitle = item.title
+        currentSubtitle = item.subtitle
+        currentArtworkUrl = item.artworkUrl ?: item.podcastArtworkUrl
+        currentEpisodeId = item.episodeId
+        isLoading = true
+        error = null
+        isUserPaused = false
+        player.play(item.url)
+        lastPlayStartMs = System.currentTimeMillis()
     }
 
     fun addToQueue(
