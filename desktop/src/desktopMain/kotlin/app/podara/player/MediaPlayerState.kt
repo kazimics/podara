@@ -200,7 +200,14 @@ class MediaPlayerState(
                 val nextIndex = index.coerceIn(0, queue.size - 1)
                 queueIndex = nextIndex
                 val item = queue[nextIndex]
-                play(item.url, item.title, item.artworkUrl, episodeId = item.episodeId)
+                play(
+                    url = item.url,
+                    title = item.title,
+                    subtitle = item.subtitle,
+                    artworkUrl = item.artworkUrl,
+                    podcastArtworkUrl = item.podcastArtworkUrl,
+                    episodeId = item.episodeId
+                )
             } else {
                 queueIndex = -1
                 stop()
@@ -242,7 +249,14 @@ class MediaPlayerState(
             if (queue.isNotEmpty()) {
                 queueIndex = queueIndex.coerceIn(0, queue.size - 1)
                 val item = queue[queueIndex]
-                play(item.url, item.title, item.artworkUrl, episodeId = item.episodeId)
+                play(
+                    url = item.url,
+                    title = item.title,
+                    subtitle = item.subtitle,
+                    artworkUrl = item.artworkUrl,
+                    podcastArtworkUrl = item.podcastArtworkUrl,
+                    episodeId = item.episodeId
+                )
             } else {
                 queueIndex = -1
                 stop()

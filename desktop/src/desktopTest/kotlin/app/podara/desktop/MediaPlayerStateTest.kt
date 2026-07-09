@@ -1,6 +1,9 @@
 package app.podara.desktop
 
+import app.podara.player.AudioPlayerEngine
 import app.podara.player.MediaPlayerState
+import app.podara.player.PlaybackState
+import app.podara.player.PlayerMetadata
 import app.podara.player.QueueItem
 import kotlin.test.*
 
@@ -235,6 +238,63 @@ class MediaPlayerStateTest {
     }
 
     @Test
+    fun testRemoveCurrentlyPlayingPreservesNextItemMetadata() {
+        val testState = MediaPlayerState(FakeAudioPlayerEngine())
+        try {
+            testState.playWithContext(
+                context = listOf(
+                    QueueItem(url = "url-1", title = "Episode 1", subtitle = "Podcast 1", artworkUrl = "art-1", podcastArtworkUrl = "pod-art-1", episodeId = "ep-1"),
+                    QueueItem(url = "url-2", title = "Episode 2", subtitle = "Podcast 2", artworkUrl = "art-2", podcastArtworkUrl = "pod-art-2", episodeId = "ep-2")
+                ),
+                targetUrl = "url-1",
+                title = "Episode 1",
+                subtitle = "Podcast 1",
+                artworkUrl = "art-1",
+                podcastArtworkUrl = "pod-art-1",
+                episodeId = "ep-1"
+            )
+
+            testState.removeFromQueue(0)
+
+            assertEquals("Episode 2", testState.currentTitle)
+            assertEquals("Podcast 2", testState.currentSubtitle)
+            assertEquals("art-2", testState.currentArtworkUrl)
+            assertEquals("ep-2", testState.currentEpisodeId)
+        } finally {
+            testState.release()
+        }
+    }
+
+    @Test
+    fun testRemoveSelectedCurrentlyPlayingPreservesNextItemMetadata() {
+        val testState = MediaPlayerState(FakeAudioPlayerEngine())
+        try {
+            testState.playWithContext(
+                context = listOf(
+                    QueueItem(url = "url-1", title = "Episode 1", subtitle = "Podcast 1", artworkUrl = "art-1", podcastArtworkUrl = "pod-art-1", episodeId = "ep-1"),
+                    QueueItem(url = "url-2", title = "Episode 2", subtitle = "Podcast 2", artworkUrl = "art-2", podcastArtworkUrl = "pod-art-2", episodeId = "ep-2"),
+                    QueueItem(url = "url-3", title = "Episode 3", subtitle = "Podcast 3", artworkUrl = "art-3", podcastArtworkUrl = "pod-art-3", episodeId = "ep-3")
+                ),
+                targetUrl = "url-2",
+                title = "Episode 2",
+                subtitle = "Podcast 2",
+                artworkUrl = "art-2",
+                podcastArtworkUrl = "pod-art-2",
+                episodeId = "ep-2"
+            )
+
+            testState.removeSelectedFromQueue(setOf(1))
+
+            assertEquals("Episode 3", testState.currentTitle)
+            assertEquals("Podcast 3", testState.currentSubtitle)
+            assertEquals("art-3", testState.currentArtworkUrl)
+            assertEquals("ep-3", testState.currentEpisodeId)
+        } finally {
+            testState.release()
+        }
+    }
+
+    @Test
     fun testRemoveCurrentlyPlayingStopsWhenEmpty() {
         state.addToQueue("https://example.com/audio1.mp3", "Episode 1")
 
@@ -338,5 +398,55 @@ class MediaPlayerStateTest {
         assertEquals(1, state.queue.size)
         assertEquals("ep-123", state.queue[0].episodeId)
         assertTrue(state.queue[0].isDownloaded)
+    }
+
+    private class FakeAudioPlayerEngine : AudioPlayerEngine {
+        override var isPlaying: Boolean = false
+            private set
+        override var currentPosition: Long = 0L
+            private set
+        override var duration: Long = 0L
+            private set
+        override var playbackState: PlaybackState = PlaybackState.IDLE
+            private set
+        override var metadata: PlayerMetadata? = null
+            private set
+
+        override var onPlayStateChanged: ((Boolean) -> Unit)? = null
+        override var onPositionChanged: ((Long, Long) -> Unit)? = null
+        override var onError: ((String) -> Unit)? = null
+
+        override fun play(url: String, speed: Float, startPositionMs: Long, durationMs: Long) {
+            isPlaying = true
+            playbackState = PlaybackState.PLAYING
+            metadata = PlayerMetadata(url = url, durationMs = durationMs)
+            onPlayStateChanged?.invoke(true)
+        }
+
+        override fun pause() {
+            isPlaying = false
+            playbackState = PlaybackState.PAUSED
+            onPlayStateChanged?.invoke(false)
+        }
+
+        override fun resume() {
+            isPlaying = true
+            playbackState = PlaybackState.PLAYING
+            onPlayStateChanged?.invoke(true)
+        }
+
+        override fun stop() {
+            isPlaying = false
+            playbackState = PlaybackState.STOPPED
+        }
+
+        override fun seek(positionMs: Long) {
+            currentPosition = positionMs
+            onPositionChanged?.invoke(currentPosition, duration)
+        }
+
+        override fun setSpeed(speed: Float) = Unit
+        override fun setVolume(vol: Int) = Unit
+        override fun release() = Unit
     }
 }
