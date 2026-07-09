@@ -15,7 +15,6 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.PlaylistAdd
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material3.*
@@ -33,7 +32,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import app.podara.component.EpisodeActionIconButton
+import app.podara.component.AddToQueueButton
 import app.podara.component.FavoriteEpisodeButton
 import app.podara.data.AppDatabase
 import app.podara.data.model.Podcast
@@ -447,11 +446,7 @@ private fun FavoriteItem(
         }
 
         Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-            EpisodeActionIconButton(
-                icon = Icons.Default.PlaylistAdd,
-                contentDescription = Strings["episode_add_to_queue"],
-                enabled = episode.audioUrl.isNotBlank()
-            ) {
+            AddToQueueButton {
                 playerState.addToQueue(
                     url = episode.audioUrl,
                     title = episode.title,

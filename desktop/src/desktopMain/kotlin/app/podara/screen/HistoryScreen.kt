@@ -31,6 +31,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.podara.data.AppDatabase
+import app.podara.component.AddToQueueButton
 import app.podara.component.FavoriteEpisodeButton
 import app.podara.data.model.Podcast
 import app.podara.data.model.PodcastEpisode
@@ -490,37 +491,13 @@ private fun HistoryItem(
                 }
             }
 
-            // Add to queue
-            val qInteractionSource = remember { MutableInteractionSource() }
-            val isQHovered by qInteractionSource.collectIsHoveredAsState()
-            val queueAnimatedBg by animateColorAsState(
-                targetValue = if (isQHovered) colors.elevated else Color.Transparent,
-                animationSpec = tween(durationMillis = 150)
-            )
-            Box(
-                modifier = Modifier
-                    .size(36.dp)
-                    .clip(CircleShape)
-                    .background(queueAnimatedBg)
-                    .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
-                    .clickable(interactionSource = qInteractionSource, indication = null) {
-                        scope.launch {
-                            playerState.addToQueue(
-                                url = episode.audioUrl,
-                                title = episode.title,
-                                artworkUrl = episode.imageUrl,
-                                podcastArtworkUrl = podcast?.imageUrl,
-                                episodeId = episode.id
-                            )
-                        }
-                    },
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    Icons.Default.PlaylistAdd,
-                    contentDescription = Strings["episode_add_to_queue"],
-                    tint = colors.textSecondary,
-                    modifier = Modifier.size(20.dp)
+            AddToQueueButton {
+                playerState.addToQueue(
+                    url = episode.audioUrl,
+                    title = episode.title,
+                    artworkUrl = episode.imageUrl,
+                    podcastArtworkUrl = podcast?.imageUrl,
+                    episodeId = episode.id
                 )
             }
 

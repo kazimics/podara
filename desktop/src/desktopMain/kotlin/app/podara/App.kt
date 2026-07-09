@@ -55,6 +55,7 @@ import app.podara.api.apple.ApplePodcastClient
 import app.podara.api.model.PodcastPreviewModel
 import app.podara.api.rss.FetchPodcastClient
 import app.podara.api.rss.FetchPodcastClientResult
+import app.podara.component.AddToQueueButton
 import app.podara.component.FavoriteEpisodeButton
 import app.podara.data.AppDatabase
 import app.podara.data.model.Podcast
@@ -1926,41 +1927,23 @@ private fun PodcastDetailScreen(
                                 }
 
                                 // Add to queue
-                                val qInteractionSource = remember { MutableInteractionSource() }
-                                val isQHovered by qInteractionSource.collectIsHoveredAsState()
-                                val qAnimatedBg by animateColorAsState(if (isQHovered) colors.elevated else Color.Transparent, tween(150))
-                                Box(
-                                    modifier = Modifier
-                                        .size(36.dp)
-                                        .clip(CircleShape)
-                                        .background(qAnimatedBg)
-                                        .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
-                                        .clickable(interactionSource = qInteractionSource, indication = null) {
-                                            scope.launch {
-                                                val downloadRecord = database.downloads.getByEpisodeId(episode.id)
-                                                val url = if (downloadRecord != null && File(downloadRecord.filePath).exists()) {
-                                                    downloadRecord.filePath
-                                                } else {
-                                                    episode.audioUrl
-                                                }
-                                                playerState.addToQueue(
-                                                    url = url,
-                                                    title = episode.title,
-                                                    artworkUrl = episode.imageUrl,
-                                                    podcastArtworkUrl = podcast.imageUrl,
-                                                    episodeId = episode.id,
-                                                    isDownloaded = episode.id in completedDownloads
-                                                )
-                                            }
-                                        },
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(
-                                        Icons.Default.PlaylistAdd,
-                                        contentDescription = Strings["episode_add_to_queue"],
-                                        tint = colors.textSecondary,
-                                        modifier = Modifier.size(20.dp)
-                                    )
+                                AddToQueueButton {
+                                    scope.launch {
+                                        val downloadRecord = database.downloads.getByEpisodeId(episode.id)
+                                        val url = if (downloadRecord != null && File(downloadRecord.filePath).exists()) {
+                                            downloadRecord.filePath
+                                        } else {
+                                            episode.audioUrl
+                                        }
+                                        playerState.addToQueue(
+                                            url = url,
+                                            title = episode.title,
+                                            artworkUrl = episode.imageUrl,
+                                            podcastArtworkUrl = podcast.imageUrl,
+                                            episodeId = episode.id,
+                                            isDownloaded = episode.id in completedDownloads
+                                        )
+                                    }
                                 }
 
                                 // Download / Downloaded / Downloading
