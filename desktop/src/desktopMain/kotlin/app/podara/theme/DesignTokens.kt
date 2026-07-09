@@ -33,17 +33,30 @@ object DesignTokens {
         val TextSize = 14.sp
         val PaddingHorizontal = 16.dp
         val Gradient = Brush.verticalGradient(
-            colors = listOf(Color(0xFFC5976F), Color(0xFFBF936C), Color(0xFFB1845F)),
-            startY = 0f, endY = 40f
+            colorStops = arrayOf(
+                0.00f to Color(0xFFE8BE8D),
+                0.32f to Color(0xFFC89363),
+                0.62f to Color(0xFFAF7951),
+                1.00f to Color(0xFF96623F)
+            ),
+            startY = 0f,
+            endY = 48f
         )
         val InnerHighlight = Brush.verticalGradient(
-            colors = listOf(Color.White.copy(alpha = 0.12f), Color.Transparent),
-            startY = 0f, endY = 40f
+            colors = listOf(Color.White.copy(alpha = 0.12f), Color.White.copy(alpha = 0.03f), Color.Transparent),
+            startY = 0f,
+            endY = 24f
         )
-        val TextColor = Color(0xFFFFF8F3)
+        val SpecularSheen = Brush.linearGradient(
+            colors = listOf(Color.White.copy(alpha = 0.10f), Color.White.copy(alpha = 0.02f), Color.Transparent),
+            start = Offset(0f, 0f),
+            end = Offset(160f, 54f)
+        )
+        val BorderColor = Color.White.copy(alpha = 0.18f)
+        val TextColor = Color(0xFFFFFBF5)
         val IconColor = Color.White
         val ShadowElevation = 10.dp
-        val ShadowColor = Color.Black.copy(alpha = 0.25f)
+        val ShadowColor = Color.Black.copy(alpha = 0.24f)
     }
 
     // ── Button: icon (circular secondary) ──
@@ -107,7 +120,7 @@ object DesignTokens {
         val ContentGap = 24.dp
         val TextGap = 10.dp
         val ButtonGap = 10.dp
-        val NavButtonSize = 32.dp
+        val NavButtonSize = 40.dp
         val NavButtonGap = 6.dp
         val NavIconSize = 16.dp
         val NavPadding = 12.dp

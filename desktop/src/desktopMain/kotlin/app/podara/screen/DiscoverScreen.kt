@@ -502,15 +502,16 @@ private fun FeaturedCard(
                         Box(
                             modifier = Modifier
                                 .height(btn.Height)
-                                .clip(RoundedCornerShape(btn.Radius))
                                 .shadow(btn.ShadowElevation, RoundedCornerShape(btn.Radius), ambientColor = btn.ShadowColor, spotColor = btn.ShadowColor)
-                                .border(DesignTokens.Border.Width, DesignTokens.Border.SecondaryColor, RoundedCornerShape(btn.Radius))
+                                .clip(RoundedCornerShape(btn.Radius))
+                                .border(DesignTokens.Border.Width, btn.BorderColor, RoundedCornerShape(btn.Radius))
                                 .background(btn.Gradient)
                                 .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
                                 .clickable { onPlayLatestEpisode() },
                             contentAlignment = Alignment.Center
                         ) {
                             Box(modifier = Modifier.matchParentSize().background(btn.InnerHighlight))
+                            Box(modifier = Modifier.matchParentSize().background(btn.SpecularSheen))
                             Row(
                                 modifier = Modifier.padding(horizontal = btn.PaddingHorizontal),
                                 verticalAlignment = Alignment.CenterVertically
@@ -629,7 +630,7 @@ private fun FeaturedCard(
                 )
                 Box(
                     modifier = Modifier
-                        .size(32.dp)
+                        .size(card.NavButtonSize)
                         .clip(CircleShape)
                         .background(animatedNextBg)
                         .border(1.dp, colors.border, CircleShape)

@@ -65,20 +65,22 @@ import kotlin.math.roundToInt
 
 // ── Design Tokens: button.primary ──
 private val PrimaryButtonGradient = Brush.verticalGradient(
-    colors = listOf(
-        Color(0xFFC5976F),
-        Color(0xFFBF936C),
-        Color(0xFFB1845F)
+    colorStops = arrayOf(
+        0.00f to Color(0xFFE8BE8D),
+        0.32f to Color(0xFFC89363),
+        0.62f to Color(0xFFAF7951),
+        1.00f to Color(0xFF96623F)
     ),
     startY = 0f,
-    endY = 48f
+    endY = 60f
 )
-private val PrimaryButtonBorder = Color(0x14FFFFFF)
-private val PrimaryButtonText = Color(0xFFFFF8F3)
+private val PrimaryButtonBorder = Color.White.copy(alpha = 0.18f)
+private val PrimaryButtonText = Color(0xFFFFFBF5)
 private val PrimaryButtonIcon = Color.White
-private val PrimaryButtonInnerHighlight = Brush.verticalGradient(
-    colors = listOf(Color.White.copy(alpha = 0.12f), Color.Transparent),
-    startY = 0f, endY = 56f
+private val PrimaryButtonInnerHighlight = Brush.linearGradient(
+    colors = listOf(Color.White.copy(alpha = 0.12f), Color.White.copy(alpha = 0.03f), Color.Transparent),
+    start = Offset(0f, 0f),
+    end = Offset(84f, 84f)
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -128,10 +130,10 @@ fun MiniPlayer(
                         .fillMaxWidth()
                     .height(88.dp)
                     .shadow(
-                        8.dp,
+                        16.dp,
                         RoundedCornerShape(18.dp),
-                        ambientColor = Color.Black.copy(alpha = 0.4f),
-                        spotColor = Color.Black.copy(alpha = 0.4f)
+                        ambientColor = Color.Black.copy(alpha = 0.52f),
+                        spotColor = Color.Black.copy(alpha = 0.52f)
                     )
                     .border(DesignTokens.Border.Width, colors.border, RoundedCornerShape(18.dp))
                     .clip(RoundedCornerShape(18.dp))
@@ -238,8 +240,8 @@ fun MiniPlayer(
                         Box(
                             modifier = Modifier
                                 .size(56.dp)
+                                .shadow(10.dp, CircleShape, ambientColor = Color.Black.copy(alpha = 0.24f), spotColor = Color.Black.copy(alpha = 0.24f))
                                 .clip(CircleShape)
-                                .shadow(10.dp, CircleShape, ambientColor = Color.Black.copy(alpha = 0.25f), spotColor = Color.Black.copy(alpha = 0.25f))
                                 .border(1.dp, PrimaryButtonBorder, CircleShape)
                                 .background(PrimaryButtonGradient)
                                 .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
@@ -688,8 +690,8 @@ fun FullPlayer(
                 Box(
                     modifier = Modifier
                         .size(56.dp)
+                        .shadow(10.dp, CircleShape, ambientColor = Color.Black.copy(alpha = 0.24f), spotColor = Color.Black.copy(alpha = 0.24f))
                         .clip(CircleShape)
-                        .shadow(10.dp, CircleShape, ambientColor = Color.Black.copy(alpha = 0.25f), spotColor = Color.Black.copy(alpha = 0.25f))
                         .border(1.dp, PrimaryButtonBorder, CircleShape)
                         .background(PrimaryButtonGradient)
                         .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
