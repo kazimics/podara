@@ -1,11 +1,16 @@
 package app.podara.data
 
 import app.podara.data.model.*
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.sql.Connection
 import java.sql.DriverManager
+import java.util.concurrent.Executors
+
+private val DatabaseDispatcher = Executors.newSingleThreadExecutor { runnable ->
+    Thread(runnable, "podara-db").apply { isDaemon = true }
+}.asCoroutineDispatcher()
 
 class AppDatabase private constructor(private val connection: Connection) {
 
@@ -187,7 +192,7 @@ class AppDatabase private constructor(private val connection: Connection) {
 }
 
 class PodcastDao(private val conn: Connection) {
-    suspend fun getAllSync(): List<Podcast> = withContext(Dispatchers.IO) {
+    suspend fun getAllSync(): List<Podcast> = withContext(DatabaseDispatcher) {
         val rs = conn.createStatement().executeQuery("SELECT * FROM podcast ORDER BY title ASC")
         val list = mutableListOf<Podcast>()
         while (rs.next()) {
@@ -203,14 +208,14 @@ class PodcastDao(private val conn: Connection) {
         list
     }
 
-    suspend fun getAllOrigins(): Set<String> = withContext(Dispatchers.IO) {
+    suspend fun getAllOrigins(): Set<String> = withContext(DatabaseDispatcher) {
         val rs = conn.createStatement().executeQuery("SELECT origin FROM podcast")
         val origins = mutableSetOf<String>()
         while (rs.next()) origins.add(rs.getString("origin"))
         origins
     }
 
-    suspend fun getByOrigin(origin: String): Podcast? = withContext(Dispatchers.IO) {
+    suspend fun getByOrigin(origin: String): Podcast? = withContext(DatabaseDispatcher) {
         val ps = conn.prepareStatement("SELECT * FROM podcast WHERE origin = ?")
         ps.setString(1, origin)
         val rs = ps.executeQuery()
@@ -224,7 +229,7 @@ class PodcastDao(private val conn: Connection) {
         ) else null
     }
 
-    suspend fun insert(podcast: Podcast) = withContext(Dispatchers.IO) {
+    suspend fun insert(podcast: Podcast) = withContext(DatabaseDispatcher) {
         val ps = conn.prepareStatement(
             """
             INSERT INTO podcast (origin, link, title, description, author, imageUrl, imageSeedColor, languageCode, fileSize, overrideTitle, skipBeginning, skipEnding)
@@ -247,7 +252,7 @@ class PodcastDao(private val conn: Connection) {
         ps.executeUpdate()
     }
 
-    suspend fun delete(origin: String) = withContext(Dispatchers.IO) {
+    suspend fun delete(origin: String) = withContext(DatabaseDispatcher) {
         conn.prepareStatement("DELETE FROM podcast WHERE origin = ?").apply {
             setString(1, origin); executeUpdate()
         }
@@ -255,7 +260,7 @@ class PodcastDao(private val conn: Connection) {
 }
 
 class EpisodeDao(private val conn: Connection) {
-    suspend fun getAllByOrigin(origin: String): List<PodcastEpisode> = withContext(Dispatchers.IO) {
+    suspend fun getAllByOrigin(origin: String): List<PodcastEpisode> = withContext(DatabaseDispatcher) {
         val ps = conn.prepareStatement("SELECT * FROM podcastEpisode WHERE origin = ? ORDER BY pubDate DESC")
         ps.setString(1, origin)
         val rs = ps.executeQuery()
@@ -264,14 +269,14 @@ class EpisodeDao(private val conn: Connection) {
         list
     }
 
-    suspend fun getById(id: String): PodcastEpisode? = withContext(Dispatchers.IO) {
+    suspend fun getById(id: String): PodcastEpisode? = withContext(DatabaseDispatcher) {
         val ps = conn.prepareStatement("SELECT * FROM podcastEpisode WHERE id = ?")
         ps.setString(1, id)
         val rs = ps.executeQuery()
         if (rs.next()) readEpisode(rs) else null
     }
 
-    suspend fun getEpisodeIds(origin: String): List<String> = withContext(Dispatchers.IO) {
+    suspend fun getEpisodeIds(origin: String): List<String> = withContext(DatabaseDispatcher) {
         val ps = conn.prepareStatement("SELECT id FROM podcastEpisode WHERE origin = ?")
         ps.setString(1, origin)
         val rs = ps.executeQuery()
@@ -280,13 +285,13 @@ class EpisodeDao(private val conn: Connection) {
         list
     }
 
-    suspend fun deleteByOrigin(origin: String) = withContext(Dispatchers.IO) {
+    suspend fun deleteByOrigin(origin: String) = withContext(DatabaseDispatcher) {
         conn.prepareStatement("DELETE FROM podcastEpisode WHERE origin = ?").apply {
             setString(1, origin); executeUpdate()
         }
     }
 
-    suspend fun insert(episode: PodcastEpisode) = withContext(Dispatchers.IO) {
+    suspend fun insert(episode: PodcastEpisode) = withContext(DatabaseDispatcher) {
         val ps = conn.prepareStatement(
             """
             INSERT INTO podcastEpisode (id, guid, origin, link, title, description, imageUrl, author, pubDate, duration, audioUrl, podcastTitle, imageSeedColor, new)
@@ -314,13 +319,13 @@ class EpisodeDao(private val conn: Connection) {
         ps.executeUpdate()
     }
 
-    suspend fun markAsNew(id: String) = withContext(Dispatchers.IO) {
+    suspend fun markAsNew(id: String) = withContext(DatabaseDispatcher) {
         conn.prepareStatement("UPDATE podcastEpisode SET new = 1 WHERE id = ?").apply {
             setString(1, id); executeUpdate()
         }
     }
 
-    suspend fun markAsNotNew(id: String) = withContext(Dispatchers.IO) {
+    suspend fun markAsNotNew(id: String) = withContext(DatabaseDispatcher) {
         conn.prepareStatement("UPDATE podcastEpisode SET new = 0 WHERE id = ?").apply {
             setString(1, id); executeUpdate()
         }
@@ -337,19 +342,19 @@ class EpisodeDao(private val conn: Connection) {
 }
 
 class PlayStateDao(private val conn: Connection) {
-    suspend fun initState(episodeId: String) = withContext(Dispatchers.IO) {
+    suspend fun initState(episodeId: String) = withContext(DatabaseDispatcher) {
         conn.prepareStatement("INSERT OR IGNORE INTO podcastEpisodePlayState (episodeId, state, played, lastUpdate) VALUES (?, 0, 0, 0)").apply {
             setString(1, episodeId); executeUpdate()
         }
     }
 
-    suspend fun saveState(episodeId: String, state: Int) = withContext(Dispatchers.IO) {
+    suspend fun saveState(episodeId: String, state: Int) = withContext(DatabaseDispatcher) {
         conn.prepareStatement("UPDATE podcastEpisodePlayState SET state = ? WHERE episodeId = ?").apply {
             setInt(1, state); setString(2, episodeId); executeUpdate()
         }
     }
 
-    suspend fun savePlayed(episodeId: String, played: Boolean) = withContext(Dispatchers.IO) {
+    suspend fun savePlayed(episodeId: String, played: Boolean) = withContext(DatabaseDispatcher) {
         conn.prepareStatement("UPDATE podcastEpisodePlayState SET played = ? WHERE episodeId = ?").apply {
             setInt(1, if (played) 1 else 0); setString(2, episodeId); executeUpdate()
         }
@@ -357,7 +362,7 @@ class PlayStateDao(private val conn: Connection) {
 }
 
 class HistoryDao(private val conn: Connection) {
-    suspend fun getAllSync(): List<PodcastHistory> = withContext(Dispatchers.IO) {
+    suspend fun getAllSync(): List<PodcastHistory> = withContext(DatabaseDispatcher) {
         val rs = conn.createStatement().executeQuery("SELECT * FROM podcastHistory ORDER BY timestamp DESC")
         val list = mutableListOf<PodcastHistory>()
         while (rs.next()) list.add(PodcastHistory(
@@ -368,7 +373,7 @@ class HistoryDao(private val conn: Connection) {
     }
 
     /** Returns the latest listen timestamp per podcast origin. */
-    suspend fun getLatestTimestampPerOrigin(): Map<String, Long> = withContext(Dispatchers.IO) {
+    suspend fun getLatestTimestampPerOrigin(): Map<String, Long> = withContext(DatabaseDispatcher) {
         val rs = conn.createStatement().executeQuery(
             "SELECT origin, MAX(timestamp) AS maxTs FROM podcastHistory GROUP BY origin"
         )
@@ -377,7 +382,7 @@ class HistoryDao(private val conn: Connection) {
         map
     }
 
-    suspend fun getAllWithEpisode(): List<Pair<PodcastHistory, PodcastEpisode?>> = withContext(Dispatchers.IO) {
+    suspend fun getAllWithEpisode(): List<Pair<PodcastHistory, PodcastEpisode?>> = withContext(DatabaseDispatcher) {
         val rs = conn.createStatement().executeQuery(
             """SELECT h.id, h.origin, h.episodeId, h.timestamp,
                e.title as epTitle, e.audioUrl as epAudioUrl, e.imageUrl as epImageUrl,
@@ -408,46 +413,46 @@ class HistoryDao(private val conn: Connection) {
         list
     }
 
-    suspend fun insert(origin: String, episodeId: String) = withContext(Dispatchers.IO) {
+    suspend fun insert(origin: String, episodeId: String) = withContext(DatabaseDispatcher) {
         val ts = System.currentTimeMillis()
         conn.prepareStatement("INSERT INTO podcastHistory (origin, episodeId, timestamp) VALUES (?, ?, ?)").apply {
             setString(1, origin); setString(2, episodeId); setLong(3, ts); executeUpdate()
         }
     }
 
-    suspend fun delete(episodeId: String) = withContext(Dispatchers.IO) {
+    suspend fun delete(episodeId: String) = withContext(DatabaseDispatcher) {
         conn.prepareStatement("DELETE FROM podcastHistory WHERE episodeId = ?").apply {
             setString(1, episodeId); executeUpdate()
         }
     }
 
-    suspend fun deleteAll() = withContext(Dispatchers.IO) {
+    suspend fun deleteAll() = withContext(DatabaseDispatcher) {
         conn.createStatement().executeUpdate("DELETE FROM podcastHistory")
     }
 }
 
 class FavoriteDao(private val conn: Connection) {
-    suspend fun getAllSync(): List<PodcastFavorite> = withContext(Dispatchers.IO) {
+    suspend fun getAllSync(): List<PodcastFavorite> = withContext(DatabaseDispatcher) {
         val rs = conn.createStatement().executeQuery("SELECT * FROM podcastFavorite ORDER BY timestamp DESC")
         val list = mutableListOf<PodcastFavorite>()
         while (rs.next()) list.add(readFavorite(rs))
         list
     }
 
-    suspend fun getAllEpisodeIds(): Set<String> = withContext(Dispatchers.IO) {
+    suspend fun getAllEpisodeIds(): Set<String> = withContext(DatabaseDispatcher) {
         val rs = conn.createStatement().executeQuery("SELECT episodeId FROM podcastFavorite")
         val ids = mutableSetOf<String>()
         while (rs.next()) ids.add(rs.getString("episodeId"))
         ids
     }
 
-    suspend fun isFavorite(episodeId: String): Boolean = withContext(Dispatchers.IO) {
+    suspend fun isFavorite(episodeId: String): Boolean = withContext(DatabaseDispatcher) {
         val ps = conn.prepareStatement("SELECT 1 FROM podcastFavorite WHERE episodeId = ? LIMIT 1")
         ps.setString(1, episodeId)
         ps.executeQuery().next()
     }
 
-    suspend fun getAllWithEpisode(): List<Pair<PodcastFavorite, PodcastEpisode?>> = withContext(Dispatchers.IO) {
+    suspend fun getAllWithEpisode(): List<Pair<PodcastFavorite, PodcastEpisode?>> = withContext(DatabaseDispatcher) {
         val rs = conn.createStatement().executeQuery(
             """SELECT f.episodeId, f.origin, f.timestamp,
                f.title as favTitle, f.podcastTitle as favPodcastTitle, f.imageUrl as favImageUrl,
@@ -511,7 +516,7 @@ class FavoriteDao(private val conn: Connection) {
         )
     )
 
-    suspend fun insert(favorite: PodcastFavorite) = withContext(Dispatchers.IO) {
+    suspend fun insert(favorite: PodcastFavorite) = withContext(DatabaseDispatcher) {
         conn.prepareStatement(
             "INSERT OR REPLACE INTO podcastFavorite (episodeId, origin, timestamp, title, podcastTitle, imageUrl, audioUrl, duration, pubDate) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
         ).apply {
@@ -532,13 +537,13 @@ class FavoriteDao(private val conn: Connection) {
         }
     }
 
-    suspend fun delete(episodeId: String) = withContext(Dispatchers.IO) {
+    suspend fun delete(episodeId: String) = withContext(DatabaseDispatcher) {
         conn.prepareStatement("DELETE FROM podcastFavorite WHERE episodeId = ?").apply {
             setString(1, episodeId); executeUpdate()
         }
     }
 
-    suspend fun deleteAll() = withContext(Dispatchers.IO) {
+    suspend fun deleteAll() = withContext(DatabaseDispatcher) {
         conn.createStatement().executeUpdate("DELETE FROM podcastFavorite")
     }
 
@@ -556,7 +561,7 @@ class FavoriteDao(private val conn: Connection) {
 }
 
 class SubscriptionDao(private val conn: Connection) {
-    suspend fun getAllSync(): List<PodcastSubscription> = withContext(Dispatchers.IO) {
+    suspend fun getAllSync(): List<PodcastSubscription> = withContext(DatabaseDispatcher) {
         val rs = conn.createStatement().executeQuery("SELECT * FROM podcastSubscription ORDER BY origin ASC")
         val list = mutableListOf<PodcastSubscription>()
         while (rs.next()) list.add(PodcastSubscription(
@@ -568,7 +573,7 @@ class SubscriptionDao(private val conn: Connection) {
         list
     }
 
-    suspend fun getByOriginSync(origin: String): PodcastSubscription? = withContext(Dispatchers.IO) {
+    suspend fun getByOriginSync(origin: String): PodcastSubscription? = withContext(DatabaseDispatcher) {
         val ps = conn.prepareStatement("SELECT * FROM podcastSubscription WHERE origin = ?")
         ps.setString(1, origin)
         val rs = ps.executeQuery()
@@ -580,27 +585,27 @@ class SubscriptionDao(private val conn: Connection) {
         ) else null
     }
 
-    suspend fun insert(origin: String, enableNotifications: Boolean, enableAutoDownload: Boolean) = withContext(Dispatchers.IO) {
+    suspend fun insert(origin: String, enableNotifications: Boolean, enableAutoDownload: Boolean) = withContext(DatabaseDispatcher) {
         conn.prepareStatement("INSERT OR IGNORE INTO podcastSubscription (origin, enableNotifications, enableAutoDownload, lastUpdate, newEpisodes, cacheETag, cacheLastModified, cacheContentLength) VALUES (?, ?, ?, 0, 0, '', '', '')").apply {
             setString(1, origin); setInt(2, if (enableNotifications) 1 else 0); setInt(3, if (enableAutoDownload) 1 else 0)
             executeUpdate()
         }
     }
 
-    suspend fun updateCache(origin: String, eTag: String, lastModified: String, contentLength: String) = withContext(Dispatchers.IO) {
+    suspend fun updateCache(origin: String, eTag: String, lastModified: String, contentLength: String) = withContext(DatabaseDispatcher) {
         conn.prepareStatement("UPDATE podcastSubscription SET cacheETag = ?, cacheLastModified = ?, cacheContentLength = ? WHERE origin = ?").apply {
             setString(1, eTag); setString(2, lastModified); setString(3, contentLength); setString(4, origin)
             executeUpdate()
         }
     }
 
-    suspend fun updateLastUpdate(origin: String, lastUpdate: Long) = withContext(Dispatchers.IO) {
+    suspend fun updateLastUpdate(origin: String, lastUpdate: Long) = withContext(DatabaseDispatcher) {
         conn.prepareStatement("UPDATE podcastSubscription SET lastUpdate = ? WHERE origin = ?").apply {
             setLong(1, lastUpdate); setString(2, origin); executeUpdate()
         }
     }
 
-    suspend fun delete(origin: String) = withContext(Dispatchers.IO) {
+    suspend fun delete(origin: String) = withContext(DatabaseDispatcher) {
         conn.prepareStatement("DELETE FROM podcastSubscription WHERE origin = ?").apply {
             setString(1, origin); executeUpdate()
         }
@@ -608,7 +613,7 @@ class SubscriptionDao(private val conn: Connection) {
 }
 
 class SyncActionDao(private val conn: Connection) {
-    suspend fun getAll(): List<SyncAction> = withContext(Dispatchers.IO) {
+    suspend fun getAll(): List<SyncAction> = withContext(DatabaseDispatcher) {
         val rs = conn.createStatement().executeQuery("SELECT * FROM syncAction ORDER BY timestamp ASC")
         val list = mutableListOf<SyncAction>()
         while (rs.next()) list.add(SyncAction(
@@ -619,7 +624,7 @@ class SyncActionDao(private val conn: Connection) {
         list
     }
 
-    suspend fun addAction(id: String, actionType: String, origin: String, audioUrl: String?, position: Int?, total: Int?) = withContext(Dispatchers.IO) {
+    suspend fun addAction(id: String, actionType: String, origin: String, audioUrl: String?, position: Int?, total: Int?) = withContext(DatabaseDispatcher) {
         val ts = System.currentTimeMillis()
         conn.prepareStatement("INSERT OR IGNORE INTO syncAction (id, actionType, origin, audioUrl, position, total, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?)").apply {
             setString(1, id); setString(2, actionType); setString(3, origin); setString(4, audioUrl)
@@ -629,7 +634,7 @@ class SyncActionDao(private val conn: Connection) {
         }
     }
 
-    suspend fun delete(id: String) = withContext(Dispatchers.IO) {
+    suspend fun delete(id: String) = withContext(DatabaseDispatcher) {
         conn.prepareStatement("DELETE FROM syncAction WHERE id = ?").apply {
             setString(1, id); executeUpdate()
         }
@@ -660,7 +665,7 @@ data class DownloadTask(
 )
 
 class DownloadDao(private val conn: Connection) {
-    suspend fun insert(episodeId: String, origin: String, filePath: String, podcastTitle: String, episodeTitle: String = "") = withContext(Dispatchers.IO) {
+    suspend fun insert(episodeId: String, origin: String, filePath: String, podcastTitle: String, episodeTitle: String = "") = withContext(DatabaseDispatcher) {
         val ts = System.currentTimeMillis()
         conn.prepareStatement("INSERT OR REPLACE INTO podcastDownload (episodeId, origin, filePath, podcastTitle, episodeTitle, timestamp) VALUES (?, ?, ?, ?, ?, ?)").apply {
             setString(1, episodeId); setString(2, origin); setString(3, filePath)
@@ -668,7 +673,7 @@ class DownloadDao(private val conn: Connection) {
         }
     }
 
-    suspend fun getByEpisodeId(episodeId: String): PodcastDownload? = withContext(Dispatchers.IO) {
+    suspend fun getByEpisodeId(episodeId: String): PodcastDownload? = withContext(DatabaseDispatcher) {
         val ps = conn.prepareStatement("SELECT * FROM podcastDownload WHERE episodeId = ?")
         ps.setString(1, episodeId)
         val rs = ps.executeQuery()
@@ -682,14 +687,14 @@ class DownloadDao(private val conn: Connection) {
         ) else null
     }
 
-    suspend fun getAllDownloadedIds(): Set<String> = withContext(Dispatchers.IO) {
+    suspend fun getAllDownloadedIds(): Set<String> = withContext(DatabaseDispatcher) {
         val rs = conn.createStatement().executeQuery("SELECT episodeId FROM podcastDownload")
         val ids = mutableSetOf<String>()
         while (rs.next()) { ids.add(rs.getString("episodeId")) }
         ids
     }
 
-    suspend fun getAllValidDownloadedIds(): Set<String> = withContext(Dispatchers.IO) {
+    suspend fun getAllValidDownloadedIds(): Set<String> = withContext(DatabaseDispatcher) {
         val rs = conn.createStatement().executeQuery("SELECT episodeId, filePath FROM podcastDownload")
         val ids = mutableSetOf<String>()
         val toDelete = mutableListOf<String>()
@@ -707,7 +712,7 @@ class DownloadDao(private val conn: Connection) {
     }
 
     /** Return all valid download records (cleans up stale records where file is gone). */
-    suspend fun getAllValid(): List<PodcastDownload> = withContext(Dispatchers.IO) {
+    suspend fun getAllValid(): List<PodcastDownload> = withContext(DatabaseDispatcher) {
         val rs = conn.createStatement().executeQuery("SELECT * FROM podcastDownload")
         val valid = mutableListOf<PodcastDownload>()
         val toDelete = mutableListOf<String>()
@@ -730,12 +735,12 @@ class DownloadDao(private val conn: Connection) {
     }
 
     /** Get total bytes of all valid downloaded files. */
-    suspend fun getTotalDownloadedBytes(): Long = withContext(Dispatchers.IO) {
+    suspend fun getTotalDownloadedBytes(): Long = withContext(DatabaseDispatcher) {
         getAllValid().sumOf { java.io.File(it.filePath).length() }
     }
 
     /** Get all downloads for a specific podcast origin. */
-    suspend fun getAllByOrigin(origin: String): List<PodcastDownload> = withContext(Dispatchers.IO) {
+    suspend fun getAllByOrigin(origin: String): List<PodcastDownload> = withContext(DatabaseDispatcher) {
         val ps = conn.prepareStatement("SELECT * FROM podcastDownload WHERE origin = ?")
         ps.setString(1, origin)
         val rs = ps.executeQuery()
@@ -750,27 +755,27 @@ class DownloadDao(private val conn: Connection) {
     }
 
     /** Delete download record (does NOT delete file — use DownloadManager for full cleanup). */
-    suspend fun delete(episodeId: String) = withContext(Dispatchers.IO) {
+    suspend fun delete(episodeId: String) = withContext(DatabaseDispatcher) {
         conn.prepareStatement("DELETE FROM podcastDownload WHERE episodeId = ?").apply {
             setString(1, episodeId); executeUpdate()
         }
     }
 
     /** Delete all download records for a podcast origin (does NOT delete files). */
-    suspend fun deleteByOrigin(origin: String) = withContext(Dispatchers.IO) {
+    suspend fun deleteByOrigin(origin: String) = withContext(DatabaseDispatcher) {
         conn.prepareStatement("DELETE FROM podcastDownload WHERE origin = ?").apply {
             setString(1, origin); executeUpdate()
         }
     }
 
     /** Clear all download records. */
-    suspend fun deleteAll() = withContext(Dispatchers.IO) {
+    suspend fun deleteAll() = withContext(DatabaseDispatcher) {
         conn.createStatement().executeUpdate("DELETE FROM podcastDownload")
     }
 }
 
 class DownloadTaskDao(private val conn: Connection) {
-    suspend fun insert(task: DownloadTask) = withContext(Dispatchers.IO) {
+    suspend fun insert(task: DownloadTask) = withContext(DatabaseDispatcher) {
         conn.prepareStatement("INSERT OR REPLACE INTO downloadTask (episodeId, origin, audioUrl, podcastTitle, episodeTitle, targetFilePath, downloadedBytes, totalBytes, state, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").apply {
             setString(1, task.episodeId); setString(2, task.origin); setString(3, task.audioUrl)
             setString(4, task.podcastTitle); setString(5, task.episodeTitle); setString(6, task.targetFilePath)
@@ -779,7 +784,7 @@ class DownloadTaskDao(private val conn: Connection) {
         }
     }
 
-    suspend fun getByEpisodeId(episodeId: String): DownloadTask? = withContext(Dispatchers.IO) {
+    suspend fun getByEpisodeId(episodeId: String): DownloadTask? = withContext(DatabaseDispatcher) {
         val ps = conn.prepareStatement("SELECT * FROM downloadTask WHERE episodeId = ?")
         ps.setString(1, episodeId)
         val rs = ps.executeQuery()
@@ -794,7 +799,7 @@ class DownloadTaskDao(private val conn: Connection) {
     }
 
     /** Get all tasks that are not completed (DOWNLOADING / PAUSED / FAILED). */
-    suspend fun getAllActive(): List<DownloadTask> = withContext(Dispatchers.IO) {
+    suspend fun getAllActive(): List<DownloadTask> = withContext(DatabaseDispatcher) {
         val rs = conn.createStatement().executeQuery("SELECT * FROM downloadTask WHERE state != 'COMPLETED' ORDER BY updatedAt DESC")
         val list = mutableListOf<DownloadTask>()
         while (rs.next()) list.add(DownloadTask(
@@ -808,14 +813,14 @@ class DownloadTaskDao(private val conn: Connection) {
         list
     }
 
-    suspend fun updateProgress(episodeId: String, downloadedBytes: Long, totalBytes: Long) = withContext(Dispatchers.IO) {
+    suspend fun updateProgress(episodeId: String, downloadedBytes: Long, totalBytes: Long) = withContext(DatabaseDispatcher) {
         val ts = System.currentTimeMillis()
         conn.prepareStatement("UPDATE downloadTask SET downloadedBytes = ?, totalBytes = ?, updatedAt = ? WHERE episodeId = ?").apply {
             setLong(1, downloadedBytes); setLong(2, totalBytes); setLong(3, ts); setString(4, episodeId); executeUpdate()
         }
     }
 
-    suspend fun updateState(episodeId: String, state: String, targetFilePath: String = "") = withContext(Dispatchers.IO) {
+    suspend fun updateState(episodeId: String, state: String, targetFilePath: String = "") = withContext(DatabaseDispatcher) {
         val ts = System.currentTimeMillis()
         if (targetFilePath.isNotEmpty()) {
             conn.prepareStatement("UPDATE downloadTask SET state = ?, targetFilePath = ?, updatedAt = ? WHERE episodeId = ?").apply {
@@ -828,39 +833,39 @@ class DownloadTaskDao(private val conn: Connection) {
         }
     }
 
-    suspend fun delete(episodeId: String) = withContext(Dispatchers.IO) {
+    suspend fun delete(episodeId: String) = withContext(DatabaseDispatcher) {
         conn.prepareStatement("DELETE FROM downloadTask WHERE episodeId = ?").apply {
             setString(1, episodeId); executeUpdate()
         }
     }
 
     /** Clear all download tasks. */
-    suspend fun deleteAll() = withContext(Dispatchers.IO) {
+    suspend fun deleteAll() = withContext(DatabaseDispatcher) {
         conn.createStatement().executeUpdate("DELETE FROM downloadTask")
     }
 }
 
 class ItunesLookupDao(private val conn: Connection) {
-    suspend fun getAll(): Map<String, String> = withContext(Dispatchers.IO) {
+    suspend fun getAll(): Map<String, String> = withContext(DatabaseDispatcher) {
         val rs = conn.createStatement().executeQuery("SELECT itunesUrl, rssUrl FROM podcastItunesLookup")
         val map = mutableMapOf<String, String>()
         while (rs.next()) map[rs.getString("itunesUrl")] = rs.getString("rssUrl")
         map
     }
 
-    suspend fun insert(itunesUrl: String, rssUrl: String) = withContext(Dispatchers.IO) {
+    suspend fun insert(itunesUrl: String, rssUrl: String) = withContext(DatabaseDispatcher) {
         conn.prepareStatement("INSERT OR REPLACE INTO podcastItunesLookup (itunesUrl, rssUrl) VALUES (?, ?)").apply {
             setString(1, itunesUrl); setString(2, rssUrl); executeUpdate()
         }
     }
 
-    suspend fun delete(itunesUrl: String) = withContext(Dispatchers.IO) {
+    suspend fun delete(itunesUrl: String) = withContext(DatabaseDispatcher) {
         conn.prepareStatement("DELETE FROM podcastItunesLookup WHERE itunesUrl = ?").apply {
             setString(1, itunesUrl); executeUpdate()
         }
     }
 
-    suspend fun deleteByRssUrl(rssUrl: String) = withContext(Dispatchers.IO) {
+    suspend fun deleteByRssUrl(rssUrl: String) = withContext(DatabaseDispatcher) {
         conn.prepareStatement("DELETE FROM podcastItunesLookup WHERE rssUrl = ?").apply {
             setString(1, rssUrl); executeUpdate()
         }
@@ -890,7 +895,7 @@ data class PlayerQueueRow(
 )
 
 class PlayerSessionDao(private val conn: Connection) {
-    suspend fun saveSession(queueIndex: Int, currentPositionMs: Long, playbackSpeed: Float, volume: Int, currentEpisodeId: String?) = withContext(Dispatchers.IO) {
+    suspend fun saveSession(queueIndex: Int, currentPositionMs: Long, playbackSpeed: Float, volume: Int, currentEpisodeId: String?) = withContext(DatabaseDispatcher) {
         val ts = System.currentTimeMillis()
         conn.prepareStatement(
             "INSERT OR REPLACE INTO playerSession (id, queueIndex, currentPositionMs, playbackSpeed, volume, currentEpisodeId, lastUpdate) VALUES (1, ?, ?, ?, ?, ?, ?)"
@@ -900,7 +905,7 @@ class PlayerSessionDao(private val conn: Connection) {
         }
     }
 
-    suspend fun loadSession(): PlayerSession? = withContext(Dispatchers.IO) {
+    suspend fun loadSession(): PlayerSession? = withContext(DatabaseDispatcher) {
         val rs = conn.createStatement().executeQuery("SELECT * FROM playerSession WHERE id = 1")
         if (rs.next()) PlayerSession(
             id = rs.getInt("id"), queueIndex = rs.getInt("queueIndex"),
@@ -910,20 +915,20 @@ class PlayerSessionDao(private val conn: Connection) {
         ) else null
     }
 
-    suspend fun updatePosition(currentPositionMs: Long) = withContext(Dispatchers.IO) {
+    suspend fun updatePosition(currentPositionMs: Long) = withContext(DatabaseDispatcher) {
         val ts = System.currentTimeMillis()
         conn.prepareStatement("UPDATE playerSession SET currentPositionMs = ?, lastUpdate = ? WHERE id = 1").apply {
             setLong(1, currentPositionMs); setLong(2, ts); executeUpdate()
         }
     }
 
-    suspend fun deleteSession() = withContext(Dispatchers.IO) {
+    suspend fun deleteSession() = withContext(DatabaseDispatcher) {
         conn.createStatement().executeUpdate("DELETE FROM playerSession WHERE id = 1")
     }
 }
 
 class PlayerQueueDao(private val conn: Connection) {
-    suspend fun saveQueue(items: List<PlayerQueueRow>) = withContext(Dispatchers.IO) {
+    suspend fun saveQueue(items: List<PlayerQueueRow>) = withContext(DatabaseDispatcher) {
         conn.createStatement().executeUpdate("DELETE FROM playerQueueItem")
         val ps = conn.prepareStatement(
             "INSERT INTO playerQueueItem (queueOrder, url, title, subtitle, artworkUrl, podcastArtworkUrl, episodeId, isDownloaded) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
@@ -938,7 +943,7 @@ class PlayerQueueDao(private val conn: Connection) {
         ps.executeBatch()
     }
 
-    suspend fun loadQueue(): List<PlayerQueueRow> = withContext(Dispatchers.IO) {
+    suspend fun loadQueue(): List<PlayerQueueRow> = withContext(DatabaseDispatcher) {
         val rs = conn.createStatement().executeQuery("SELECT * FROM playerQueueItem ORDER BY queueOrder ASC")
         val list = mutableListOf<PlayerQueueRow>()
         while (rs.next()) list.add(PlayerQueueRow(
@@ -950,7 +955,7 @@ class PlayerQueueDao(private val conn: Connection) {
         list
     }
 
-    suspend fun clearQueue() = withContext(Dispatchers.IO) {
+    suspend fun clearQueue() = withContext(DatabaseDispatcher) {
         conn.createStatement().executeUpdate("DELETE FROM playerQueueItem")
     }
 }
