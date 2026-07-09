@@ -4,6 +4,20 @@ All notable changes to podara will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.0.0] - 2026-07-09
+
+### Fixed
+- System window close requests now use the same close handler as the custom title bar, so Alt+F4/taskbar close respects saved close behavior and persists the playback session before quitting
+- Removing the currently playing queue item now preserves the next item's subtitle, artwork, podcast artwork, and episode id when playback advances
+- Resuming a paused download now restarts from scratch if the server ignores the `Range` request instead of appending a full response to the partial file
+- Download file extensions are now derived from the URL path and restricted to known audio extensions, avoiding invalid filenames for extensionless CDN URLs
+- Podcast refresh now updates subscribed podcast metadata and existing episode metadata while preserving local play-state records and podcast user settings
+- RSS refresh no longer treats matching `Content-Length` alone as unchanged; it still relies on 304/ETag/Last-Modified signals before skipping a GET
+- Database DAO calls now run through a single database dispatcher to serialize access to the shared SQLite connection across coroutines
+
+### Tests
+- Added regression tests for queue metadata preservation after deleting the current item, Range-ignored download resume, safe download extension parsing, subscription metadata refresh, Content-Length cache handling, and concurrent database DAO access
+
 ## [1.0.0-alpha5] - 2026-07-09
 
 ### Added
@@ -22,18 +36,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 - DownloadsScreen completed download playback missing cover art in MiniPlayer and FullPlayer — now queries episode imageUrl from database and passes it through playWithContext
-- System window close requests now use the same close handler as the custom title bar, so Alt+F4/taskbar close respects saved close behavior and persists the playback session before quitting
-- Removing the currently playing queue item now preserves the next item's subtitle, artwork, podcast artwork, and episode id when playback advances
-- Resuming a paused download now restarts from scratch if the server ignores the `Range` request instead of appending a full response to the partial file
-- Download file extensions are now derived from the URL path and restricted to known audio extensions, avoiding invalid filenames for extensionless CDN URLs
-- Podcast refresh now updates subscribed podcast metadata and existing episode metadata while preserving local play-state records and podcast user settings
-- RSS refresh no longer treats matching `Content-Length` alone as unchanged; it still relies on 304/ETag/Last-Modified signals before skipping a GET
-- Database DAO calls now run through a single database dispatcher to serialize access to the shared SQLite connection across coroutines
 
 ### Tests
 - Added `FavoriteDaoTest` for insert, replace, delete, toggle, clear, snapshot fallback, and persistence across database reopen
 - Added `FavoritesScreenTest` for empty state, title/search rendering, hidden clear action when empty, and saved episode rendering
-- Added regression tests for queue metadata preservation after deleting the current item, Range-ignored download resume, safe download extension parsing, subscription metadata refresh, Content-Length cache handling, and concurrent database DAO access
 - Updated History, Downloads, and App GUI tests for the new favorites-aware screen signatures
 
 ## [1.0.0-alpha4] - 2026-07-08
