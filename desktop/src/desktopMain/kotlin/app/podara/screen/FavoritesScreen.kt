@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.podara.component.AddToQueueButton
 import app.podara.component.FavoriteEpisodeButton
+import app.podara.component.PodaraEmptyState
 import app.podara.data.AppDatabase
 import app.podara.data.model.Podcast
 import app.podara.data.model.PodcastEpisode
@@ -191,31 +192,12 @@ fun FavoritesScreen(
 
         if (displayItems.isEmpty()) {
             if (searchQuery.isBlank()) {
-                Box(
-                    modifier = Modifier.fillMaxWidth().weight(1f),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(
-                            Icons.Default.Favorite,
-                            contentDescription = null,
-                            modifier = Modifier.size(64.dp),
-                            tint = colors.textMuted
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Text(
-                            text = Strings["favorites_empty"],
-                            style = MaterialTheme.typography.headlineSmall,
-                            color = colors.textPrimary
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = Strings["favorites_empty_hint"],
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = colors.textSecondary
-                        )
-                    }
-                }
+                PodaraEmptyState(
+                    icon = Icons.Default.Favorite,
+                    title = Strings["favorites_empty"],
+                    subtitle = Strings["favorites_empty_hint"],
+                    modifier = Modifier.fillMaxWidth().weight(1f)
+                )
             } else {
                 val glass = DesignTokens.Glass
                 Box(

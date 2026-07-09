@@ -7,10 +7,10 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -19,6 +19,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
@@ -27,7 +28,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import app.podara.component.EpisodeActionIconButton
 import app.podara.component.FavoriteEpisodeButton
+import app.podara.component.PodaraEmptyState
 import app.podara.data.AppDatabase
 import app.podara.data.PodcastDownload
 import app.podara.data.model.PodcastFavorite
@@ -221,34 +224,18 @@ fun DownloadsScreen(
 
         if (showEmpty) {
             // ── Empty state ──
-            Box(
-                modifier = Modifier.fillMaxWidth().weight(1f),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(
-                        Icons.Default.FileDownload,
-                        contentDescription = null,
-                        modifier = Modifier.size(64.dp),
-                        tint = colors.textMuted
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text(
-                        text = Strings["downloads_empty"],
-                        color = colors.textPrimary,
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Medium
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = Strings["downloads_empty_hint"],
-                        color = colors.textMuted,
-                        fontSize = 14.sp
-                    )
-                }
-            }
+            PodaraEmptyState(
+                icon = Icons.Default.FileDownload,
+                title = Strings["downloads_empty"],
+                subtitle = Strings["downloads_empty_hint"],
+                modifier = Modifier.fillMaxWidth().weight(1f)
+            )
         } else {
-            LazyColumn(modifier = Modifier.fillMaxSize()) {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.spacedBy(DesignTokens.FavoriteEpisodeList.CardGap),
+                contentPadding = PaddingValues(bottom = DesignTokens.FavoriteEpisodeList.ListPaddingBottom)
+            ) {
                 // ── In Progress Section ──
                 if (hasInProgress) {
                     item(key = "section_in_progress") {
@@ -316,7 +303,6 @@ fun DownloadsScreen(
                             onCancel = onCancelDownload,
                             colors = colors
                         )
-                        HorizontalDivider(color = colors.divider)
                     }
 
                     // Paused / Failed tasks from DB (not in downloadingEpisodes)
@@ -356,8 +342,7 @@ fun DownloadsScreen(
                                 onCancel = onCancelDownload,
                                 colors = colors
                             )
-                            HorizontalDivider(color = colors.divider)
-                        }
+                            }
                     }
                 }
 
@@ -414,7 +399,6 @@ fun DownloadsScreen(
                             },
                             colors = colors
                         )
-                        HorizontalDivider(color = colors.divider)
                     }
                 }
             }
@@ -489,28 +473,47 @@ private fun InProgressRow(
     colors: app.podara.theme.PodaraColors
 ) {
     val progress = if (totalBytes > 0) (currentBytes.toFloat() / totalBytes) else 0f
+    val card = DesignTokens.FavoriteEpisodeList
     val interactionSource = remember { MutableInteractionSource() }
     val isHovered by interactionSource.collectIsHoveredAsState()
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val shape = RoundedCornerShape(card.CardRadius)
     val animatedBg by animateColorAsState(
-        targetValue = if (isHovered) colors.elevated else Color.Transparent,
-        animationSpec = tween(durationMillis = 150),
+        targetValue = when {
+            isPressed -> card.PressedBackgroundColor
+            isHovered -> card.HoverBackgroundColor
+            else -> card.BackgroundColor
+        },
+        animationSpec = tween(durationMillis = DesignTokens.Animation.HoverMs),
         label = "rowBg"
+    )
+    val borderColor by animateColorAsState(
+        targetValue = if (isHovered) card.HoverBorderColor else card.BorderColor,
+        animationSpec = tween(durationMillis = DesignTokens.Animation.HoverMs),
+        label = "rowBorder"
     )
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(88.dp)
+            .height(card.CardHeight)
+            .clip(shape)
             .background(animatedBg)
-            .padding(start = 12.dp, end = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
+            .border(card.BorderWidth, borderColor, shape)
+            .padding(horizontal = card.CardPaddingHorizontal, vertical = card.CardPaddingVertical),
+        verticalAlignment = Alignment.CenterVertically
     ) {
         // Icon placeholder
         Box(
             modifier = Modifier
-                .size(DesignTokens.EpisodeRow.CoverSize)
-                .clip(RoundedCornerShape(DesignTokens.EpisodeRow.CoverRadius))
+                .size(card.CoverSize)
+                .shadow(
+                    card.CoverShadowElevation,
+                    RoundedCornerShape(card.CoverRadius),
+                    ambientColor = card.CoverShadowColor,
+                    spotColor = card.CoverShadowColor
+                )
+                .clip(RoundedCornerShape(card.CoverRadius))
                 .background(colors.elevated),
             contentAlignment = Alignment.Center
         ) {
@@ -522,25 +525,30 @@ private fun InProgressRow(
             )
         }
 
+        Spacer(modifier = Modifier.width(card.CoverContentGap))
+
         // Info + Progress
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = episodeTitle.ifEmpty { episodeId },
-                color = colors.textPrimary,
-                fontSize = DesignTokens.EpisodeRow.TitleSize,
-                fontWeight = FontWeight.Medium,
+                color = card.TitleColor,
+                fontSize = card.TitleSize,
+                lineHeight = card.TitleLineHeight,
+                fontWeight = card.TitleWeight,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
-            Spacer(modifier = Modifier.height(2.dp))
+            Spacer(modifier = Modifier.height(card.PodcastNameMarginTop))
             Text(
                 text = podcastTitle,
-                color = colors.accent,
-                fontSize = DesignTokens.EpisodeRow.AuthorSize,
+                color = card.PodcastNameColor,
+                fontSize = card.PodcastNameSize,
+                lineHeight = card.PodcastNameLineHeight,
+                fontWeight = card.PodcastNameWeight,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
-            Spacer(modifier = Modifier.height(4.dp))
+            Spacer(modifier = Modifier.height(card.MetadataMarginTop))
             // Progress bar
             LinearProgressIndicator(
                 progress = { progress.coerceIn(0f, 1f) },
@@ -566,8 +574,18 @@ private fun InProgressRow(
         }
 
         // Action buttons
-        Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-            FavoriteEpisodeButton(isFavorite = isFavorite, enabled = episodeTitle.isNotBlank() || podcastTitle.isNotBlank()) {
+        Row(horizontalArrangement = Arrangement.spacedBy(card.ActionsGap)) {
+            FavoriteEpisodeButton(
+                isFavorite = isFavorite,
+                enabled = episodeTitle.isNotBlank() || podcastTitle.isNotBlank(),
+                size = card.ActionButtonSize,
+                radius = card.ActionButtonRadius,
+                iconSize = card.FavoriteIconSize,
+                hoverBackgroundColor = card.ActionButtonHoverBackgroundColor,
+                defaultIconColor = card.FavoriteInactiveColor,
+                hoverIconColor = card.ActionIconHoverColor,
+                selectedIconColor = card.FavoriteActiveColor
+            ) {
                 onToggleFavorite()
             }
             // Pause / Resume toggle (resume only if paused state from DB — already handled elsewhere)
@@ -575,16 +593,14 @@ private fun InProgressRow(
                 ActionIconButton(
                     icon = Icons.Default.Pause,
                     description = Strings["downloads_pause"],
-                    onClick = { onPause(episodeId) },
-                    colors = colors
+                    onClick = { onPause(episodeId) }
                 )
             }
             // Cancel
             ActionIconButton(
                 icon = Icons.Default.Close,
                 description = Strings["downloads_cancel"],
-                onClick = { onCancel(episodeId) },
-                colors = colors
+                onClick = { onCancel(episodeId) }
             )
         }
     }
@@ -602,27 +618,46 @@ private fun PausedTaskRow(
 ) {
     val isPaused = task.state == "PAUSED"
     val isFailed = task.state == "FAILED"
+    val card = DesignTokens.FavoriteEpisodeList
     val interactionSource = remember { MutableInteractionSource() }
     val isHovered by interactionSource.collectIsHoveredAsState()
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val shape = RoundedCornerShape(card.CardRadius)
     val animatedBg by animateColorAsState(
-        targetValue = if (isHovered) colors.elevated else Color.Transparent,
-        animationSpec = tween(durationMillis = 150),
+        targetValue = when {
+            isPressed -> card.PressedBackgroundColor
+            isHovered -> card.HoverBackgroundColor
+            else -> card.BackgroundColor
+        },
+        animationSpec = tween(durationMillis = DesignTokens.Animation.HoverMs),
         label = "rowBg"
+    )
+    val borderColor by animateColorAsState(
+        targetValue = if (isHovered) card.HoverBorderColor else card.BorderColor,
+        animationSpec = tween(durationMillis = DesignTokens.Animation.HoverMs),
+        label = "rowBorder"
     )
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(80.dp)
+            .height(card.CardHeight)
+            .clip(shape)
             .background(animatedBg)
-            .padding(start = 12.dp, end = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
+            .border(card.BorderWidth, borderColor, shape)
+            .padding(horizontal = card.CardPaddingHorizontal, vertical = card.CardPaddingVertical),
+        verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
             modifier = Modifier
-                .size(DesignTokens.EpisodeRow.CoverSize)
-                .clip(RoundedCornerShape(DesignTokens.EpisodeRow.CoverRadius))
+                .size(card.CoverSize)
+                .shadow(
+                    card.CoverShadowElevation,
+                    RoundedCornerShape(card.CoverRadius),
+                    ambientColor = card.CoverShadowColor,
+                    spotColor = card.CoverShadowColor
+                )
+                .clip(RoundedCornerShape(card.CoverRadius))
                 .background(if (isFailed) colors.danger.copy(alpha = 0.15f) else colors.elevated),
             contentAlignment = Alignment.Center
         ) {
@@ -634,56 +669,69 @@ private fun PausedTaskRow(
             )
         }
 
+        Spacer(modifier = Modifier.width(card.CoverContentGap))
+
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = task.episodeTitle.ifEmpty { task.episodeId },
-                color = colors.textPrimary,
-                fontSize = DesignTokens.EpisodeRow.TitleSize,
-                fontWeight = FontWeight.Medium,
+                color = card.TitleColor,
+                fontSize = card.TitleSize,
+                lineHeight = card.TitleLineHeight,
+                fontWeight = card.TitleWeight,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
-            Spacer(modifier = Modifier.height(2.dp))
+            Spacer(modifier = Modifier.height(card.PodcastNameMarginTop))
             Text(
                 text = task.podcastTitle,
-                color = colors.accent,
-                fontSize = DesignTokens.EpisodeRow.AuthorSize,
+                color = card.PodcastNameColor,
+                fontSize = card.PodcastNameSize,
+                lineHeight = card.PodcastNameLineHeight,
+                fontWeight = card.PodcastNameWeight,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
-            Spacer(modifier = Modifier.height(2.dp))
+            Spacer(modifier = Modifier.height(card.MetadataMarginTop))
             Text(
                 text = if (isPaused) Strings["downloads_status_paused"]
                        else Strings["downloads_status_failed"],
-                color = if (isFailed) colors.danger else colors.textMuted,
-                fontSize = 11.sp
+                color = if (isFailed) colors.danger else card.MetadataColor,
+                fontSize = card.MetadataSize
             )
             if (task.downloadedBytes > 0) {
                 Text(
                     text = "${formatFileSize(task.downloadedBytes)} / ${formatFileSize(task.totalBytes)}",
-                    color = colors.textMuted,
-                    fontSize = 11.sp
+                    color = card.MetadataColor,
+                    fontSize = card.MetadataSize
                 )
             }
         }
 
-        Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-            FavoriteEpisodeButton(isFavorite = isFavorite) {
+        // Action buttons
+        Row(horizontalArrangement = Arrangement.spacedBy(card.ActionsGap)) {
+            FavoriteEpisodeButton(
+                isFavorite = isFavorite,
+                size = card.ActionButtonSize,
+                radius = card.ActionButtonRadius,
+                iconSize = card.FavoriteIconSize,
+                hoverBackgroundColor = card.ActionButtonHoverBackgroundColor,
+                defaultIconColor = card.FavoriteInactiveColor,
+                hoverIconColor = card.ActionIconHoverColor,
+                selectedIconColor = card.FavoriteActiveColor
+            ) {
                 onToggleFavorite()
             }
             if (isPaused || isFailed) {
                 ActionIconButton(
                     icon = Icons.Default.PlayArrow,
                     description = Strings["downloads_resume"],
-                    onClick = { onResume(task.episodeId) },
-                    colors = colors
+                    onClick = { onResume(task.episodeId) }
                 )
             }
             ActionIconButton(
                 icon = Icons.Default.Close,
                 description = Strings["downloads_cancel"],
-                onClick = { onCancel(task.episodeId) },
-                colors = colors
+                onClick = { onCancel(task.episodeId) }
             )
         }
     }
@@ -702,6 +750,7 @@ private fun PodcastDownloadGroup(
     colors: app.podara.theme.PodaraColors
 ) {
     Column(modifier = Modifier.padding(vertical = 6.dp)) {
+        val card = DesignTokens.FavoriteEpisodeList
         // Group header
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
@@ -759,6 +808,9 @@ private fun PodcastDownloadGroup(
 
         // Items
         group.items.forEachIndexed { index, download ->
+            if (index > 0) {
+                Spacer(modifier = Modifier.height(card.CardGap))
+            }
             CompletedDownloadRow(
                 download = download,
                 playerState = playerState,
@@ -785,22 +837,37 @@ private fun CompletedDownloadRow(
     isLast: Boolean,
     colors: app.podara.theme.PodaraColors
 ) {
+    val card = DesignTokens.FavoriteEpisodeList
     val interactionSource = remember { MutableInteractionSource() }
     val isHovered by interactionSource.collectIsHoveredAsState()
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val shape = RoundedCornerShape(card.CardRadius)
     val animatedBg by animateColorAsState(
-        targetValue = if (isHovered) colors.elevated else Color.Transparent,
-        animationSpec = tween(durationMillis = 150),
+        targetValue = when {
+            isPressed -> card.PressedBackgroundColor
+            isHovered -> card.HoverBackgroundColor
+            else -> card.BackgroundColor
+        },
+        animationSpec = tween(durationMillis = DesignTokens.Animation.HoverMs),
         label = "rowBg"
+    )
+    val borderColor by animateColorAsState(
+        targetValue = if (isHovered) card.HoverBorderColor else card.BorderColor,
+        animationSpec = tween(durationMillis = DesignTokens.Animation.HoverMs),
+        label = "rowBorder"
     )
     val file = remember(download) { File(download.filePath) }
     val fileExists = remember(download) { file.exists() }
     val fileSize = remember(download) { if (file.exists()) file.length() else 0L }
+    val isPlaying = playerState?.currentEpisodeId == download.episodeId || playerState?.currentUrl == download.filePath
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(76.dp)
-            .background(animatedBg)
+            .height(card.CardHeight)
+            .clip(shape)
+            .background(if (isPlaying) card.PlayingBackgroundColor else animatedBg)
+            .border(card.BorderWidth, if (isPlaying) card.PlayingBorderColor else borderColor, shape)
             .then(
                 if (playerState != null && fileExists) {
                     Modifier
@@ -821,15 +888,20 @@ private fun CompletedDownloadRow(
                         }
                 } else Modifier
             )
-            .padding(start = 12.dp, end = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
+            .padding(horizontal = card.CardPaddingHorizontal, vertical = card.CardPaddingVertical),
+        verticalAlignment = Alignment.CenterVertically
     ) {
         // Icon
         Box(
             modifier = Modifier
-                .size(DesignTokens.EpisodeRow.CoverSize)
-                .clip(RoundedCornerShape(DesignTokens.EpisodeRow.CoverRadius))
+                .size(card.CoverSize)
+                .shadow(
+                    card.CoverShadowElevation,
+                    RoundedCornerShape(card.CoverRadius),
+                    ambientColor = card.CoverShadowColor,
+                    spotColor = card.CoverShadowColor
+                )
+                .clip(RoundedCornerShape(card.CoverRadius))
                 .background(if (fileExists) colors.accent.copy(alpha = 0.1f) else colors.danger.copy(alpha = 0.1f)),
             contentAlignment = Alignment.Center
         ) {
@@ -841,42 +913,50 @@ private fun CompletedDownloadRow(
             )
         }
 
+        Spacer(modifier = Modifier.width(card.CoverContentGap))
+
         // Info column
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = download.episodeTitle.ifEmpty { download.episodeId },
-                color = colors.textPrimary,
-                fontSize = DesignTokens.EpisodeRow.TitleSize,
-                fontWeight = FontWeight.Medium,
+                color = card.TitleColor,
+                fontSize = card.TitleSize,
+                lineHeight = card.TitleLineHeight,
+                fontWeight = card.TitleWeight,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
-            Spacer(modifier = Modifier.height(2.dp))
+            Spacer(modifier = Modifier.height(card.PodcastNameMarginTop))
             if (!fileExists) {
                 Text(
                     text = Strings["downloads_file_missing"],
                     color = colors.danger,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Medium
+                    fontSize = card.PodcastNameSize,
+                    lineHeight = card.PodcastNameLineHeight,
+                    fontWeight = card.PodcastNameWeight
                 )
             } else {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(card.ActionsGap)) {
                     Text(
                         text = formatFileSize(fileSize),
-                        color = colors.textMuted,
-                        fontSize = 11.sp
+                        color = card.PodcastNameColor,
+                        fontSize = card.PodcastNameSize,
+                        lineHeight = card.PodcastNameLineHeight,
+                        fontWeight = card.PodcastNameWeight
                     )
                     Text(
                         text = formatTimestamp(download.timestamp),
-                        color = colors.textMuted,
-                        fontSize = 11.sp
+                        color = card.PodcastNameColor,
+                        fontSize = card.PodcastNameSize,
+                        lineHeight = card.PodcastNameLineHeight,
+                        fontWeight = card.PodcastNameWeight
                     )
                 }
-                Spacer(modifier = Modifier.height(1.dp))
+                Spacer(modifier = Modifier.height(card.MetadataMarginTop))
                 Text(
                     text = download.filePath,
-                    color = colors.textDisabled,
-                    fontSize = 10.sp,
+                    color = card.MetadataColor,
+                    fontSize = card.MetadataSize,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -884,38 +964,34 @@ private fun CompletedDownloadRow(
         }
 
         // Actions
-        Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-            FavoriteEpisodeButton(isFavorite = isFavorite) {
+        Row(horizontalArrangement = Arrangement.spacedBy(card.ActionsGap)) {
+            FavoriteEpisodeButton(
+                isFavorite = isFavorite,
+                size = card.ActionButtonSize,
+                radius = card.ActionButtonRadius,
+                iconSize = card.FavoriteIconSize,
+                hoverBackgroundColor = card.ActionButtonHoverBackgroundColor,
+                defaultIconColor = card.FavoriteInactiveColor,
+                hoverIconColor = card.ActionIconHoverColor,
+                selectedIconColor = card.FavoriteActiveColor
+            ) {
                 onToggleFavorite()
             }
             // Open folder
-            val ofInteractionSource = remember { MutableInteractionSource() }
-            val isOfHovered by ofInteractionSource.collectIsHoveredAsState()
-            val ofAnimatedBg by animateColorAsState(
-                targetValue = if (isOfHovered) colors.elevated else Color.Transparent,
-                animationSpec = tween(durationMillis = 150),
-                label = "openFolderBg"
-            )
             if (fileExists) {
-                Box(
-                    modifier = Modifier
-                        .size(36.dp)
-                        .clip(CircleShape)
-                        .background(ofAnimatedBg)
-                        .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
-                        .clickable(interactionSource = ofInteractionSource, indication = null) {
-                            try {
-                                Desktop.getDesktop().open(file.parentFile)
-                            } catch (_: Exception) {}
-                        },
-                    contentAlignment = Alignment.Center
+                EpisodeActionIconButton(
+                    icon = Icons.Default.FolderOpen,
+                    contentDescription = Strings["downloads_open_folder"],
+                    size = card.ActionButtonSize,
+                    radius = card.ActionButtonRadius,
+                    iconSize = card.ActionIconSize,
+                    hoverBackgroundColor = card.ActionButtonHoverBackgroundColor,
+                    defaultIconColor = card.ActionIconColor,
+                    hoverIconColor = card.ActionIconHoverColor
                 ) {
-                    Icon(
-                        Icons.Default.FolderOpen,
-                        contentDescription = Strings["downloads_open_folder"],
-                        tint = colors.textSecondary,
-                        modifier = Modifier.size(20.dp)
-                    )
+                    try {
+                        Desktop.getDesktop().open(file.parentFile)
+                    } catch (_: Exception) {}
                 }
             }
 
@@ -923,8 +999,7 @@ private fun CompletedDownloadRow(
             ActionIconButton(
                 icon = Icons.Default.Delete,
                 description = Strings["downloads_delete"],
-                onClick = onDelete,
-                colors = colors
+                onClick = onDelete
             )
         }
     }
@@ -935,32 +1010,20 @@ private fun CompletedDownloadRow(
 private fun ActionIconButton(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     description: String,
-    onClick: () -> Unit,
-    colors: app.podara.theme.PodaraColors
+    onClick: () -> Unit
 ) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val isHovered by interactionSource.collectIsHoveredAsState()
-    val animatedBg by animateColorAsState(
-        targetValue = if (isHovered) colors.elevated else Color.Transparent,
-        animationSpec = tween(durationMillis = 150),
-        label = "iconBg"
+    val card = DesignTokens.FavoriteEpisodeList
+    EpisodeActionIconButton(
+        icon = icon,
+        contentDescription = description,
+        size = card.ActionButtonSize,
+        radius = card.ActionButtonRadius,
+        iconSize = card.ActionIconSize,
+        hoverBackgroundColor = card.ActionButtonHoverBackgroundColor,
+        defaultIconColor = card.ActionIconColor,
+        hoverIconColor = card.ActionIconHoverColor,
+        onClick = onClick
     )
-    Box(
-        modifier = Modifier
-            .size(36.dp)
-            .clip(CircleShape)
-            .background(animatedBg)
-            .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
-            .clickable(interactionSource = interactionSource, indication = null) { onClick() },
-        contentAlignment = Alignment.Center
-    ) {
-        Icon(
-            icon,
-            contentDescription = description,
-            tint = colors.textSecondary,
-            modifier = Modifier.size(20.dp)
-        )
-    }
 }
 
 // ── Helpers ──

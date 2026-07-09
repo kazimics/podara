@@ -34,6 +34,7 @@ import androidx.compose.ui.unit.sp
 import app.podara.data.AppDatabase
 import app.podara.component.AddToQueueButton
 import app.podara.component.FavoriteEpisodeButton
+import app.podara.component.PodaraEmptyState
 import app.podara.data.model.Podcast
 import app.podara.data.model.PodcastEpisode
 import app.podara.data.model.PodcastHistory
@@ -108,8 +109,8 @@ fun HistoryScreen(
 
     // Build context queue items for playWithContext
     val contextItems = remember(displayItems) {
-        displayItems.map { (_, episode) ->
-            QueueItem(url = episode.audioUrl, title = episode.title, subtitle = episode.podcastTitle, artworkUrl = episode.imageUrl, episodeId = episode.id)
+        displayItems.map { (history, episode) ->
+            QueueItem(url = episode.audioUrl, title = episode.title, subtitle = episode.podcastTitle, artworkUrl = episode.imageUrl, episodeId = episode.id, historyId = history.id)
         }
     }
 
@@ -212,24 +213,48 @@ fun HistoryScreen(
                 modifier = Modifier.fillMaxWidth().weight(1f),
                 contentAlignment = Alignment.Center
             ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(
-                        Icons.Default.History,
-                        contentDescription = null,
-                        modifier = Modifier.size(64.dp),
-                        tint = colors.textMuted
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text(
-                        text = Strings["history_empty"],
-                        style = MaterialTheme.typography.headlineSmall,
-                        color = colors.textPrimary
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = Strings["history_empty_hint"],
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = colors.textSecondary
+                if (searchQuery.isNotBlank()) {
+                    val glass = DesignTokens.Glass
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(
+                            Icons.Default.Search,
+                            contentDescription = null,
+                            modifier = Modifier.size(DesignTokens.EmptyState.IconSize),
+                            tint = colors.textMuted
+                        )
+                        Spacer(modifier = Modifier.height(DesignTokens.EmptyState.Gap))
+                        Box(
+                            modifier = Modifier
+                                .width(DesignTokens.EmptyState.PanelWidth)
+                                .shadow(glass.CompactShadowElevation, RoundedCornerShape(DesignTokens.EmptyState.PanelRadius), ambientColor = glass.CompactShadowColor, spotColor = glass.CompactShadowColor)
+                                .clip(RoundedCornerShape(DesignTokens.EmptyState.PanelRadius))
+                                .background(glass.CompactGradient)
+                                .border(glass.CompactBorderWidth, glass.CompactBorderColor, RoundedCornerShape(DesignTokens.EmptyState.PanelRadius))
+                                .padding(DesignTokens.EmptyState.PanelPadding),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(
+                                    text = Strings["history_search_empty"],
+                                    color = colors.textPrimary,
+                                    fontSize = DesignTokens.EmptyState.TitleSize,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                                Spacer(modifier = Modifier.height(DesignTokens.Spacing.xs))
+                                Text(
+                                    text = Strings["history_search_empty_hint"],
+                                    color = colors.textSecondary,
+                                    fontSize = DesignTokens.EmptyState.SubtitleSize
+                                )
+                            }
+                        }
+                    }
+                } else {
+                    PodaraEmptyState(
+                        icon = Icons.Default.History,
+                        title = Strings["history_empty"],
+                        subtitle = Strings["history_empty_hint"],
+                        modifier = Modifier.fillMaxSize()
                     )
                 }
             }
@@ -404,7 +429,8 @@ private fun HistoryItem(
     val isPressed by interactionSource.collectIsPressedAsState()
     val favoriteList = DesignTokens.FavoriteEpisodeList
     val shape = RoundedCornerShape(favoriteList.CardRadius)
-    val isPlaying = playerState.currentEpisodeId == episode.id || playerState.currentUrl == episode.audioUrl
+    val currentQueueItem = playerState.queue.getOrNull(playerState.queueIndex)
+    val isPlaying = currentQueueItem?.historyId == history.id
     val itemBg by animateColorAsState(
         targetValue = when {
             isPlaying -> favoriteList.PlayingBackgroundColor
@@ -443,7 +469,8 @@ private fun HistoryItem(
                     artworkUrl = episode.imageUrl,
                     podcastArtworkUrl = podcast?.imageUrl,
                     durationMs = episode.duration * 1000L,
-                    episodeId = episode.id
+                    episodeId = episode.id,
+                    targetHistoryId = history.id
                 )
             }
             .padding(horizontal = favoriteList.CardPaddingHorizontal, vertical = favoriteList.CardPaddingVertical),

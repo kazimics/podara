@@ -58,6 +58,7 @@ import app.podara.api.rss.FetchPodcastClientResult
 import app.podara.component.AddToQueueButton
 import app.podara.component.EpisodeActionIconButton
 import app.podara.component.FavoriteEpisodeButton
+import app.podara.component.PodaraEmptyState
 import app.podara.data.AppDatabase
 import app.podara.data.model.Podcast
 import app.podara.data.model.PodcastEpisode
@@ -1099,52 +1100,16 @@ private fun HomeScreen(
 
     // ── Empty state ──
     if (podcasts.isEmpty()) {
-        val empty = DesignTokens.EmptyState
-        val glass = DesignTokens.Glass
-        val btn = DesignTokens.Button
-        Box(modifier = Modifier.fillMaxSize().background(colors.background), contentAlignment = Alignment.Center) {
-            Box(
-                modifier = Modifier
-                    .width(empty.PanelWidth)
-                    .shadow(glass.CompactShadowElevation, RoundedCornerShape(empty.PanelRadius), ambientColor = glass.CompactShadowColor, spotColor = glass.CompactShadowColor)
-                    .clip(RoundedCornerShape(empty.PanelRadius))
-                    .background(glass.CompactGradient)
-                    .border(glass.CompactBorderWidth, glass.CompactBorderColor, RoundedCornerShape(empty.PanelRadius))
-                    .padding(empty.PanelPadding),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(Icons.Default.RssFeed, null, Modifier.size(empty.IconSize), tint = colors.accent)
-                    Spacer(modifier = Modifier.height(empty.Gap))
-                    Text(Strings["home_empty"], fontSize = empty.TitleSize, fontWeight = FontWeight.SemiBold, color = colors.textPrimary)
-                    Spacer(modifier = Modifier.height(DesignTokens.Spacing.xs))
-                    Text(Strings["home_empty_hint"], fontSize = empty.SubtitleSize, color = colors.textSecondary)
-                    Spacer(modifier = Modifier.height(DesignTokens.Spacing.md))
-                    Box(
-                        modifier = Modifier
-                            .height(btn.Height)
-                            .shadow(btn.ShadowElevation, RoundedCornerShape(btn.Radius), ambientColor = btn.ShadowColor, spotColor = btn.ShadowColor)
-                            .clip(RoundedCornerShape(btn.Radius))
-                            .border(DesignTokens.Border.Width, btn.BorderColor, RoundedCornerShape(btn.Radius))
-                            .background(btn.Gradient)
-                            .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
-                            .clickable { onAddPodcast() },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Box(modifier = Modifier.matchParentSize().background(btn.InnerHighlight))
-                        Box(modifier = Modifier.matchParentSize().background(btn.SpecularSheen))
-                        Row(
-                            modifier = Modifier.padding(horizontal = btn.PaddingHorizontal),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(Icons.Default.Add, null, Modifier.size(btn.IconSize), tint = btn.IconColor)
-                            Spacer(modifier = Modifier.width(DesignTokens.Spacing.sm))
-                            Text(Strings["home_add_podcast"], color = btn.TextColor, fontSize = btn.TextSize, fontWeight = FontWeight.Medium)
-                        }
-                    }
-                }
-            }
-        }
+        PodaraEmptyState(
+            icon = Icons.Default.RssFeed,
+            title = Strings["home_empty"],
+            subtitle = Strings["home_empty_hint"],
+            modifier = Modifier.fillMaxSize().background(colors.background),
+            iconTint = colors.accent,
+            actionText = Strings["home_add_podcast"],
+            actionIcon = Icons.Default.Add,
+            onActionClick = onAddPodcast
+        )
         return
     }
 
