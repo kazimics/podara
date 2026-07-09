@@ -63,6 +63,7 @@ import app.podara.player.FullPlayer
 import app.podara.player.MediaPlayerState
 import app.podara.player.MiniPlayer
 import app.podara.player.QueueDrawer
+import app.podara.player.QueueItem
 import app.podara.screen.DiscoverScreen
 import app.podara.screen.DownloadsScreen
 import app.podara.screen.FavoritesScreen
@@ -743,6 +744,7 @@ fun WindowScope.App(windowState: androidx.compose.ui.window.WindowState, awtWind
                             downloadVersion = downloadVersion,
                             completedDownloads = completedDownloads,
                             activeDownloadMeta = activeDownloadMeta,
+                            playerState = playerState,
                             favoriteVersion = favoritesVersion,
                             onPauseDownload = pauseDownload,
                             onResumeDownload = resumeDownload,
@@ -1501,6 +1503,13 @@ private fun PodcastDetailScreen(
     var favoriteIds by remember { mutableStateOf(setOf<String>()) }
     val scope = rememberCoroutineScope()
 
+    // Build context queue items for playWithContext
+    val episodeContextItems: List<QueueItem> = remember(episodes) {
+        episodes.map { ep ->
+            QueueItem(url = ep.audioUrl, title = ep.title, subtitle = ep.podcastTitle, artworkUrl = ep.imageUrl, episodeId = ep.id)
+        }
+    }
+
     // ── Active download progress from DB (for robustness across page navigation) ──
     var activeTaskProgress by remember { mutableStateOf(mapOf<String, Pair<Long, Long>>()) }
     LaunchedEffect(downloadVersion) {
@@ -1834,7 +1843,20 @@ private fun PodcastDetailScreen(
                                             episode.audioUrl
                                         }
                                         val epWithUrl = episode.copy(audioUrl = url)
-                                        playAndRecordHistory(database, playerState, epWithUrl, podcast.imageUrl)
+                                        playerState.playWithContext(
+                                            context = episodeContextItems.map { item ->
+                                                if (item.url == epWithUrl.audioUrl) item.copy(url = url) else item
+                                            },
+                                            targetUrl = url,
+                                            title = epWithUrl.title,
+                                            subtitle = epWithUrl.podcastTitle,
+                                            artworkUrl = epWithUrl.imageUrl,
+                                            podcastArtworkUrl = podcast.imageUrl,
+                                            durationMs = epWithUrl.duration * 1000L,
+                                            episodeId = epWithUrl.id
+                                        )
+                                        database.episodes.insert(epWithUrl)
+                                        database.history.insert(epWithUrl.origin, epWithUrl.id)
                                     }
                                 }
                                 .padding(start = 12.dp, end = 8.dp),

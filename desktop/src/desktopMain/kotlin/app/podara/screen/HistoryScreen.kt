@@ -36,6 +36,7 @@ import app.podara.data.model.Podcast
 import app.podara.data.model.PodcastEpisode
 import app.podara.data.model.PodcastHistory
 import app.podara.player.MediaPlayerState
+import app.podara.player.QueueItem
 import app.podara.util.Strings
 import app.podara.theme.DesignTokens
 import app.podara.theme.PodaraTheme
@@ -101,6 +102,13 @@ fun HistoryScreen(
     // Group by date
     val sections = remember(displayItems) {
         groupByDate(displayItems)
+    }
+
+    // Build context queue items for playWithContext
+    val contextItems = remember(displayItems) {
+        displayItems.map { (_, episode) ->
+            QueueItem(url = episode.audioUrl, title = episode.title, subtitle = episode.podcastTitle, artworkUrl = episode.imageUrl, episodeId = episode.id)
+        }
     }
 
     Column(
@@ -294,6 +302,7 @@ fun HistoryScreen(
                             history = history,
                             episode = episode,
                             podcast = podcastMap[episode.origin],
+                            contextItems = contextItems,
                             colors = colors,
                             scope = scope,
                             database = database,
@@ -346,6 +355,7 @@ private fun HistoryItem(
     history: PodcastHistory,
     episode: PodcastEpisode,
     podcast: Podcast?,
+    contextItems: List<QueueItem>,
     colors: app.podara.theme.PodaraColors,
     scope: kotlinx.coroutines.CoroutineScope,
     database: AppDatabase,
@@ -373,8 +383,9 @@ private fun HistoryItem(
                 indication = null
             ) {
                 scope.launch {
-                    playerState.play(
-                        url = episode.audioUrl,
+                    playerState.playWithContext(
+                        context = contextItems,
+                        targetUrl = episode.audioUrl,
                         title = episode.title,
                         subtitle = episode.podcastTitle,
                         artworkUrl = episode.imageUrl,

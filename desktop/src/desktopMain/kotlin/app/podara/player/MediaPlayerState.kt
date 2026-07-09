@@ -129,6 +129,44 @@ class MediaPlayerState(
         lastPlayStartMs = System.currentTimeMillis()
     }
 
+    /**
+     * Replace the entire queue with a context list and play the target item.
+     * Used when playing from a context-aware page (History, Favorites, PodcastDetail, Downloads)
+     * so the user sees the full list as their playback queue and can playNext through it.
+     * Items added via addToQueue() are appended after the context items.
+     */
+    fun playWithContext(
+        context: List<QueueItem>,
+        targetUrl: String,
+        title: String? = null,
+        subtitle: String? = null,
+        artworkUrl: String? = null,
+        podcastArtworkUrl: String? = null,
+        durationMs: Long = 0L,
+        episodeId: String? = null
+    ) {
+        Logger.i(TAG, "playWithContext() targetUrl=$targetUrl, contextSize=${context.size}")
+        currentUrl = targetUrl
+        currentTitle = title
+        currentSubtitle = subtitle
+        currentArtworkUrl = artworkUrl ?: podcastArtworkUrl
+        currentEpisodeId = episodeId
+        isLoading = true
+        error = null
+        isUserPaused = false
+
+        queue.clear()
+        queue.addAll(context)
+        queueIndex = queue.indexOfFirst { it.url == targetUrl }
+        if (queueIndex < 0) {
+            queue.add(QueueItem(targetUrl, title ?: "Unknown", subtitle = subtitle, artworkUrl = currentArtworkUrl, podcastArtworkUrl = podcastArtworkUrl, episodeId = episodeId))
+            queueIndex = queue.size - 1
+        }
+
+        player.play(targetUrl, durationMs = durationMs)
+        lastPlayStartMs = System.currentTimeMillis()
+    }
+
     fun playFromQueue(index: Int) {
         if (index < 0 || index >= queue.size) {
             Logger.w(TAG, "playFromQueue: invalid index=$index, queueSize=${queue.size}")

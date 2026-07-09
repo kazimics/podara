@@ -32,6 +32,8 @@ import app.podara.data.AppDatabase
 import app.podara.data.PodcastDownload
 import app.podara.data.model.PodcastFavorite
 import app.podara.manager.DownloadManager
+import app.podara.player.MediaPlayerState
+import app.podara.player.QueueItem
 import app.podara.util.Strings
 import app.podara.theme.DesignTokens
 import app.podara.theme.PodaraTheme
@@ -58,6 +60,7 @@ fun DownloadsScreen(
     downloadVersion: Int,
     completedDownloads: Set<String>,
     activeDownloadMeta: Map<String, Pair<String, String>>,
+    playerState: MediaPlayerState? = null,
     favoriteVersion: Int,
     onPauseDownload: (String) -> Unit,
     onResumeDownload: (String) -> Unit,
@@ -104,6 +107,12 @@ fun DownloadsScreen(
     val hasInProgress = downloadingEpisodes.isNotEmpty() || activeTasks.isNotEmpty()
     val hasCompleted = completedList.isNotEmpty()
     val showEmpty = !hasInProgress && !hasCompleted
+
+    val downloadContextItems = remember(completedList) {
+        completedList.filter { File(it.filePath).exists() }.map { dl ->
+            QueueItem(url = dl.filePath, title = dl.episodeTitle.ifEmpty { dl.episodeId }, subtitle = dl.podcastTitle, episodeId = dl.episodeId, isDownloaded = true)
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -360,6 +369,8 @@ fun DownloadsScreen(
                     items(groupedByPodcast, key = { "group_${it.origin}" }) { group ->
                         PodcastDownloadGroup(
                             group = group,
+                            playerState = playerState,
+                            contextItems = downloadContextItems,
                             favoriteIds = favoriteIds,
                             onToggleFavorite = { download ->
                                 scope.launch {
@@ -673,6 +684,8 @@ private fun PausedTaskRow(
 @Composable
 private fun PodcastDownloadGroup(
     group: PodcastGroup,
+    playerState: MediaPlayerState?,
+    contextItems: List<QueueItem>,
     favoriteIds: Set<String>,
     onToggleFavorite: (PodcastDownload) -> Unit,
     onDeleteSingle: (String) -> Unit,
@@ -739,6 +752,8 @@ private fun PodcastDownloadGroup(
         group.items.forEachIndexed { index, download ->
             CompletedDownloadRow(
                 download = download,
+                playerState = playerState,
+                contextItems = contextItems,
                 isFavorite = download.episodeId in favoriteIds,
                 onToggleFavorite = { onToggleFavorite(download) },
                 onDelete = { onDeleteSingle(download.episodeId) },
@@ -753,6 +768,8 @@ private fun PodcastDownloadGroup(
 @Composable
 private fun CompletedDownloadRow(
     download: PodcastDownload,
+    playerState: MediaPlayerState?,
+    contextItems: List<QueueItem>,
     isFavorite: Boolean,
     onToggleFavorite: () -> Unit,
     onDelete: () -> Unit,
@@ -775,6 +792,24 @@ private fun CompletedDownloadRow(
             .fillMaxWidth()
             .height(76.dp)
             .background(animatedBg)
+            .then(
+                if (playerState != null && fileExists) {
+                    Modifier
+                        .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
+                        .clickable(
+                            interactionSource = interactionSource,
+                            indication = null
+                        ) {
+                            playerState.playWithContext(
+                                context = contextItems,
+                                targetUrl = download.filePath,
+                                title = download.episodeTitle.ifEmpty { download.episodeId },
+                                subtitle = download.podcastTitle,
+                                episodeId = download.episodeId
+                            )
+                        }
+                } else Modifier
+            )
             .padding(start = 12.dp, end = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp)

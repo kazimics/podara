@@ -40,6 +40,7 @@ import app.podara.data.model.Podcast
 import app.podara.data.model.PodcastEpisode
 import app.podara.data.model.PodcastFavorite
 import app.podara.player.MediaPlayerState
+import app.podara.player.QueueItem
 import app.podara.theme.DesignTokens
 import app.podara.theme.PodaraTheme
 import app.podara.util.Strings
@@ -99,6 +100,12 @@ fun FavoritesScreen(
     }
 
     val sections = remember(displayItems) { groupFavoritesByDate(displayItems) }
+
+    val contextItems = remember(displayItems) {
+        displayItems.map { (_, episode) ->
+            QueueItem(url = episode.audioUrl, title = episode.title, subtitle = episode.podcastTitle, artworkUrl = episode.imageUrl, episodeId = episode.id)
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -277,6 +284,7 @@ fun FavoritesScreen(
                             favorite = favorite,
                             episode = episode,
                             podcast = podcastMap[episode.origin],
+                            contextItems = contextItems,
                             database = database,
                             playerState = playerState,
                             onFavoritesChanged = {
@@ -324,6 +332,7 @@ private fun FavoriteItem(
     favorite: PodcastFavorite,
     episode: PodcastEpisode,
     podcast: Podcast?,
+    contextItems: List<QueueItem>,
     database: AppDatabase,
     playerState: MediaPlayerState,
     onFavoritesChanged: (List<Pair<PodcastFavorite, PodcastEpisode?>>) -> Unit,
@@ -349,8 +358,9 @@ private fun FavoriteItem(
                 interactionSource = interactionSource,
                 indication = null
             ) {
-                playerState.play(
-                    url = episode.audioUrl,
+                playerState.playWithContext(
+                    context = contextItems,
+                    targetUrl = episode.audioUrl,
                     title = episode.title,
                     subtitle = episode.podcastTitle,
                     artworkUrl = episode.imageUrl,
