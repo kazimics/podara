@@ -11,7 +11,10 @@ import app.podara.util.Strings
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.graphics.decodeToImageBitmap
 
@@ -29,16 +32,17 @@ fun main() {
                 size = DpSize(1200.dp, 800.dp),
                 position = WindowPosition(Alignment.Center)
             )
+            var closeRequestCount by remember { mutableIntStateOf(0) }
 
             Window(
-                onCloseRequest = ::exitApplication,
+                onCloseRequest = { closeRequestCount++ },
                 state = windowState,
                 title = Strings["app_name"],
                 undecorated = true,
                 transparent = false,
                 icon = appIcon.value
             ) {
-                App(windowState, window)
+                App(windowState, window, closeRequestCount)
             }
         }
     } catch (e: Exception) {

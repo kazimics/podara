@@ -310,7 +310,11 @@ private fun WindowControlButton(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun WindowScope.App(windowState: androidx.compose.ui.window.WindowState, awtWindow: java.awt.Window) {
+fun WindowScope.App(
+    windowState: androidx.compose.ui.window.WindowState,
+    awtWindow: java.awt.Window,
+    closeRequestCount: Int = 0
+) {
     val database = remember {
         try {
             val userHome = System.getProperty("user.home")
@@ -390,6 +394,29 @@ fun WindowScope.App(windowState: androidx.compose.ui.window.WindowState, awtWind
     var completedDownloads by remember { mutableStateOf(setOf<String>()) }
     var downloadJobs by remember { mutableStateOf(mapOf<String, Job>()) }
     var activeDownloadMeta by remember { mutableStateOf(mapOf<String, Pair<String, String>>()) } // episodeId -> (podcastTitle, episodeTitle)
+
+    val handleCloseRequest = {
+        val action = Settings.getCloseAction()
+        if (Settings.isCloseActionRemembered()) {
+            when (action) {
+                "quit" -> {
+                    runBlocking { playerState.saveSession(database) }
+                    awtWindow.dispose(); System.exit(0)
+                }
+                "minimize_to_tray" -> {
+                    awtWindow.isVisible = false
+                    trayManager.updateShowHideLabel(false)
+                }
+                else -> { showCloseDialog = true }
+            }
+        } else {
+            showCloseDialog = true
+        }
+    }
+
+    LaunchedEffect(closeRequestCount) {
+        if (closeRequestCount > 0) handleCloseRequest()
+    }
 
     LaunchedEffect(Unit) {
         Logger.d(TAG, "Loading podcasts from database")
@@ -618,24 +645,7 @@ fun WindowScope.App(windowState: androidx.compose.ui.window.WindowState, awtWind
                     )
                     // Close
                     WindowControlButton(
-                        onClick = {
-                            val action = Settings.getCloseAction()
-                            if (Settings.isCloseActionRemembered()) {
-                                when (action) {
-                                    "quit" -> {
-                                        runBlocking { playerState.saveSession(database) }
-                                        awtWindow.dispose(); System.exit(0)
-                                    }
-                                    "minimize_to_tray" -> {
-                                        awtWindow.isVisible = false
-                                        trayManager.updateShowHideLabel(false)
-                                    }
-                                    else -> { showCloseDialog = true }
-                                }
-                            } else {
-                                showCloseDialog = true
-                            }
-                        },
+                        onClick = { handleCloseRequest() },
                         icon = { tint -> Icon(Icons.Default.Close, contentDescription = Strings["titlebar_close"], tint = tint, modifier = Modifier.size(14.dp)) },
                         isClose = true
                     )
