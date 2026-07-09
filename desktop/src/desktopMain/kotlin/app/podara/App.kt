@@ -31,6 +31,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.decodeToImageBitmap
@@ -124,7 +126,7 @@ private fun Sidebar(
             modifier = Modifier.fillMaxHeight().padding(top = sidebar.PaddingVertical, bottom = 0.dp)
         ) {
             Row(
-                modifier = Modifier.padding(horizontal = sidebar.PaddingHorizontal, vertical = 8.dp),
+                modifier = Modifier.padding(start = sidebar.PaddingHorizontal + 6.dp, end = sidebar.PaddingHorizontal, top = 8.dp, bottom = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
@@ -156,6 +158,28 @@ private fun Sidebar(
                 val interactionSource = remember(item.screen) { MutableInteractionSource() }
                 val isHovered by interactionSource.collectIsHoveredAsState()
                 val animatedBg by animateColorAsState(if (isActive || isHovered) SidebarActiveBg else Color.Transparent, tween(150))
+                val itemShape = RoundedCornerShape(13.dp)
+                val glassLeftGlow = Brush.radialGradient(
+                    colors = listOf(Color(0x66C7924F), Color(0x22C7924F), Color.Transparent),
+                    center = Offset(8f, 42f),
+                    radius = 58f
+                )
+                val glassTopGlow = Brush.radialGradient(
+                    colors = listOf(Color.White.copy(alpha = 0.08f), Color.Transparent),
+                    center = Offset(142f, 0f),
+                    radius = 90f
+                )
+                val glassRightGlow = Brush.radialGradient(
+                    colors = listOf(Color(0x22D3A05F), Color.Transparent),
+                    center = Offset(204f, 4f),
+                    radius = 62f
+                )
+                val glassBorder = Brush.linearGradient(
+                    colors = listOf(Color(0x60D3A05F), Color.White.copy(alpha = 0.06f), Color(0x1AD3A05F)),
+                    start = Offset(0f, 48f),
+                    end = Offset(200f, 0f)
+                )
+                val hoverShape = itemShape
                 val iconTint = if (isActive) colors.accent else colors.textSecondary
 
                 Box(
@@ -168,7 +192,19 @@ private fun Sidebar(
                             .fillMaxWidth()
                             .height(sidebar.NavItemHeight)
                             .padding(horizontal = sidebar.NavItemPadding)
-                            .background(animatedBg, RoundedCornerShape(8.dp))
+                            .let { mod ->
+                                if (isActive) {
+                                    mod.shadow(5.dp, itemShape, ambientColor = Color.Black.copy(alpha = 0.14f), spotColor = Color.Black.copy(alpha = 0.14f))
+                                        .border(0.6.dp, glassBorder, itemShape)
+                                        .clip(itemShape)
+                                        .background(Color(0xFF211F1E))
+                                        .background(glassLeftGlow)
+                                        .background(glassTopGlow)
+                                        .background(glassRightGlow)
+                                } else {
+                                    mod.background(animatedBg, hoverShape)
+                                }
+                            }
                             .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
                             .clickable(interactionSource = interactionSource, indication = null) {
                                 when (item.screen) {
@@ -180,7 +216,7 @@ private fun Sidebar(
                                     "downloads" -> onDownloads()
                                 }
                             }
-                            .padding(horizontal = 8.dp),
+                            .padding(horizontal = 14.dp),
                         contentAlignment = Alignment.CenterStart
                     ) {
                         Row(
@@ -208,15 +244,48 @@ private fun Sidebar(
             val settingsInteractionSource = remember { MutableInteractionSource() }
             val settingsIsHovered by settingsInteractionSource.collectIsHoveredAsState()
             val settingsAnimatedBg by animateColorAsState(if (settingsActive || settingsIsHovered) SidebarActiveBg else Color.Transparent, tween(150))
+            val settingsShape = RoundedCornerShape(13.dp)
+            val settingsGlassLeftGlow = Brush.radialGradient(
+                colors = listOf(Color(0x66C7924F), Color(0x22C7924F), Color.Transparent),
+                center = Offset(8f, 42f),
+                radius = 58f
+            )
+            val settingsGlassTopGlow = Brush.radialGradient(
+                colors = listOf(Color.White.copy(alpha = 0.08f), Color.Transparent),
+                center = Offset(142f, 0f),
+                radius = 90f
+            )
+            val settingsGlassRightGlow = Brush.radialGradient(
+                colors = listOf(Color(0x22D3A05F), Color.Transparent),
+                center = Offset(204f, 4f),
+                radius = 62f
+            )
+            val settingsGlassBorder = Brush.linearGradient(
+                colors = listOf(Color(0x60D3A05F), Color.White.copy(alpha = 0.06f), Color(0x1AD3A05F)),
+                start = Offset(0f, 48f),
+                end = Offset(200f, 0f)
+            )
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(sidebar.NavItemHeight)
                     .padding(horizontal = sidebar.NavItemPadding)
-                    .background(settingsAnimatedBg, RoundedCornerShape(8.dp))
+                    .let { mod ->
+                        if (settingsActive) {
+                            mod.shadow(5.dp, settingsShape, ambientColor = Color.Black.copy(alpha = 0.14f), spotColor = Color.Black.copy(alpha = 0.14f))
+                                .border(0.6.dp, settingsGlassBorder, settingsShape)
+                                .clip(settingsShape)
+                                .background(Color(0xFF211F1E))
+                                .background(settingsGlassLeftGlow)
+                                .background(settingsGlassTopGlow)
+                                .background(settingsGlassRightGlow)
+                        } else {
+                            mod.background(settingsAnimatedBg, settingsShape)
+                        }
+                    }
                     .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
                     .clickable(interactionSource = settingsInteractionSource, indication = null) { onSettings() }
-                    .padding(horizontal = 8.dp),
+                    .padding(horizontal = 14.dp),
                 contentAlignment = Alignment.CenterStart
             ) {
                 Row(
@@ -231,6 +300,8 @@ private fun Sidebar(
                     )
                 }
             }
+
+            Spacer(modifier = Modifier.height(10.dp))
         }
     }
 }

@@ -24,7 +24,11 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.geometry.Offset
@@ -416,6 +420,98 @@ private fun FeaturedCard(
                 .clip(RoundedCornerShape(card.Radius))
                 .background(DesignTokens.Card.Gradient)
         ) {
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .drawBehind {
+                        drawRect(
+                            brush = Brush.radialGradient(
+                                colors = listOf(
+                                    Color(0xE8F4DEAA),
+                                    Color(0x8CDEB66F),
+                                    Color.Transparent
+                                ),
+                                center = Offset(size.width * -0.28f, size.height * 2.92f),
+                                radius = size.width * 0.92f
+                            )
+                        )
+                    }
+            )
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .drawBehind {
+                        drawRect(
+                            brush = Brush.radialGradient(
+                                colors = listOf(
+                                    Color(0xB8F6DCA6),
+                                    Color(0x8CDEAA62),
+                                    Color(0x5CC9954C),
+                                    Color(0x2EC9954C),
+                                    Color(0x10C9954C),
+                                    Color(0x04C9954C),
+                                    Color.Transparent
+                                ),
+                                center = Offset(size.width * 1.06f, size.height * 1.12f),
+                                radius = size.width * 0.18f
+                            )
+                        )
+                    }
+            )
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .drawBehind {
+                        val gold = Color(0xFFC88A35)
+                        val centerY = size.height * 0.50f
+                        val samples = listOf(
+                            0.08f, 0.10f, 0.06f, 0.14f, 0.09f, 0.24f, 0.12f, 0.42f,
+                            0.18f, 0.72f, 0.36f, 0.96f, 0.54f, 0.86f, 0.28f, 0.64f,
+                            0.20f, 0.48f, 0.14f, 0.32f, 0.12f, 0.22f, 0.10f, 0.18f,
+                            0.26f, 0.12f, 0.44f, 0.16f, 0.58f, 0.22f, 0.50f, 0.14f,
+                            0.38f, 0.18f, 0.30f, 0.10f, 0.24f, 0.16f, 0.42f, 0.12f,
+                            0.56f, 0.20f, 0.34f, 0.10f, 0.26f, 0.08f, 0.20f, 0.12f,
+                            0.48f, 0.14f, 0.70f, 0.18f, 0.40f, 0.10f, 0.24f, 0.08f,
+                            0.18f, 0.06f, 0.14f, 0.08f, 0.12f, 0.05f
+                        )
+                        fun drawWaveform(startX: Float, waveWidth: Float, alphaScale: Float = 1f) {
+                            val step = waveWidth / (samples.size - 1)
+                            drawLine(
+                                color = gold.copy(alpha = 0.025f * alphaScale),
+                                start = Offset(startX, centerY),
+                                end = Offset(startX + waveWidth, centerY),
+                                strokeWidth = 9f
+                            )
+                            drawLine(
+                                color = gold.copy(alpha = 0.08f * alphaScale),
+                                start = Offset(startX, centerY),
+                                end = Offset(startX + waveWidth, centerY),
+                                strokeWidth = 1.4f
+                            )
+                            samples.forEachIndexed { index, amplitude ->
+                                val x = startX + index * step
+                                val height = 5f + amplitude * 46f
+                                val alpha = (0.035f + amplitude * 0.09f) * alphaScale
+                                drawLine(
+                                    color = gold.copy(alpha = alpha * 0.38f),
+                                    start = Offset(x, centerY - height * 1.25f),
+                                    end = Offset(x, centerY + height * 1.25f),
+                                    strokeWidth = 4.2f
+                                )
+                                drawLine(
+                                    color = gold.copy(alpha = alpha),
+                                    start = Offset(x, centerY - height),
+                                    end = Offset(x, centerY + height),
+                                    strokeWidth = 1.25f
+                                )
+                            }
+                        }
+                        val leftWaveWidth = size.width * 0.25f
+                        val rightWaveWidth = size.width * 0.33f
+                        drawWaveform(startX = 0f, waveWidth = leftWaveWidth, alphaScale = 0.86f)
+                        drawWaveform(startX = size.width - rightWaveWidth, waveWidth = rightWaveWidth)
+                    }
+            )
             val featuredHoverInteraction = remember { MutableInteractionSource() }
             val isFeaturedHovered by featuredHoverInteraction.collectIsHoveredAsState()
             val animatedFeaturedBg by animateColorAsState(
@@ -440,15 +536,64 @@ private fun FeaturedCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 // Cover
-                AsyncImage(
-                    model = podcast.imageUrl,
-                    contentDescription = podcast.title,
-                    contentScale = ContentScale.Crop,
+                Box(
                     modifier = Modifier
                         .fillMaxHeight()
-                        .aspectRatio(1f)
-                        .clip(RoundedCornerShape(card.CoverRadius))
-                )
+                        .aspectRatio(1f),
+                    contentAlignment = Alignment.Center
+                ) {
+                    AsyncImage(
+                        model = podcast.imageUrl,
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .size(184.dp)
+                            .offset(x = (-20).dp, y = (-10).dp)
+                            .graphicsLayer(rotationZ = -3f)
+                            .alpha(0.26f)
+                            .blur(3.dp)
+                            .shadow(18.dp, RoundedCornerShape(card.CoverRadius + 8.dp), ambientColor = Color.Black.copy(alpha = 0.32f), spotColor = Color.Black.copy(alpha = 0.32f))
+                            .clip(RoundedCornerShape(card.CoverRadius + 8.dp))
+                    )
+                    Box(
+                        modifier = Modifier
+                            .size(184.dp)
+                            .offset(x = (-20).dp, y = (-10).dp)
+                            .graphicsLayer(rotationZ = -3f)
+                            .clip(RoundedCornerShape(card.CoverRadius + 8.dp))
+                            .background(Color(0x663A5939))
+                    )
+                    AsyncImage(
+                        model = podcast.imageUrl,
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .size(190.dp)
+                            .offset(x = (-8).dp, y = (-4).dp)
+                            .graphicsLayer(rotationZ = 2f)
+                            .alpha(0.34f)
+                            .blur(2.dp)
+                            .shadow(18.dp, RoundedCornerShape(card.CoverRadius + 7.dp), ambientColor = Color.Black.copy(alpha = 0.34f), spotColor = Color.Black.copy(alpha = 0.34f))
+                            .clip(RoundedCornerShape(card.CoverRadius + 7.dp))
+                    )
+                    Box(
+                        modifier = Modifier
+                            .size(190.dp)
+                            .offset(x = (-8).dp, y = (-4).dp)
+                            .graphicsLayer(rotationZ = 2f)
+                            .clip(RoundedCornerShape(card.CoverRadius + 7.dp))
+                            .background(Color(0x553C6842))
+                    )
+                    AsyncImage(
+                        model = podcast.imageUrl,
+                        contentDescription = podcast.title,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .size(184.dp)
+                            .shadow(20.dp, RoundedCornerShape(card.CoverRadius + 4.dp), ambientColor = Color.Black.copy(alpha = 0.44f), spotColor = Color.Black.copy(alpha = 0.44f))
+                            .clip(RoundedCornerShape(card.CoverRadius + 4.dp))
+                    )
+                }
 
                 Spacer(modifier = Modifier.width(card.ContentGap))
 
@@ -743,9 +888,14 @@ internal fun EpisodeRow(
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .shadow(8.dp, RoundedCornerShape(er.CoverRadius), ambientColor = Color.Black.copy(alpha = 0.4f), spotColor = Color.Black.copy(alpha = 0.4f))
+            .shadow(8.dp, RoundedCornerShape(er.CoverRadius), ambientColor = Color.Black.copy(alpha = 0.30f), spotColor = Color.Black.copy(alpha = 0.30f))
             .clip(RoundedCornerShape(er.CoverRadius))
-            .background(DesignTokens.Card.Gradient)
+            .background(
+                Brush.verticalGradient(
+                    colors = listOf(Color.White.copy(alpha = 0.085f), Color.White.copy(alpha = 0.035f), Color.White.copy(alpha = 0.018f))
+                )
+            )
+            .border(0.6.dp, Color.White.copy(alpha = 0.10f), RoundedCornerShape(er.CoverRadius))
             .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
             .clickable { onShowDetail() },
         shape = RoundedCornerShape(er.CoverRadius),
@@ -755,7 +905,7 @@ internal fun EpisodeRow(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(er.Height)
-                .padding(8.dp),
+                .padding(horizontal = 14.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(er.Spacing)
         ) {
@@ -795,35 +945,46 @@ internal fun EpisodeRow(
                     )
                 }
             }
-            when {
-                isSubscribed -> {
-                    Box(modifier = Modifier.size(32.dp), contentAlignment = Alignment.Center) {
-                        Icon(
-                            Icons.Default.Check,
-                            contentDescription = Strings["discover_added"],
-                            tint = colors.accent,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-                }
-                isSubscribing -> {
-                    Box(modifier = Modifier.size(32.dp), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(20.dp),
-                            strokeWidth = 2.dp,
-                            color = colors.accent
-                        )
-                    }
-                }
-                else -> {
-                    IconButton(onClick = onSubscribe, modifier = Modifier.size(32.dp).pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))) {
-                        Icon(
-                            Icons.Default.Add,
-                            contentDescription = Strings["discover_add"],
-                            tint = colors.textSecondary,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
+            val addInteractionSource = remember { MutableInteractionSource() }
+            val isAddHovered by addInteractionSource.collectIsHoveredAsState()
+            val animatedAddBg by animateColorAsState(
+                targetValue = when {
+                    isSubscribed -> colors.accent.copy(alpha = 0.15f)
+                    isAddHovered -> colors.elevated
+                    else -> colors.surface
+                },
+                animationSpec = tween(300)
+            )
+            Box(
+                modifier = Modifier
+                    .size(DesignTokens.IconButton.Size)
+                    .clip(CircleShape)
+                    .border(DesignTokens.Border.Width, DesignTokens.Border.SecondaryColor, CircleShape)
+                    .background(animatedAddBg)
+                    .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
+                    .clickable(interactionSource = addInteractionSource, indication = null) {
+                        if (!isSubscribed) onSubscribe()
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                when {
+                    isSubscribing -> CircularProgressIndicator(
+                        modifier = Modifier.size(DesignTokens.IconButton.IconSize),
+                        strokeWidth = 2.dp,
+                        color = colors.accent
+                    )
+                    isSubscribed -> Icon(
+                        Icons.Default.Check,
+                        contentDescription = Strings["discover_added"],
+                        tint = colors.accent,
+                        modifier = Modifier.size(DesignTokens.IconButton.IconSize)
+                    )
+                    else -> Icon(
+                        Icons.Default.Add,
+                        contentDescription = Strings["discover_add"],
+                        tint = colors.textSecondary,
+                        modifier = Modifier.size(DesignTokens.IconButton.IconSize)
+                    )
                 }
             }
         }

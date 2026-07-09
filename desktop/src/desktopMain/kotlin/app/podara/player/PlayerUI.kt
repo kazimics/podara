@@ -123,7 +123,7 @@ fun MiniPlayer(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(10.dp)
+                    .padding(start = 10.dp, end = 10.dp, bottom = 10.dp)
             ) {
                 Box(
                     modifier = Modifier
