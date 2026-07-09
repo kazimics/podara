@@ -5,7 +5,6 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -60,20 +59,6 @@ import app.podara.theme.DesignTokens
 import app.podara.theme.PodaraTheme
 import coil3.compose.AsyncImage
 import kotlinx.coroutines.launch
-
-// ── Design Tokens: button.primary ──
-private val PrimaryButtonGradient = Brush.verticalGradient(
-    colors = listOf(
-        Color(0xFFC5976F),
-        Color(0xFFBF936C),
-        Color(0xFFB1845F)
-    ),
-    startY = 0f,
-    endY = 48f
-)
-private val PrimaryButtonBorder = Color(0x14FFFFFF)
-private val PrimaryButtonText = Color(0xFFFFF8F3)
-private val PrimaryButtonIcon = Color.White
 
 private const val TAG = "DiscoverScreen"
 
@@ -367,7 +352,7 @@ fun DiscoverScreen(
                                 title = if (hasSearched) Strings["discover_results"] else Strings["discover_new_episodes"],
                                 showAll = false
                             )
-        Spacer(modifier = Modifier.height(DesignTokens.Spacing.sm))
+                            Spacer(modifier = Modifier.height(DesignTokens.Spacing.sm))
                         }
 
                         val listItems = if (hasSearched) podcasts else podcasts.drop(5)
@@ -405,6 +390,7 @@ private fun FeaturedCard(
     val colors = PodaraTheme.colors
     val card = DesignTokens.FeaturedCard
     val btn = DesignTokens.Button
+    val hero = DesignTokens.Hero
     Surface(
         modifier = Modifier
             .fillMaxWidth()
@@ -416,7 +402,7 @@ private fun FeaturedCard(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .shadow(8.dp, RoundedCornerShape(card.Radius), ambientColor = Color.Black.copy(alpha = 0.4f), spotColor = Color.Black.copy(alpha = 0.4f))
+                .shadow(card.ShadowElevation, RoundedCornerShape(card.Radius), ambientColor = card.ShadowColor, spotColor = card.ShadowColor)
                 .clip(RoundedCornerShape(card.Radius))
                 .background(DesignTokens.Card.Gradient)
         ) {
@@ -426,13 +412,12 @@ private fun FeaturedCard(
                     .drawBehind {
                         drawRect(
                             brush = Brush.radialGradient(
-                                colors = listOf(
-                                    Color(0xE8F4DEAA),
-                                    Color(0x8CDEB66F),
-                                    Color.Transparent
+                                colors = hero.LeftAmbientGlowColors,
+                                center = Offset(
+                                    size.width * hero.LeftAmbientCenterFactor.x,
+                                    size.height * hero.LeftAmbientCenterFactor.y
                                 ),
-                                center = Offset(size.width * -0.28f, size.height * 2.92f),
-                                radius = size.width * 0.92f
+                                radius = size.width * hero.LeftAmbientRadiusFactor
                             )
                         )
                     }
@@ -443,17 +428,12 @@ private fun FeaturedCard(
                     .drawBehind {
                         drawRect(
                             brush = Brush.radialGradient(
-                                colors = listOf(
-                                    Color(0xB8F6DCA6),
-                                    Color(0x8CDEAA62),
-                                    Color(0x5CC9954C),
-                                    Color(0x2EC9954C),
-                                    Color(0x10C9954C),
-                                    Color(0x04C9954C),
-                                    Color.Transparent
+                                colors = hero.CornerGlowColors,
+                                center = Offset(
+                                    size.width * hero.CornerGlowCenterFactor.x,
+                                    size.height * hero.CornerGlowCenterFactor.y
                                 ),
-                                center = Offset(size.width * 1.06f, size.height * 1.12f),
-                                radius = size.width * 0.18f
+                                radius = size.width * hero.CornerGlowRadiusFactor
                             )
                         )
                     }
@@ -462,7 +442,7 @@ private fun FeaturedCard(
                 modifier = Modifier
                     .matchParentSize()
                     .drawBehind {
-                        val gold = Color(0xFFC88A35)
+                        val gold = hero.WaveformGold
                         val centerY = size.height * 0.50f
                         val samples = listOf(
                             0.08f, 0.10f, 0.06f, 0.14f, 0.09f, 0.24f, 0.12f, 0.42f,
@@ -515,8 +495,8 @@ private fun FeaturedCard(
             val featuredHoverInteraction = remember { MutableInteractionSource() }
             val isFeaturedHovered by featuredHoverInteraction.collectIsHoveredAsState()
             val animatedFeaturedBg by animateColorAsState(
-                targetValue = if (isFeaturedHovered) Color.White.copy(alpha = 0.04f) else Color.Transparent,
-                animationSpec = tween(300)
+                targetValue = if (isFeaturedHovered) DesignTokens.Glass.HoverOverlayColor else Color.Transparent,
+                animationSpec = tween(DesignTokens.Animation.NormalMs)
             )
 
             // Full-card hover highlight
@@ -885,17 +865,14 @@ internal fun EpisodeRow(
 ) {
     val colors = PodaraTheme.colors
     val er = DesignTokens.EpisodeRow
+    val glass = DesignTokens.Glass
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .shadow(8.dp, RoundedCornerShape(er.CoverRadius), ambientColor = Color.Black.copy(alpha = 0.30f), spotColor = Color.Black.copy(alpha = 0.30f))
-            .clip(RoundedCornerShape(er.CoverRadius))
-            .background(
-                Brush.verticalGradient(
-                    colors = listOf(Color.White.copy(alpha = 0.085f), Color.White.copy(alpha = 0.035f), Color.White.copy(alpha = 0.018f))
-                )
-            )
-            .border(0.6.dp, Color.White.copy(alpha = 0.10f), RoundedCornerShape(er.CoverRadius))
+            .shadow(glass.CompactShadowElevation, RoundedCornerShape(glass.CompactRadius), ambientColor = glass.CompactShadowColor, spotColor = glass.CompactShadowColor)
+            .clip(RoundedCornerShape(glass.CompactRadius))
+            .background(glass.CompactGradient)
+            .border(glass.CompactBorderWidth, glass.CompactBorderColor, RoundedCornerShape(glass.CompactRadius))
             .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
             .clickable { onShowDetail() },
         shape = RoundedCornerShape(er.CoverRadius),
@@ -905,7 +882,7 @@ internal fun EpisodeRow(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(er.Height)
-                .padding(horizontal = 14.dp, vertical = 8.dp),
+                .padding(horizontal = er.PaddingHorizontal, vertical = er.PaddingVertical),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(er.Spacing)
         ) {
@@ -926,7 +903,7 @@ internal fun EpisodeRow(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
-                Spacer(modifier = Modifier.height(2.dp))
+                Spacer(modifier = Modifier.height(er.LineGap))
                 Text(
                     text = podcast.author,
                     color = colors.textSecondary,
@@ -935,7 +912,7 @@ internal fun EpisodeRow(
                     maxLines = 1
                 )
                 if (podcast.description.isNotEmpty()) {
-                    Spacer(modifier = Modifier.height(2.dp))
+                    Spacer(modifier = Modifier.height(er.LineGap))
                     Text(
                         text = podcast.description,
                         color = colors.textMuted,

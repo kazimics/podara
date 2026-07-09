@@ -31,8 +31,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.decodeToImageBitmap
@@ -43,10 +41,10 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.window.WindowDraggableArea
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.WindowPlacement
 import androidx.compose.ui.window.WindowScope
@@ -158,27 +156,8 @@ private fun Sidebar(
                 val interactionSource = remember(item.screen) { MutableInteractionSource() }
                 val isHovered by interactionSource.collectIsHoveredAsState()
                 val animatedBg by animateColorAsState(if (isActive || isHovered) SidebarActiveBg else Color.Transparent, tween(150))
-                val itemShape = RoundedCornerShape(13.dp)
-                val glassLeftGlow = Brush.radialGradient(
-                    colors = listOf(Color(0x66C7924F), Color(0x22C7924F), Color.Transparent),
-                    center = Offset(8f, 42f),
-                    radius = 58f
-                )
-                val glassTopGlow = Brush.radialGradient(
-                    colors = listOf(Color.White.copy(alpha = 0.08f), Color.Transparent),
-                    center = Offset(142f, 0f),
-                    radius = 90f
-                )
-                val glassRightGlow = Brush.radialGradient(
-                    colors = listOf(Color(0x22D3A05F), Color.Transparent),
-                    center = Offset(204f, 4f),
-                    radius = 62f
-                )
-                val glassBorder = Brush.linearGradient(
-                    colors = listOf(Color(0x60D3A05F), Color.White.copy(alpha = 0.06f), Color(0x1AD3A05F)),
-                    start = Offset(0f, 48f),
-                    end = Offset(200f, 0f)
-                )
+                val activeGlass = DesignTokens.Navigation.ActiveGlass
+                val itemShape = RoundedCornerShape(activeGlass.Radius)
                 val hoverShape = itemShape
                 val iconTint = if (isActive) colors.accent else colors.textSecondary
 
@@ -194,13 +173,13 @@ private fun Sidebar(
                             .padding(horizontal = sidebar.NavItemPadding)
                             .let { mod ->
                                 if (isActive) {
-                                    mod.shadow(5.dp, itemShape, ambientColor = Color.Black.copy(alpha = 0.14f), spotColor = Color.Black.copy(alpha = 0.14f))
-                                        .border(0.6.dp, glassBorder, itemShape)
+                                    mod.shadow(activeGlass.ShadowElevation, itemShape, ambientColor = activeGlass.ShadowColor, spotColor = activeGlass.ShadowColor)
+                                        .border(activeGlass.BorderWidth, activeGlass.Border, itemShape)
                                         .clip(itemShape)
-                                        .background(Color(0xFF211F1E))
-                                        .background(glassLeftGlow)
-                                        .background(glassTopGlow)
-                                        .background(glassRightGlow)
+                                        .background(activeGlass.BaseColor)
+                                        .background(activeGlass.LeftGlow)
+                                        .background(activeGlass.TopGlow)
+                                        .background(activeGlass.RightGlow)
                                 } else {
                                     mod.background(animatedBg, hoverShape)
                                 }
@@ -216,7 +195,7 @@ private fun Sidebar(
                                     "downloads" -> onDownloads()
                                 }
                             }
-                            .padding(horizontal = 14.dp),
+                            .padding(horizontal = activeGlass.InnerPaddingHorizontal),
                         contentAlignment = Alignment.CenterStart
                     ) {
                         Row(
@@ -244,27 +223,8 @@ private fun Sidebar(
             val settingsInteractionSource = remember { MutableInteractionSource() }
             val settingsIsHovered by settingsInteractionSource.collectIsHoveredAsState()
             val settingsAnimatedBg by animateColorAsState(if (settingsActive || settingsIsHovered) SidebarActiveBg else Color.Transparent, tween(150))
-            val settingsShape = RoundedCornerShape(13.dp)
-            val settingsGlassLeftGlow = Brush.radialGradient(
-                colors = listOf(Color(0x66C7924F), Color(0x22C7924F), Color.Transparent),
-                center = Offset(8f, 42f),
-                radius = 58f
-            )
-            val settingsGlassTopGlow = Brush.radialGradient(
-                colors = listOf(Color.White.copy(alpha = 0.08f), Color.Transparent),
-                center = Offset(142f, 0f),
-                radius = 90f
-            )
-            val settingsGlassRightGlow = Brush.radialGradient(
-                colors = listOf(Color(0x22D3A05F), Color.Transparent),
-                center = Offset(204f, 4f),
-                radius = 62f
-            )
-            val settingsGlassBorder = Brush.linearGradient(
-                colors = listOf(Color(0x60D3A05F), Color.White.copy(alpha = 0.06f), Color(0x1AD3A05F)),
-                start = Offset(0f, 48f),
-                end = Offset(200f, 0f)
-            )
+            val settingsActiveGlass = DesignTokens.Navigation.ActiveGlass
+            val settingsShape = RoundedCornerShape(settingsActiveGlass.Radius)
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -272,20 +232,20 @@ private fun Sidebar(
                     .padding(horizontal = sidebar.NavItemPadding)
                     .let { mod ->
                         if (settingsActive) {
-                            mod.shadow(5.dp, settingsShape, ambientColor = Color.Black.copy(alpha = 0.14f), spotColor = Color.Black.copy(alpha = 0.14f))
-                                .border(0.6.dp, settingsGlassBorder, settingsShape)
+                            mod.shadow(settingsActiveGlass.ShadowElevation, settingsShape, ambientColor = settingsActiveGlass.ShadowColor, spotColor = settingsActiveGlass.ShadowColor)
+                                .border(settingsActiveGlass.BorderWidth, settingsActiveGlass.Border, settingsShape)
                                 .clip(settingsShape)
-                                .background(Color(0xFF211F1E))
-                                .background(settingsGlassLeftGlow)
-                                .background(settingsGlassTopGlow)
-                                .background(settingsGlassRightGlow)
+                                .background(settingsActiveGlass.BaseColor)
+                                .background(settingsActiveGlass.LeftGlow)
+                                .background(settingsActiveGlass.TopGlow)
+                                .background(settingsActiveGlass.RightGlow)
                         } else {
                             mod.background(settingsAnimatedBg, settingsShape)
                         }
                     }
                     .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
                     .clickable(interactionSource = settingsInteractionSource, indication = null) { onSettings() }
-                    .padding(horizontal = 14.dp),
+                    .padding(horizontal = settingsActiveGlass.InnerPaddingHorizontal),
                 contentAlignment = Alignment.CenterStart
             ) {
                 Row(
@@ -1138,18 +1098,49 @@ private fun HomeScreen(
 
     // ── Empty state ──
     if (podcasts.isEmpty()) {
+        val empty = DesignTokens.EmptyState
+        val glass = DesignTokens.Glass
+        val btn = DesignTokens.Button
         Box(modifier = Modifier.fillMaxSize().background(colors.background), contentAlignment = Alignment.Center) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Icon(Icons.Default.RssFeed, null, Modifier.size(64.dp), tint = colors.textMuted)
-                Spacer(modifier = Modifier.height(16.dp))
-                Text(Strings["home_empty"], style = MaterialTheme.typography.headlineSmall, color = colors.textPrimary)
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(Strings["home_empty_hint"], style = MaterialTheme.typography.bodyMedium, color = colors.textSecondary)
-                Spacer(modifier = Modifier.height(16.dp))
-                FilledTonalButton(onClick = onAddPodcast) {
-                    Icon(Icons.Default.Add, null, Modifier.size(18.dp))
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(Strings["home_add_podcast"])
+            Box(
+                modifier = Modifier
+                    .width(empty.PanelWidth)
+                    .shadow(glass.CompactShadowElevation, RoundedCornerShape(empty.PanelRadius), ambientColor = glass.CompactShadowColor, spotColor = glass.CompactShadowColor)
+                    .clip(RoundedCornerShape(empty.PanelRadius))
+                    .background(glass.CompactGradient)
+                    .border(glass.CompactBorderWidth, glass.CompactBorderColor, RoundedCornerShape(empty.PanelRadius))
+                    .padding(empty.PanelPadding),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Icon(Icons.Default.RssFeed, null, Modifier.size(empty.IconSize), tint = colors.accent)
+                    Spacer(modifier = Modifier.height(empty.Gap))
+                    Text(Strings["home_empty"], fontSize = empty.TitleSize, fontWeight = FontWeight.SemiBold, color = colors.textPrimary)
+                    Spacer(modifier = Modifier.height(DesignTokens.Spacing.xs))
+                    Text(Strings["home_empty_hint"], fontSize = empty.SubtitleSize, color = colors.textSecondary)
+                    Spacer(modifier = Modifier.height(DesignTokens.Spacing.md))
+                    Box(
+                        modifier = Modifier
+                            .height(btn.Height)
+                            .shadow(btn.ShadowElevation, RoundedCornerShape(btn.Radius), ambientColor = btn.ShadowColor, spotColor = btn.ShadowColor)
+                            .clip(RoundedCornerShape(btn.Radius))
+                            .border(DesignTokens.Border.Width, btn.BorderColor, RoundedCornerShape(btn.Radius))
+                            .background(btn.Gradient)
+                            .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
+                            .clickable { onAddPodcast() },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Box(modifier = Modifier.matchParentSize().background(btn.InnerHighlight))
+                        Box(modifier = Modifier.matchParentSize().background(btn.SpecularSheen))
+                        Row(
+                            modifier = Modifier.padding(horizontal = btn.PaddingHorizontal),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(Icons.Default.Add, null, Modifier.size(btn.IconSize), tint = btn.IconColor)
+                            Spacer(modifier = Modifier.width(DesignTokens.Spacing.sm))
+                            Text(Strings["home_add_podcast"], color = btn.TextColor, fontSize = btn.TextSize, fontWeight = FontWeight.Medium)
+                        }
+                    }
                 }
             }
         }
@@ -1157,10 +1148,19 @@ private fun HomeScreen(
     }
 
     Column(
-        modifier = Modifier.fillMaxSize().background(colors.background).padding(top = 28.dp, start = 32.dp, end = 32.dp, bottom = 8.dp)
+        modifier = Modifier
+            .fillMaxSize()
+            .background(colors.background)
+            .padding(
+                top = DesignTokens.PageHeader.PaddingTop,
+                start = DesignTokens.PageHeader.PaddingHorizontal,
+                end = DesignTokens.PageHeader.PaddingHorizontal,
+                bottom = DesignTokens.Spacing.sm
+            )
     ) {
         // ── Header (hidden in edit mode, replaced by selection bar) ──
         if (isEditing) {
+            val toolbarButton = DesignTokens.ToolbarButton
             // Selection header
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -1171,24 +1171,24 @@ private fun HomeScreen(
                 val isCloseHovered by closeInteractionSource.collectIsHoveredAsState()
                 Box(
                     modifier = Modifier
-                        .size(32.dp)
-                        .clip(RoundedCornerShape(6.dp))
-                        .background(if (isCloseHovered) colors.elevated else Color.Transparent)
-                        .border(1.dp, colors.border, RoundedCornerShape(6.dp))
+                        .size(toolbarButton.Size)
+                        .clip(RoundedCornerShape(toolbarButton.Radius))
+                        .background(if (isCloseHovered) toolbarButton.HoverBackgroundColor else toolbarButton.BackgroundColor)
+                        .border(toolbarButton.BorderWidth, toolbarButton.BorderColor, RoundedCornerShape(toolbarButton.Radius))
                         .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
                         .clickable(interactionSource = closeInteractionSource, indication = null) {
                             isEditing = false; selectedPodcasts = emptySet()
                         },
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(Icons.Default.Close, contentDescription = Strings["home_cancel"], tint = colors.textPrimary, modifier = Modifier.size(16.dp))
+                    Icon(Icons.Default.Close, contentDescription = Strings["home_cancel"], tint = colors.textPrimary, modifier = Modifier.size(toolbarButton.IconSize))
                 }
 
-                Spacer(Modifier.width(12.dp))
+                Spacer(Modifier.width(DesignTokens.Spacing.md))
 
                 Text(
                     text = Strings.get("home_selected_count", selectedPodcasts.size),
-                    fontSize = 15.sp,
+                    fontSize = toolbarButton.StrongTextSize,
                     fontWeight = FontWeight.SemiBold,
                     color = colors.textPrimary
                 )
@@ -1199,7 +1199,7 @@ private fun HomeScreen(
                 Text(
                     text = Strings["home_select_all"],
                     color = colors.accent,
-                    fontSize = 13.sp,
+                    fontSize = toolbarButton.TextSize,
                     fontWeight = FontWeight.Medium,
                     modifier = Modifier
                         .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
@@ -1212,22 +1212,22 @@ private fun HomeScreen(
                         }
                 )
 
-                Spacer(Modifier.width(16.dp))
+                Spacer(Modifier.width(DesignTokens.Spacing.md))
 
                 // Delete button (32dp square with danger color)
                 val deleteInteractionSource = remember { MutableInteractionSource() }
                 val isDeleteHovered by deleteInteractionSource.collectIsHoveredAsState()
                 Box(
                     modifier = Modifier
-                        .size(32.dp)
-                        .clip(RoundedCornerShape(6.dp))
-                        .background(if (isDeleteHovered) colors.danger.copy(alpha = 0.15f) else Color.Transparent)
-                        .border(1.dp, colors.border, RoundedCornerShape(6.dp))
+                        .size(toolbarButton.Size)
+                        .clip(RoundedCornerShape(toolbarButton.Radius))
+                        .background(if (isDeleteHovered) toolbarButton.DangerHoverBackgroundColor else toolbarButton.BackgroundColor)
+                        .border(toolbarButton.BorderWidth, toolbarButton.BorderColor, RoundedCornerShape(toolbarButton.Radius))
                         .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
                         .clickable(interactionSource = deleteInteractionSource, indication = null) { showBatchUnsubscribeDialog = true },
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(Icons.Default.Delete, contentDescription = Strings["home_delete_selected"], tint = colors.danger, modifier = Modifier.size(16.dp))
+                    Icon(Icons.Default.Delete, contentDescription = Strings["home_delete_selected"], tint = colors.danger, modifier = Modifier.size(toolbarButton.IconSize))
                 }
             }
         } else {
@@ -1303,6 +1303,8 @@ private fun HomeScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
+        val toolbarButton = DesignTokens.ToolbarButton
+        val dropdownMenu = DesignTokens.DropdownMenu
         // ── List toolbar: count + actions ──
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -1315,106 +1317,320 @@ private fun HomeScreen(
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Medium
             )
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(toolbarButton.Gap)) {
                 if (!isEditing) {
-                    // Sort button
-                    val sortInteractionSource = remember { MutableInteractionSource() }
-                    val isSortHovered by sortInteractionSource.collectIsHoveredAsState()
-                    Box(
-                        modifier = Modifier
-                            .size(32.dp)
-                            .clip(RoundedCornerShape(6.dp))
-                            .background(if (isSortHovered) colors.elevated else Color.Transparent)
-                            .border(1.dp, colors.border, RoundedCornerShape(6.dp))
-                            .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
-                            .clickable(interactionSource = sortInteractionSource, indication = null) { showSortMenu = true },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            Icons.Default.UnfoldMore,
-                            contentDescription = Strings["home_sort"],
-                            tint = if (sortOption != "name_asc") colors.accent else colors.textSecondary,
-                            modifier = Modifier.size(16.dp)
-                        )
-                    }
-
-                    DropdownMenu(
-                        expanded = showSortMenu,
-                        onDismissRequest = { showSortMenu = false },
-                        containerColor = colors.surface
-                    ) {
-                        val sortOptions = listOf(
-                            "name_asc" to Strings["home_sort_name_asc"],
-                            "name_desc" to Strings["home_sort_name_desc"],
-                            "recent_update" to Strings["home_sort_recent_update"],
-                            "recent_listen" to Strings["home_sort_recent_listen"]
-                        )
-                        sortOptions.forEach { (key, label) ->
-                            DropdownMenuItem(
-                                text = { Text(label, color = if (key == sortOption) colors.accent else colors.textPrimary) },
-                                onClick = { sortOption = key; showSortMenu = false },
-                                leadingIcon = if (key == sortOption) {
-                                    { Icon(Icons.Default.Check, contentDescription = null, tint = colors.accent, modifier = Modifier.size(16.dp)) }
-                                } else null
-                            )
-                        }
+                    val currentSortLabel = when (sortOption) {
+                        "name_asc" -> Strings["home_sort_name_asc"]
+                        "name_desc" -> Strings["home_sort_name_desc"]
+                        "recent_update" -> Strings["home_sort_recent_update"]
+                        "recent_listen" -> Strings["home_sort_recent_listen"]
+                        else -> Strings["home_sort"]
                     }
 
                     // Manage button
                     val manageInteractionSource = remember { MutableInteractionSource() }
                     val isManageHovered by manageInteractionSource.collectIsHoveredAsState()
+                    val isManagePressed by manageInteractionSource.collectIsPressedAsState()
+                    val manageShape = RoundedCornerShape(toolbarButton.PillRadius)
+                    val manageTextColor = if (isManageHovered || isManagePressed) toolbarButton.PillHoverTextColor else toolbarButton.PillTextColor
+                    val manageIconColor = if (isManageHovered || isManagePressed) toolbarButton.PillHoverIconColor else toolbarButton.PillIconColor
                     Box(
                         modifier = Modifier
-                            .size(32.dp)
-                            .clip(RoundedCornerShape(6.dp))
-                            .background(if (isManageHovered) colors.elevated else Color.Transparent)
-                            .border(1.dp, colors.border, RoundedCornerShape(6.dp))
+                            .height(toolbarButton.PillHeight)
+                            .widthIn(min = toolbarButton.ManageMinWidth)
+                            .shadow(
+                                if (isManageHovered) toolbarButton.PillHoverShadowElevation else 0.dp,
+                                manageShape,
+                                ambientColor = toolbarButton.PillHoverShadowColor,
+                                spotColor = toolbarButton.PillHoverShadowColor
+                            )
+                            .clip(manageShape)
+                            .background(
+                                when {
+                                    isManagePressed -> toolbarButton.PillPressedBackgroundColor
+                                    isManageHovered -> toolbarButton.PillHoverBackgroundColor
+                                    else -> toolbarButton.PillDefaultBackgroundColor
+                                }
+                            )
+                            .border(
+                                toolbarButton.BorderWidth,
+                                if (isManageHovered || isManagePressed) toolbarButton.PillHoverBorderColor else toolbarButton.PillDefaultBorderColor,
+                                manageShape
+                            )
                             .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
-                            .clickable(interactionSource = manageInteractionSource, indication = null) { isEditing = true },
+                            .clickable(interactionSource = manageInteractionSource, indication = null) { isEditing = true }
+                            .padding(horizontal = toolbarButton.PillPaddingHorizontal),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(
-                            Icons.Default.Edit,
-                            contentDescription = Strings["home_manage"],
-                            tint = colors.textSecondary,
-                            modifier = Modifier.size(16.dp)
-                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(toolbarButton.PillIconTextGap)
+                        ) {
+                            Icon(
+                                Icons.Default.Edit,
+                                contentDescription = Strings["home_manage"],
+                                tint = manageIconColor,
+                                modifier = Modifier.size(toolbarButton.PillIconSize)
+                            )
+                            Text(
+                                text = Strings["home_manage"],
+                                color = manageTextColor,
+                                fontSize = toolbarButton.PillTextSize,
+                                lineHeight = toolbarButton.PillLineHeight,
+                                fontWeight = toolbarButton.PillTextWeight
+                            )
+                        }
+                    }
+
+                    Box {
+                        // Sort button
+                        val sortInteractionSource = remember { MutableInteractionSource() }
+                        val isSortHovered by sortInteractionSource.collectIsHoveredAsState()
+                        val isSortPressed by sortInteractionSource.collectIsPressedAsState()
+                        val sortShape = RoundedCornerShape(toolbarButton.PillRadius)
+                        val sortActive = showSortMenu
+                        val sortTextColor = when {
+                            sortActive -> toolbarButton.PillSelectedTextColor
+                            isSortHovered || isSortPressed -> toolbarButton.PillHoverTextColor
+                            else -> toolbarButton.PillTextColor
+                        }
+                        val sortIconColor = when {
+                            sortActive -> toolbarButton.PillSelectedIconColor
+                            isSortHovered || isSortPressed -> toolbarButton.PillHoverIconColor
+                            else -> toolbarButton.PillIconColor
+                        }
+                        Box(
+                            modifier = Modifier
+                                .height(toolbarButton.PillHeight)
+                                .widthIn(min = toolbarButton.SortMinWidth)
+                                .shadow(
+                                    if (isSortHovered) toolbarButton.PillHoverShadowElevation else 0.dp,
+                                    sortShape,
+                                    ambientColor = toolbarButton.PillHoverShadowColor,
+                                    spotColor = toolbarButton.PillHoverShadowColor
+                                )
+                                .clip(sortShape)
+                                .background(
+                                    when {
+                                        sortActive -> toolbarButton.PillSelectedBackgroundColor
+                                        isSortPressed -> toolbarButton.PillPressedBackgroundColor
+                                        isSortHovered -> toolbarButton.PillHoverBackgroundColor
+                                        else -> toolbarButton.PillSortBackgroundColor
+                                    }
+                                )
+                                .border(
+                                    toolbarButton.BorderWidth,
+                                    when {
+                                        sortActive -> toolbarButton.PillSelectedBorderColor
+                                        isSortHovered || isSortPressed -> toolbarButton.PillHoverBorderColor
+                                        else -> toolbarButton.PillSortBorderColor
+                                    },
+                                    sortShape
+                                )
+                                .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
+                                .clickable(interactionSource = sortInteractionSource, indication = null) { showSortMenu = true }
+                                .padding(horizontal = toolbarButton.PillPaddingHorizontal),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(toolbarButton.PillIconTextGap)
+                            ) {
+                                Icon(
+                                    Icons.Default.UnfoldMore,
+                                    contentDescription = null,
+                                    tint = sortIconColor,
+                                    modifier = Modifier.size(toolbarButton.PillIconSize)
+                                )
+                                Text(
+                                    text = currentSortLabel,
+                                    color = sortTextColor,
+                                    fontSize = toolbarButton.PillTextSize,
+                                    lineHeight = toolbarButton.PillLineHeight,
+                                    fontWeight = if (sortActive) toolbarButton.PillActiveTextWeight else toolbarButton.PillTextWeight
+                                )
+                                Icon(
+                                    Icons.Default.KeyboardArrowDown,
+                                    contentDescription = Strings["home_sort"],
+                                    tint = sortIconColor,
+                                    modifier = Modifier.size(toolbarButton.PillTrailingIconSize)
+                                )
+                            }
+                        }
+
+                        DropdownMenu(
+                            expanded = showSortMenu,
+                            onDismissRequest = { showSortMenu = false },
+                            offset = DpOffset(x = 0.dp, y = dropdownMenu.OffsetY),
+                            modifier = Modifier
+                                .width(dropdownMenu.Width)
+                                .shadow(
+                                    dropdownMenu.ShadowElevation,
+                                    RoundedCornerShape(dropdownMenu.Radius),
+                                    ambientColor = dropdownMenu.ShadowColor,
+                                    spotColor = dropdownMenu.ShadowColor
+                                )
+                                .clip(RoundedCornerShape(dropdownMenu.Radius))
+                                .background(dropdownMenu.BackgroundColor)
+                                .border(
+                                    DesignTokens.Border.Width,
+                                    dropdownMenu.BorderColor,
+                                    RoundedCornerShape(dropdownMenu.Radius)
+                                )
+                                .padding(dropdownMenu.Padding),
+                            containerColor = Color.Transparent,
+                            tonalElevation = 0.dp,
+                            shadowElevation = 0.dp
+                        ) {
+                            val sortOptions = listOf(
+                                "name_asc" to Strings["home_sort_name_asc"],
+                                "name_desc" to Strings["home_sort_name_desc"],
+                                "recent_update" to Strings["home_sort_recent_update"],
+                                "recent_listen" to Strings["home_sort_recent_listen"]
+                            )
+                            sortOptions.forEach { (key, label) ->
+                                val isSelected = key == sortOption
+                                val itemInteractionSource = remember(key) { MutableInteractionSource() }
+                                val isItemHovered by itemInteractionSource.collectIsHoveredAsState()
+                                val itemBg by animateColorAsState(
+                                    when {
+                                        isSelected -> dropdownMenu.SelectedBackgroundColor
+                                        isItemHovered -> dropdownMenu.HoverBackgroundColor
+                                        else -> Color.Transparent
+                                    },
+                                    tween(DesignTokens.Animation.HoverMs)
+                                )
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(dropdownMenu.ItemHeight)
+                                        .clip(RoundedCornerShape(dropdownMenu.ItemRadius))
+                                        .background(itemBg)
+                                        .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
+                                        .clickable(interactionSource = itemInteractionSource, indication = null) {
+                                            sortOption = key
+                                            showSortMenu = false
+                                        }
+                                        .padding(horizontal = dropdownMenu.ItemPaddingHorizontal),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(dropdownMenu.ItemIconTextGap)
+                                ) {
+                                    val optionIcon = when (key) {
+                                        "name_asc", "name_desc" -> Icons.Default.SortByAlpha
+                                        "recent_update" -> Icons.Default.Update
+                                        "recent_listen" -> Icons.Default.History
+                                        else -> Icons.Default.UnfoldMore
+                                    }
+                                    Icon(
+                                        optionIcon,
+                                        contentDescription = null,
+                                        tint = if (isSelected) dropdownMenu.SelectedTextColor else dropdownMenu.IconColor,
+                                        modifier = Modifier.size(dropdownMenu.ItemIconSize)
+                                    )
+                                    Text(
+                                        text = label,
+                                        color = when {
+                                            isSelected -> dropdownMenu.SelectedTextColor
+                                            isItemHovered -> dropdownMenu.HoverTextColor
+                                            else -> dropdownMenu.TextColor
+                                        },
+                                        fontSize = dropdownMenu.LabelSize,
+                                        lineHeight = dropdownMenu.LabelLineHeight,
+                                        fontWeight = if (isSelected) dropdownMenu.SelectedLabelWeight else dropdownMenu.LabelWeight,
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                    if (isSelected) {
+                                        Icon(
+                                            Icons.Default.Check,
+                                            contentDescription = null,
+                                            tint = dropdownMenu.SelectedTextColor,
+                                            modifier = Modifier.size(dropdownMenu.ItemIconSize)
+                                        )
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }  // closes inner Row
         }  // closes outer Row
 
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(DesignTokens.Spacing.sm))
 
-        // ── Divider ──
         HorizontalDivider(color = colors.divider)
 
-        Spacer(modifier = Modifier.height(6.dp))
+        Spacer(modifier = Modifier.height(DesignTokens.Spacing.sm))
 
         // ── Subscriptions list ──
-        LazyColumn(modifier = Modifier.fillMaxSize()) {
-            items(sortedPodcasts) { podcast ->
-                val sub = subscriptionMap[podcast.origin]
-                val newCount = sub?.newEpisodes ?: 0
-                val epCount = episodeCountMap[podcast.origin] ?: 0
-
-                SubscriptionCard(
-                    podcast = podcast,
-                    newCount = newCount,
-                    episodeCount = epCount,
-                    isEditing = isEditing,
-                    isSelected = podcast.origin in selectedPodcasts,
-                    onToggleSelect = { checked ->
-                        selectedPodcasts = if (checked) selectedPodcasts + podcast.origin
-                        else selectedPodcasts - podcast.origin
-                    },
-                    onClick = { if (!isEditing) onPodcastClick(podcast) },
-                    onMore = {
-                        podcastToUnsubscribe = podcast
-                        showUnsubscribeDialog = true
+        if (sortedPodcasts.isEmpty()) {
+            val glass = DesignTokens.Glass
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Icon(
+                        Icons.Default.Search,
+                        contentDescription = null,
+                        modifier = Modifier.size(DesignTokens.EmptyState.IconSize),
+                        tint = colors.textMuted
+                    )
+                    Spacer(modifier = Modifier.height(DesignTokens.EmptyState.Gap))
+                    Box(
+                        modifier = Modifier
+                            .width(DesignTokens.EmptyState.PanelWidth)
+                            .shadow(glass.CompactShadowElevation, RoundedCornerShape(DesignTokens.EmptyState.PanelRadius), ambientColor = glass.CompactShadowColor, spotColor = glass.CompactShadowColor)
+                            .clip(RoundedCornerShape(DesignTokens.EmptyState.PanelRadius))
+                            .background(glass.CompactGradient)
+                            .border(glass.CompactBorderWidth, glass.CompactBorderColor, RoundedCornerShape(DesignTokens.EmptyState.PanelRadius))
+                            .padding(DesignTokens.EmptyState.PanelPadding),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(
+                                text = Strings["home_search_empty"],
+                                color = colors.textPrimary,
+                                fontSize = DesignTokens.EmptyState.TitleSize,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Spacer(modifier = Modifier.height(DesignTokens.Spacing.xs))
+                            Text(
+                                text = Strings["home_search_empty_hint"],
+                                color = colors.textSecondary,
+                                fontSize = DesignTokens.EmptyState.SubtitleSize
+                            )
+                        }
                     }
-                )
-                HorizontalDivider(color = colors.divider, modifier = Modifier.padding(start = 80.dp))
+                }
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.spacedBy(DesignTokens.Spacing.sm),
+                contentPadding = PaddingValues(bottom = DesignTokens.Spacing.md)
+            ) {
+                items(sortedPodcasts) { podcast ->
+                    val sub = subscriptionMap[podcast.origin]
+                    val newCount = sub?.newEpisodes ?: 0
+                    val epCount = episodeCountMap[podcast.origin] ?: 0
+
+                    SubscriptionCard(
+                        podcast = podcast,
+                        newCount = newCount,
+                        episodeCount = epCount,
+                        isEditing = isEditing,
+                        isSelected = podcast.origin in selectedPodcasts,
+                        onToggleSelect = { checked ->
+                            selectedPodcasts = if (checked) selectedPodcasts + podcast.origin
+                            else selectedPodcasts - podcast.origin
+                        },
+                        onClick = { if (!isEditing) onPodcastClick(podcast) },
+                        onMore = {
+                            podcastToUnsubscribe = podcast
+                            showUnsubscribeDialog = true
+                        }
+                    )
+                }
             }
         }
     }
@@ -1472,66 +1688,80 @@ private fun SubscriptionCard(
     onMore: () -> Unit
 ) {
     val colors = PodaraTheme.colors
+    val row = DesignTokens.SubscriptionRow
+    val glass = DesignTokens.Glass
+    val badge = DesignTokens.Badge
     val interactionSource = remember { MutableInteractionSource() }
     val isHovered by interactionSource.collectIsHoveredAsState()
-    val animatedBg by animateColorAsState(if (isHovered && !isEditing) colors.elevated else Color.Transparent, tween(150))
+    val animatedBg by animateColorAsState(
+        when {
+            isSelected -> glass.SelectedOverlayColor
+            isHovered && !isEditing -> glass.HoverOverlayColor
+            else -> Color.Transparent
+        },
+        tween(DesignTokens.Animation.HoverMs)
+    )
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(96.dp)
+            .height(row.Height)
+            .shadow(glass.CompactShadowElevation, RoundedCornerShape(glass.CompactRadius), ambientColor = glass.CompactShadowColor, spotColor = glass.CompactShadowColor)
+            .clip(RoundedCornerShape(glass.CompactRadius))
+            .background(glass.CompactGradient)
             .background(animatedBg)
+            .border(glass.CompactBorderWidth, if (isSelected) glass.SelectedBorderColor else glass.CompactBorderColor, RoundedCornerShape(glass.CompactRadius))
             .clickable(interactionSource = interactionSource, indication = null) { onClick() }
-            .padding(start = 12.dp, end = 8.dp, top = 12.dp, bottom = 12.dp),
+            .padding(horizontal = row.PaddingHorizontal, vertical = row.PaddingVertical),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(14.dp)
+        horizontalArrangement = Arrangement.spacedBy(row.Spacing)
     ) {
         if (isEditing) {
             Checkbox(
                 checked = isSelected,
                 onCheckedChange = onToggleSelect,
-                modifier = Modifier.size(24.dp)
+                modifier = Modifier.size(row.CheckboxSize)
             )
         }
 
         // Cover
-        Box(modifier = Modifier.size(64.dp).clip(RoundedCornerShape(12.dp)).background(colors.elevated)) {
+        Box(modifier = Modifier.size(row.CoverSize).clip(RoundedCornerShape(row.CoverRadius)).background(colors.elevated)) {
             AsyncImage(model = podcast.imageUrl, contentDescription = podcast.title,
                 contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
         }
 
         // Info
         Column(modifier = Modifier.weight(1f)) {
-            Text(text = podcast.fetchTitle(), color = colors.textPrimary, fontSize = 14.sp, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Spacer(modifier = Modifier.height(2.dp))
-            Text(text = podcast.author, color = colors.textMuted, fontSize = 12.sp, lineHeight = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(text = podcast.fetchTitle(), color = colors.textPrimary, fontSize = row.TitleSize, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Spacer(modifier = Modifier.height(row.LineGap))
+            Text(text = podcast.author, color = colors.textMuted, fontSize = row.AuthorSize, lineHeight = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             if (podcast.description.isNotBlank()) {
-                Spacer(modifier = Modifier.height(2.dp))
-                Text(text = stripHtml(podcast.description), color = colors.textDisabled, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Spacer(modifier = Modifier.height(row.LineGap))
+                Text(text = stripHtml(podcast.description), color = colors.textDisabled, fontSize = row.DescSize, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
 
         // Meta: episode count + New badge (horizontal row)
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-            modifier = Modifier.padding(end = 4.dp)
+            horizontalArrangement = Arrangement.spacedBy(row.MetaGap),
+            modifier = Modifier.padding(end = row.MetaEndPadding)
         ) {
             if (episodeCount > 0) {
-                Text(text = Strings.get("home_episode_count", episodeCount), color = colors.textSecondary, fontSize = 11.sp)
+                Text(text = Strings.get("home_episode_count", episodeCount), color = colors.textSecondary, fontSize = row.DescSize)
             }
             if (newCount > 0) {
                 Box(
                     modifier = Modifier
                         .wrapContentSize()
-                        .clip(RoundedCornerShape(9.dp))
-                        .background(colors.accent.copy(alpha = 0.2f))
-                        .padding(horizontal = 6.dp, vertical = 2.dp),
+                        .clip(RoundedCornerShape(badge.Radius))
+                        .background(badge.AccentBackgroundColor)
+                        .padding(horizontal = badge.PaddingHorizontal, vertical = badge.PaddingVertical),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = if (newCount == 1) Strings["home_new_badge"] else Strings.get("home_new_count", newCount),
-                        color = colors.accent, fontSize = 11.sp, fontWeight = FontWeight.SemiBold
+                        color = badge.AccentTextColor, fontSize = badge.TextSize, fontWeight = FontWeight.SemiBold
                     )
                 }
             }
@@ -1539,19 +1769,21 @@ private fun SubscriptionCard(
 
         // More button
         if (!isEditing) {
+            val toolbarButton = DesignTokens.ToolbarButton
             val moreInteractionSource = remember { MutableInteractionSource() }
             val isMoreHovered by moreInteractionSource.collectIsHoveredAsState()
-            val moreAnimatedBg by animateColorAsState(if (isMoreHovered) colors.elevated else Color.Transparent, tween(150))
+            val moreAnimatedBg by animateColorAsState(if (isMoreHovered) toolbarButton.HoverBackgroundColor else toolbarButton.BackgroundColor, tween(DesignTokens.Animation.HoverMs))
             Box(
                 modifier = Modifier
-                    .size(36.dp)
-                    .clip(CircleShape)
+                    .size(row.ActionButtonSize)
+                    .clip(RoundedCornerShape(toolbarButton.Radius))
                     .background(moreAnimatedBg)
+                    .border(toolbarButton.BorderWidth, toolbarButton.BorderColor, RoundedCornerShape(toolbarButton.Radius))
                     .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
                     .clickable(interactionSource = moreInteractionSource, indication = null) { onMore() },
                 contentAlignment = Alignment.Center
             ) {
-                Icon(Icons.Default.Delete, contentDescription = Strings["unsubscribe"], tint = colors.textSecondary, modifier = Modifier.size(20.dp))
+                Icon(Icons.Default.Delete, contentDescription = Strings["unsubscribe"], tint = colors.textSecondary, modifier = Modifier.size(row.ActionIconSize))
             }
         }
     }

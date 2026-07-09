@@ -190,6 +190,8 @@ object Strings {
         "home_sort_name_desc" to "Name Z-A",
         "home_sort_recent_update" to "Recent Update",
         "home_sort_recent_listen" to "Recently Listened",
+        "home_search_empty" to "No matching podcasts",
+        "home_search_empty_hint" to "Try another title or author.",
         // ── System Tray ──
         "tray_show" to "Show Podara",
         "tray_hide" to "Hide Podara",
@@ -395,6 +397,8 @@ object Strings {
         "home_sort_name_desc" to "名称 Z-A",
         "home_sort_recent_update" to "最近更新",
         "home_sort_recent_listen" to "最近收听",
+        "home_search_empty" to "没有匹配的播客",
+        "home_search_empty_hint" to "换个标题或作者试试。",
         // ── System Tray ──
         "tray_show" to "显示 Podara",
         "tray_hide" to "隐藏 Podara",
