@@ -39,7 +39,7 @@ class DownloadManager(
         try {
             val podcastDir = File(downloadsDir, sanitizeFileName(podcastTitle))
             podcastDir.mkdirs()
-            val ext = audioUrl.substringAfterLast('.', "mp3").substringBefore('?')
+            val ext = audioFileExtension(audioUrl)
             val outputFile = File(podcastDir, "${sanitizeFileName(episodeTitle)}.$ext")
 
             // Check if we have a paused task to resume from
@@ -306,11 +306,11 @@ class DownloadManager(
     fun getDownloadFile(origin: String, audioUrl: String, episodeTitle: String = "", podcastTitle: String = ""): File {
         if (episodeTitle.isNotEmpty() && podcastTitle.isNotEmpty()) {
             val podcastDir = File(downloadsDir, sanitizeFileName(podcastTitle))
-            val ext = audioUrl.substringAfterLast('.', "mp3").substringBefore('?')
+            val ext = audioFileExtension(audioUrl)
             return File(podcastDir, "${sanitizeFileName(episodeTitle)}.$ext")
         }
         val episodeDir = File(downloadsDir, origin.sha256())
-        val ext = audioUrl.substringAfterLast('.', "mp3").substringBefore('?')
+        val ext = audioFileExtension(audioUrl)
         return File(episodeDir, "${audioUrl.sha256()}.$ext")
     }
 
@@ -321,6 +321,17 @@ class DownloadManager(
             result = result.replace(c, '_')
         }
         return result.trim()
+    }
+
+    private fun audioFileExtension(audioUrl: String): String {
+        val path = try {
+            URL(audioUrl).path
+        } catch (_: Exception) {
+            audioUrl.substringBefore('?')
+        }
+        val ext = path.substringAfterLast('.', "").lowercase()
+        val allowed = setOf("mp3", "m4a", "aac", "ogg", "wav", "flac")
+        return ext.takeIf { it in allowed } ?: "mp3"
     }
 }
 

@@ -80,6 +80,71 @@ class DownloadManagerTest {
     }
 
     @Test
+    fun testGetDownloadFileFallsBackToMp3ForUrlWithoutPathExtension() {
+        val file = downloadManager.getDownloadFile(
+            "https://example.com/feed.xml",
+            "https://media.example.com/download?id=123",
+            episodeTitle = "Episode Without Extension",
+            podcastTitle = "Test Podcast"
+        )
+
+        assertEquals("Episode Without Extension.mp3", file.name)
+    }
+
+    @Test
+    fun testGetDownloadFileIgnoresDomainDotsWhenChoosingExtension() {
+        val file = downloadManager.getDownloadFile(
+            "https://example.com/feed.xml",
+            "https://media.example.com/download",
+            episodeTitle = "Domain Dot Episode",
+            podcastTitle = "Test Podcast"
+        )
+
+        assertEquals("Domain Dot Episode.mp3", file.name)
+    }
+
+    @Test
+    fun testGetDownloadFileFallsBackToMp3ForUnsafeExtension() {
+        val file = downloadManager.getDownloadFile(
+            "https://example.com/feed.xml",
+            "https://example.com/audio.exe",
+            episodeTitle = "Unsafe Extension",
+            podcastTitle = "Test Podcast"
+        )
+
+        assertEquals("Unsafe Extension.mp3", file.name)
+    }
+
+    @Test
+    fun testDownloadEpisodeWithoutPathExtensionUsesMp3File() = runBlocking {
+        val bytes = "audio bytes".toByteArray()
+        val server = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0).apply {
+            createContext("/download") { exchange ->
+                exchange.sendResponseHeaders(200, bytes.size.toLong())
+                exchange.responseBody.use { it.write(bytes) }
+            }
+            start()
+        }
+
+        try {
+            val result = downloadManager.downloadEpisode(
+                episodeId = "no-extension-ep",
+                audioUrl = "http://127.0.0.1:${server.address.port}/download?id=123",
+                origin = "https://example.com/no-extension.xml",
+                episodeTitle = "No Extension Episode",
+                podcastTitle = "No Extension Podcast"
+            )
+
+            assertTrue(result.isSuccess)
+            val file = result.getOrThrow()
+            assertEquals("No Extension Episode.mp3", file.name)
+            assertContentEquals(bytes, file.readBytes())
+        } finally {
+            server.stop(0)
+        }
+    }
+
+    @Test
     fun testDownloadEpisodeWithTitles() = runBlocking {
         try {
             val result = downloadManager.downloadEpisode(
