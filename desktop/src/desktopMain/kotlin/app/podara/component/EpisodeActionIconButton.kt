@@ -159,7 +159,7 @@ fun AddToQueueButton(
                 tint = colors.accent.copy(alpha = alpha),
                 contentDescription = null,
                 modifier = Modifier
-                    .offset(x = -(p * 70).dp, y = -(p * 50).dp)
+                    .offset(x = (p * 25).dp, y = (p * 60).dp)
                     .graphicsLayer(alpha = alpha, scaleX = 1f - p * 0.4f, scaleY = 1f - p * 0.4f)
                     .size(20.dp)
             )

@@ -373,6 +373,7 @@ fun FullPlayer(
     favoriteVersion: Int = 0,
     onFavoriteChanged: () -> Unit = {},
     onClose: () -> Unit,
+    onShowQueue: () -> Unit = {},
     onStartDownload: ((PodcastEpisode) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
@@ -381,7 +382,6 @@ fun FullPlayer(
 
     var sliderPosition by remember { mutableFloatStateOf(0f) }
     var isDragging by remember { mutableStateOf(false) }
-    var showQueue by remember { mutableStateOf(false) }
     var showSleepTimer by remember { mutableStateOf(false) }
     var showSpeedMenu by remember { mutableStateOf(false) }
     var notesExpanded by remember { mutableStateOf(false) }
@@ -436,7 +436,7 @@ fun FullPlayer(
                 IconButton(onClick = onClose) {
                     Icon(Icons.Default.KeyboardArrowDown, contentDescription = Strings["player_close"], tint = colors.textMuted)
                 }
-                IconButton(onClick = { showQueue = true }) {
+                IconButton(onClick = onShowQueue) {
                     Icon(Icons.Default.QueueMusic, contentDescription = Strings["player_queue"], tint = colors.textMuted)
                 }
             }
@@ -803,15 +803,6 @@ fun FullPlayer(
         }
     }
 
-    if (showQueue) {
-        QueueDrawer(
-            state = state,
-            database = database,
-            favoriteVersion = favoriteVersion,
-            onFavoriteChanged = onFavoriteChanged,
-            onDismiss = { showQueue = false }
-        )
-    }
     if (showSleepTimer) {
         SleepTimerSheet(state = state, onDismiss = { showSleepTimer = false })
     }

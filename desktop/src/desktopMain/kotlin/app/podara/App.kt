@@ -776,6 +776,7 @@ fun WindowScope.App(windowState: androidx.compose.ui.window.WindowState, awtWind
                                     database = database,
                                     favoriteVersion = favoritesVersion,
                                     onFavoriteChanged = { favoritesVersion++ },
+                                    onShowQueue = { showQueueFromMini = true },
                                     onClose = { showFullPlayer = false }
                                 )
                             }

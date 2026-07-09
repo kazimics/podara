@@ -84,6 +84,9 @@ fun DownloadsScreen(
     var favoriteIds by remember { mutableStateOf(setOf<String>()) }
     val scope = rememberCoroutineScope()
 
+    // ── Episode artwork map for download context playback ──
+    var episodeArtworkMap by remember { mutableStateOf(mapOf<String, String?>()) }
+
     // Reload completed list when downloadVersion changes
     LaunchedEffect(downloadVersion) {
         val all = database.downloads.getAllValid()
@@ -92,6 +95,12 @@ fun DownloadsScreen(
         groupedByPodcast = all.groupBy { it.origin }.map { (origin, items) ->
             PodcastGroup(origin, items.first().podcastTitle, items)
         }
+        val artworkMap = mutableMapOf<String, String?>()
+        for (dl in all) {
+            val ep = database.episodes.getById(dl.episodeId)
+            artworkMap[dl.episodeId] = ep?.imageUrl
+        }
+        episodeArtworkMap = artworkMap
     }
 
     // ── Determine active download tasks from DB ──
@@ -108,9 +117,9 @@ fun DownloadsScreen(
     val hasCompleted = completedList.isNotEmpty()
     val showEmpty = !hasInProgress && !hasCompleted
 
-    val downloadContextItems = remember(completedList) {
+    val downloadContextItems = remember(completedList, episodeArtworkMap) {
         completedList.filter { File(it.filePath).exists() }.map { dl ->
-            QueueItem(url = dl.filePath, title = dl.episodeTitle.ifEmpty { dl.episodeId }, subtitle = dl.podcastTitle, episodeId = dl.episodeId, isDownloaded = true)
+            QueueItem(url = dl.filePath, title = dl.episodeTitle.ifEmpty { dl.episodeId }, subtitle = dl.podcastTitle, artworkUrl = episodeArtworkMap[dl.episodeId], episodeId = dl.episodeId, isDownloaded = true)
         }
     }
 
@@ -800,11 +809,13 @@ private fun CompletedDownloadRow(
                             interactionSource = interactionSource,
                             indication = null
                         ) {
+                            val artUrl = contextItems.firstOrNull { it.url == download.filePath }?.artworkUrl
                             playerState.playWithContext(
                                 context = contextItems,
                                 targetUrl = download.filePath,
                                 title = download.episodeTitle.ifEmpty { download.episodeId },
                                 subtitle = download.podcastTitle,
+                                artworkUrl = artUrl,
                                 episodeId = download.episodeId
                             )
                         }

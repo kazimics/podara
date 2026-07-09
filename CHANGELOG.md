@@ -11,10 +11,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Favorite buttons across episode lists** — users can favorite/unfavorite episodes from PodcastDetailScreen, History, Downloads, FullPlayer recommendations/current episode, and QueueDrawer where a concrete episode is available
 - **Favorites persistence** — new `podcastFavorite` table, `PodcastFavorite` model, and `FavoriteDao` store favorites by `episodeId` with snapshot metadata so favorites remain visible even when the source episode row is missing
 - **Favorite UI components** — shared `EpisodeActionIconButton` and `FavoriteEpisodeButton` for consistent 36dp circular hover actions across screens
+- **Context-aware playback queue** — playing an episode from History, Favorites, PodcastDetail, or Downloads now replaces the entire queue with that page's episode list, so users can naturally play through the context. Manual `addToQueue()` still appends after context items
+- **Fly-away animation for queue button** — a new `AddToQueueButton` composable shows a translucent PlaylistAdd icon flying downward and slightly rightward with fade-out, giving visual feedback when an episode is added to the queue
 
 ### Changed
 - Sidebar navigation now includes Favorites between Subscriptions and History
 - CI test allowlists now include `FavoriteDaoTest` and `FavoritesScreenTest`
+- FullPlayer queue button now shares the same `QueueDrawer` as MiniPlayer (slides from right with scrim overlay), replacing the standalone internal drawer that couldn't close via scrim click
+- DownloadsScreen completed rows now play with proper cover art (episode artwork loaded from DB on context build)
+
+### Fixed
+- DownloadsScreen completed download playback missing cover art in MiniPlayer and FullPlayer — now queries episode imageUrl from database and passes it through playWithContext
 
 ### Tests
 - Added `FavoriteDaoTest` for insert, replace, delete, toggle, clear, snapshot fallback, and persistence across database reopen
