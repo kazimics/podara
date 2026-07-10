@@ -428,18 +428,54 @@ object DesignTokens {
 
     // ── Queue Panel ──
     object QueuePanel {
-        val Width = 320.dp
+        val Width = 420.dp
         val PaddingTop = 20.dp
         val PaddingHorizontal = 24.dp
         val RowHeight = 80.dp
-        val CoverSize = 56.dp
-        val CoverRadius = 8.dp
         val Spacing = 12.dp
-        val TitleSize = 13.sp
-        val HeaderTitleSize = 18.sp
+        val HeaderHeight = 56.dp
+        val HeaderContentTopOffset = 14.dp
+        val HeaderTitleSize = 21.sp
+        val HeaderTitleLineHeight = 26.sp
+        val HeaderTitleBottomOffset = 3.dp
         val ClearTextSize = 13.sp
         val DragHandleSize = 16.dp
         val ActiveCoverBadge = 20.dp
+        val HeaderActionMinWidth = 54.dp
+        val HeaderActionHeight = 28.dp
+        val HeaderActionRadius = 8.dp
+        val HeaderActionBorderWidth = 0.1.dp
+        val HeaderActionPaddingHorizontal = 9.dp
+        val HeaderActionIconSize = 15.dp
+        val HeaderActionIconTextGap = 5.dp
+        val HeaderActionTextSize = 12.sp
+        val HeaderActionLineHeight = 16.sp
+        val HeaderActionVerticalOffset = 4.dp
+        val HeaderActionGlassBackgroundColor = Color.White.copy(alpha = 0.06f)
+        val HeaderActionGlassHoverBackgroundColor = Color.White.copy(alpha = 0.10f)
+        val HeaderCloseButtonSize = 28.dp
+        val HeaderCloseButtonMargin = 6.dp
+        val HeaderCloseIconSize = 16.dp
+        val HeaderCloseHoverBackgroundColor = Color.White.copy(alpha = 0.08f)
+
+        // Queue rows use the Favorites card language with a denser two-line layout.
+        val CardHeight = 80.dp
+        val CardGap = DesignTokens.FavoriteEpisodeList.CardGap
+        val CardPaddingHorizontal = 14.dp
+        val CardPaddingVertical = 8.dp
+        val CoverSize = 64.dp
+        val CoverRadius = 10.dp
+        val CoverContentGap = 12.dp
+        val TitleSize = 13.sp
+        val TitleLineHeight = 17.sp
+        val TitleWeight = FontWeight.Normal
+        val SubtitleMarginTop = 2.dp
+        val SubtitleSize = 12.sp
+        val SubtitleLineHeight = 16.sp
+        val PlayingIndicatorWidth = 2.dp
+        val PlayingIndicatorInset = 14.dp
+        val RemoveButtonInset = 4.dp
+        val DragHandleVerticalOffset = 0.dp
     }
 
     // ── Page Header ──

@@ -38,12 +38,21 @@ fun ToolbarPillButton(
     contentDescription: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    height: androidx.compose.ui.unit.Dp = DesignTokens.ToolbarButton.PillHeight,
+    radius: androidx.compose.ui.unit.Dp = DesignTokens.ToolbarButton.PillRadius,
+    borderWidth: androidx.compose.ui.unit.Dp = DesignTokens.ToolbarButton.BorderWidth,
+    horizontalPadding: androidx.compose.ui.unit.Dp = DesignTokens.ToolbarButton.PillPaddingHorizontal,
+    iconSize: androidx.compose.ui.unit.Dp = DesignTokens.ToolbarButton.PillIconSize,
+    iconTextGap: androidx.compose.ui.unit.Dp = DesignTokens.ToolbarButton.PillIconTextGap,
+    textSize: androidx.compose.ui.unit.TextUnit = DesignTokens.ToolbarButton.PillTextSize,
+    lineHeight: androidx.compose.ui.unit.TextUnit = DesignTokens.ToolbarButton.PillLineHeight,
     minWidth: androidx.compose.ui.unit.Dp = DesignTokens.ToolbarButton.ManageMinWidth,
     iconColor: Color = DesignTokens.ToolbarButton.PillIconColor,
     hoverIconColor: Color = DesignTokens.ToolbarButton.PillHoverIconColor,
     textColor: Color = DesignTokens.ToolbarButton.PillTextColor,
     hoverTextColor: Color = DesignTokens.ToolbarButton.PillHoverTextColor,
     hoverBackgroundColor: Color = DesignTokens.ToolbarButton.PillHoverBackgroundColor,
+    defaultBackgroundColor: Color = DesignTokens.ToolbarButton.PillDefaultBackgroundColor,
     pressedBackgroundColor: Color = DesignTokens.ToolbarButton.PillPressedBackgroundColor,
     defaultBorderColor: Color = DesignTokens.ToolbarButton.PillDefaultBorderColor,
     hoverBorderColor: Color = DesignTokens.ToolbarButton.PillHoverBorderColor
@@ -52,13 +61,13 @@ fun ToolbarPillButton(
     val interactionSource = remember { MutableInteractionSource() }
     val isHovered by interactionSource.collectIsHoveredAsState()
     val isPressed by interactionSource.collectIsPressedAsState()
-    val shape = RoundedCornerShape(toolbarButton.PillRadius)
+    val shape = RoundedCornerShape(radius)
     val foregroundColor = if (isHovered || isPressed) hoverTextColor else textColor
     val iconTint = if (isHovered || isPressed) hoverIconColor else iconColor
 
     Box(
         modifier = modifier
-            .height(toolbarButton.PillHeight)
+            .height(height)
             .widthIn(min = minWidth)
             .shadow(
                 if (isHovered) toolbarButton.PillHoverShadowElevation else androidx.compose.ui.unit.Dp.Hairline,
@@ -71,17 +80,17 @@ fun ToolbarPillButton(
                 when {
                     isPressed -> pressedBackgroundColor
                     isHovered -> hoverBackgroundColor
-                    else -> toolbarButton.PillDefaultBackgroundColor
+                    else -> defaultBackgroundColor
                 }
             )
             .border(
-                toolbarButton.BorderWidth,
+                borderWidth,
                 if (isHovered || isPressed) hoverBorderColor else defaultBorderColor,
                 shape
             )
             .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
             .clickable(interactionSource = interactionSource, indication = null, onClick = onClick)
-            .padding(horizontal = toolbarButton.PillPaddingHorizontal),
+            .padding(horizontal = horizontalPadding),
         contentAlignment = Alignment.Center
     ) {
         Row(
@@ -91,14 +100,14 @@ fun ToolbarPillButton(
                 imageVector = icon,
                 contentDescription = contentDescription,
                 tint = iconTint,
-                modifier = Modifier.size(toolbarButton.PillIconSize)
+                modifier = Modifier.size(iconSize)
             )
-            Spacer(Modifier.width(toolbarButton.PillIconTextGap))
+            Spacer(Modifier.width(iconTextGap))
             Text(
                 text = label,
                 color = foregroundColor,
-                fontSize = toolbarButton.PillTextSize,
-                lineHeight = toolbarButton.PillLineHeight,
+                fontSize = textSize,
+                lineHeight = lineHeight,
                 fontWeight = toolbarButton.PillTextWeight
             )
         }
