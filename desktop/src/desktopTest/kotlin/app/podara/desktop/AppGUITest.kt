@@ -1,4 +1,6 @@
 package app.podara.desktop
+import app.podara.sortPodcastsByLatestEpisodeDate
+import app.podara.data.model.Podcast
 import app.podara.screen.DiscoverScreen
 import app.podara.screen.SettingsScreen
 import app.podara.screen.HistoryScreen
@@ -16,6 +18,7 @@ import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.setMain
 import kotlinx.coroutines.test.resetMain
 import org.junit.*
+import org.junit.Assert.assertEquals
 import java.io.File
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -42,6 +45,46 @@ class AppGUITest {
         testDbFile.delete()
         Dispatchers.resetMain()
     }
+
+    @Test
+    fun testRecentUpdateSortUsesLatestEpisodeDate() {
+        val podcasts = listOf(
+            podcast(origin = "old", title = "Older"),
+            podcast(origin = "new", title = "Newer"),
+            podcast(origin = "no-date", title = "No Date"),
+            podcast(origin = "same-date-b", title = "Beta"),
+            podcast(origin = "same-date-a", title = "Alpha"),
+            podcast(origin = "same-title-b", title = "Same"),
+            podcast(origin = "same-title-a", title = "Same")
+        )
+
+        val sortedOrigins = sortPodcastsByLatestEpisodeDate(
+            podcasts,
+            mapOf(
+                "old" to 100L,
+                "new" to 200L,
+                "same-date-b" to 50L,
+                "same-date-a" to 50L,
+                "same-title-b" to 25L,
+                "same-title-a" to 25L
+            )
+        ).map { it.origin }
+
+        assertEquals(
+            listOf("new", "old", "same-date-a", "same-date-b", "same-title-a", "same-title-b", "no-date"),
+            sortedOrigins
+        )
+    }
+
+    private fun podcast(origin: String, title: String) = Podcast(
+        origin = origin,
+        link = "",
+        title = title,
+        description = "",
+        author = "",
+        imageUrl = "",
+        languageCode = ""
+    )
 
     // === Settings Screen Tests ===
 

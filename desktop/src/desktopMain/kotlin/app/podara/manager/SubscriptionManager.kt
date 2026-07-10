@@ -42,6 +42,7 @@ class SubscriptionManager(
                 val newEpisodes = episodes.filter { it.id !in existingIds }
                 episodes.forEach { db.episodes.insert(it) }
                 newEpisodes.forEach { db.playStates.initState(it.id) }
+                db.subscriptions.updateLastUpdate(origin, System.currentTimeMillis())
 
                 UpdatePodcastResult.Updated(podcast, newEpisodes.size)
             }

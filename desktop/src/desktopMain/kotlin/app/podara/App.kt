@@ -1042,6 +1042,15 @@ fun WindowScope.App(
     }
 }
 
+internal fun sortPodcastsByLatestEpisodeDate(
+    podcasts: List<Podcast>,
+    latestEpisodePubDateMap: Map<String, Long>
+): List<Podcast> = podcasts.sortedWith(
+    compareByDescending<Podcast> { latestEpisodePubDateMap[it.origin] ?: 0L }
+        .thenBy { it.fetchTitle() }
+        .thenBy { it.origin }
+)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun HomeScreen(
@@ -1065,6 +1074,7 @@ private fun HomeScreen(
     var searchQuery by remember { mutableStateOf("") }
     var subscriptionMap by remember { mutableStateOf(mapOf<String, app.podara.data.model.PodcastSubscription>()) }
     var episodeCountMap by remember { mutableStateOf(mapOf<String, Int>()) }
+    var latestEpisodePubDateMap by remember { mutableStateOf(mapOf<String, Long>()) }
     var lastListenedMap by remember { mutableStateOf(mapOf<String, Long>()) }
     var sortOption by remember { mutableStateOf("name_asc") }
     var showSortMenu by remember { mutableStateOf(false) }
@@ -1075,10 +1085,14 @@ private fun HomeScreen(
         val subs = database.subscriptions.getAllSync()
         subscriptionMap = subs.associateBy { it.origin }
         val counts = mutableMapOf<String, Int>()
+        val latestPubDates = mutableMapOf<String, Long>()
         podcasts.forEach { p ->
-            counts[p.origin] = database.episodes.getEpisodeIds(p.origin).size
+            val episodes = database.episodes.getAllByOrigin(p.origin)
+            counts[p.origin] = episodes.size
+            latestPubDates[p.origin] = episodes.firstOrNull()?.pubDate ?: 0L
         }
         episodeCountMap = counts
+        latestEpisodePubDateMap = latestPubDates
         lastListenedMap = database.history.getLatestTimestampPerOrigin()
     }
 
@@ -1087,11 +1101,11 @@ private fun HomeScreen(
         else podcasts.filter { it.title.contains(searchQuery, ignoreCase = true) || it.author.contains(searchQuery, ignoreCase = true) }
     }
 
-    val sortedPodcasts = remember(filteredPodcasts, sortOption, subscriptionMap, lastListenedMap) {
+    val sortedPodcasts = remember(filteredPodcasts, sortOption, latestEpisodePubDateMap, lastListenedMap) {
         when (sortOption) {
             "name_asc" -> filteredPodcasts.sortedBy { it.fetchTitle() }
             "name_desc" -> filteredPodcasts.sortedByDescending { it.fetchTitle() }
-            "recent_update" -> filteredPodcasts.sortedByDescending { subscriptionMap[it.origin]?.lastUpdate ?: 0L }
+            "recent_update" -> sortPodcastsByLatestEpisodeDate(filteredPodcasts, latestEpisodePubDateMap)
             "recent_listen" -> filteredPodcasts.sortedByDescending { lastListenedMap[it.origin] ?: 0L }
             else -> filteredPodcasts
         }

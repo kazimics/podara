@@ -40,6 +40,7 @@ class UpdatePodcastTest {
     @Test
     fun testUpdatePodcastFetchesAndInsertsEpisodes() = runBlocking {
         subscriptionManager.subscribe(origin)
+        assertEquals(0L, database.subscriptions.getByOriginSync(origin)?.lastUpdate)
 
         val result = subscriptionManager.updatePodcast(origin, null)
 
@@ -48,6 +49,7 @@ class UpdatePodcastTest {
 
         val episodes = database.episodes.getAllByOrigin(origin)
         assertEquals(2, episodes.size)
+        assertTrue(database.subscriptions.getByOriginSync(origin)!!.lastUpdate > 0L)
     }
 
     @Test
@@ -73,6 +75,8 @@ class UpdatePodcastTest {
         assertTrue(firstResult is UpdatePodcastResult.Updated)
         assertEquals(2, (firstResult as UpdatePodcastResult.Updated).newEpisodesCount)
 
+        database.subscriptions.updateLastUpdate(origin, 0L)
+
         // Second call should not insert duplicates
         val secondResult = subscriptionManager.updatePodcast(origin, null)
         assertTrue(secondResult is UpdatePodcastResult.Updated)
@@ -81,6 +85,7 @@ class UpdatePodcastTest {
 
         val episodes = database.episodes.getAllByOrigin(origin)
         assertEquals(2, episodes.size, "Total episodes should still be 2")
+        assertTrue(database.subscriptions.getByOriginSync(origin)!!.lastUpdate > 0L)
     }
 
     @Test
