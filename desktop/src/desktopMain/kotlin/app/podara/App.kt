@@ -41,7 +41,6 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.window.WindowDraggableArea
@@ -61,6 +60,8 @@ import app.podara.component.EpisodeListItem
 import app.podara.component.EpisodeListItemSecondaryTextRole
 import app.podara.component.FavoriteEpisodeButton
 import app.podara.component.formatEpisodeMetadata
+import app.podara.component.PodaraDropdownMenu
+import app.podara.component.PodaraDropdownMenuItem
 import app.podara.component.PodaraEmptyState
 import app.podara.data.AppDatabase
 import app.podara.data.model.Podcast
@@ -1286,7 +1287,6 @@ private fun HomeScreen(
         Spacer(modifier = Modifier.height(16.dp))
 
         val toolbarButton = DesignTokens.ToolbarButton
-        val dropdownMenu = DesignTokens.DropdownMenu
         // ── List toolbar: count + actions ──
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -1440,98 +1440,36 @@ private fun HomeScreen(
                             }
                         }
 
-                        DropdownMenu(
+                        PodaraDropdownMenu(
                             expanded = showSortMenu,
                             onDismissRequest = { showSortMenu = false },
-                            offset = DpOffset(x = 0.dp, y = dropdownMenu.OffsetY),
-                            modifier = Modifier
-                                .width(dropdownMenu.Width)
-                                .shadow(
-                                    dropdownMenu.ShadowElevation,
-                                    RoundedCornerShape(dropdownMenu.Radius),
-                                    ambientColor = dropdownMenu.ShadowColor,
-                                    spotColor = dropdownMenu.ShadowColor
+                            items = listOf(
+                                PodaraDropdownMenuItem(
+                                    label = Strings["home_sort_name_asc"],
+                                    icon = Icons.Default.SortByAlpha,
+                                    isSelected = sortOption == "name_asc",
+                                    onClick = { sortOption = "name_asc"; showSortMenu = false }
+                                ),
+                                PodaraDropdownMenuItem(
+                                    label = Strings["home_sort_name_desc"],
+                                    icon = Icons.Default.SortByAlpha,
+                                    isSelected = sortOption == "name_desc",
+                                    onClick = { sortOption = "name_desc"; showSortMenu = false }
+                                ),
+                                PodaraDropdownMenuItem(
+                                    label = Strings["home_sort_recent_update"],
+                                    icon = Icons.Default.Update,
+                                    isSelected = sortOption == "recent_update",
+                                    onClick = { sortOption = "recent_update"; showSortMenu = false }
+                                ),
+                                PodaraDropdownMenuItem(
+                                    label = Strings["home_sort_recent_listen"],
+                                    icon = Icons.Default.History,
+                                    isSelected = sortOption == "recent_listen",
+                                    onClick = { sortOption = "recent_listen"; showSortMenu = false }
                                 )
-                                .clip(RoundedCornerShape(dropdownMenu.Radius))
-                                .background(dropdownMenu.BackgroundColor)
-                                .border(
-                                    DesignTokens.Border.Width,
-                                    dropdownMenu.BorderColor,
-                                    RoundedCornerShape(dropdownMenu.Radius)
-                                )
-                                .padding(dropdownMenu.Padding),
-                            containerColor = Color.Transparent,
-                            tonalElevation = 0.dp,
-                            shadowElevation = 0.dp
-                        ) {
-                            val sortOptions = listOf(
-                                "name_asc" to Strings["home_sort_name_asc"],
-                                "name_desc" to Strings["home_sort_name_desc"],
-                                "recent_update" to Strings["home_sort_recent_update"],
-                                "recent_listen" to Strings["home_sort_recent_listen"]
                             )
-                            sortOptions.forEach { (key, label) ->
-                                val isSelected = key == sortOption
-                                val itemInteractionSource = remember(key) { MutableInteractionSource() }
-                                val isItemHovered by itemInteractionSource.collectIsHoveredAsState()
-                                val itemBg by animateColorAsState(
-                                    when {
-                                        isSelected -> dropdownMenu.SelectedBackgroundColor
-                                        isItemHovered -> dropdownMenu.HoverBackgroundColor
-                                        else -> Color.Transparent
-                                    },
-                                    tween(DesignTokens.Animation.HoverMs)
-                                )
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(dropdownMenu.ItemHeight)
-                                        .clip(RoundedCornerShape(dropdownMenu.ItemRadius))
-                                        .background(itemBg)
-                                        .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
-                                        .clickable(interactionSource = itemInteractionSource, indication = null) {
-                                            sortOption = key
-                                            showSortMenu = false
-                                        }
-                                        .padding(horizontal = dropdownMenu.ItemPaddingHorizontal),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(dropdownMenu.ItemIconTextGap)
-                                ) {
-                                    val optionIcon = when (key) {
-                                        "name_asc", "name_desc" -> Icons.Default.SortByAlpha
-                                        "recent_update" -> Icons.Default.Update
-                                        "recent_listen" -> Icons.Default.History
-                                        else -> Icons.Default.UnfoldMore
-                                    }
-                                    Icon(
-                                        optionIcon,
-                                        contentDescription = null,
-                                        tint = if (isSelected) dropdownMenu.SelectedTextColor else dropdownMenu.IconColor,
-                                        modifier = Modifier.size(dropdownMenu.ItemIconSize)
-                                    )
-                                    Text(
-                                        text = label,
-                                        color = when {
-                                            isSelected -> dropdownMenu.SelectedTextColor
-                                            isItemHovered -> dropdownMenu.HoverTextColor
-                                            else -> dropdownMenu.TextColor
-                                        },
-                                        fontSize = dropdownMenu.LabelSize,
-                                        lineHeight = dropdownMenu.LabelLineHeight,
-                                        fontWeight = if (isSelected) dropdownMenu.SelectedLabelWeight else dropdownMenu.LabelWeight,
-                                        modifier = Modifier.weight(1f)
-                                    )
-                                    if (isSelected) {
-                                        Icon(
-                                            Icons.Default.Check,
-                                            contentDescription = null,
-                                            tint = dropdownMenu.SelectedTextColor,
-                                            modifier = Modifier.size(dropdownMenu.ItemIconSize)
-                                        )
-                                    }
-                                }
-                            }
-                        }
+                        )
                     }
                 }
             }  // closes inner Row
@@ -2139,20 +2077,21 @@ private fun PodcastDetailScreen(
                             ) {
                                 Icon(Icons.Default.MoreHoriz, contentDescription = Strings["discover_more"], tint = colors.textSecondary, modifier = Modifier.size(DesignTokens.IconButton.IconSize))
 
-                                DropdownMenu(
+                                PodaraDropdownMenu(
                                     expanded = showPopup,
-                                    onDismissRequest = { showPopup = false }
-                                ) {
-                                    DropdownMenuItem(
-                                        text = { Text(Strings["dialog_copy_to_clipboard"]) },
-                                        onClick = {
-                                            showPopup = false
-                                            val clipboard = java.awt.Toolkit.getDefaultToolkit().systemClipboard
-                                            val selection = java.awt.datatransfer.StringSelection(podcast.origin)
-                                            clipboard.setContents(selection, null)
-                                        }
+                                    onDismissRequest = { showPopup = false },
+                                    items = listOf(
+                                        PodaraDropdownMenuItem(
+                                            label = Strings["dialog_copy_to_clipboard"],
+                                            onClick = {
+                                                showPopup = false
+                                                val clipboard = java.awt.Toolkit.getDefaultToolkit().systemClipboard
+                                                val selection = java.awt.datatransfer.StringSelection(podcast.origin)
+                                                clipboard.setContents(selection, null)
+                                            }
+                                        )
                                     )
-                                }
+                                )
                             }
                         }
                     }
