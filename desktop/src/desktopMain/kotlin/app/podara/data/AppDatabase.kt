@@ -800,7 +800,7 @@ class DownloadTaskDao(private val conn: Connection) {
 
     /** Get all tasks that are not completed (DOWNLOADING / PAUSED / FAILED). */
     suspend fun getAllActive(): List<DownloadTask> = withContext(DatabaseDispatcher) {
-        val rs = conn.createStatement().executeQuery("SELECT * FROM downloadTask WHERE state != 'COMPLETED' ORDER BY updatedAt DESC")
+        val rs = conn.createStatement().executeQuery("SELECT * FROM downloadTask WHERE state != 'COMPLETED' ORDER BY createdAt DESC, episodeId ASC")
         val list = mutableListOf<DownloadTask>()
         while (rs.next()) list.add(DownloadTask(
             episodeId = rs.getString("episodeId"), origin = rs.getString("origin"),

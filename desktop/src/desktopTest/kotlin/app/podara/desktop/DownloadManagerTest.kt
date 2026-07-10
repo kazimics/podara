@@ -513,6 +513,27 @@ class DownloadManagerTest {
         assertNull(database.downloadTasks.getByEpisodeId("task-ep"))
     }
 
+    @Test
+    fun testActiveTasksHaveStableCreationOrder() = runBlocking {
+        database.downloadTasks.insert(DownloadTask(
+            episodeId = "older-task", origin = "origin", audioUrl = "https://example.com/older.mp3",
+            podcastTitle = "Podcast", episodeTitle = "Older", state = "PAUSED",
+            createdAt = 1L, updatedAt = 1L
+        ))
+        database.downloadTasks.insert(DownloadTask(
+            episodeId = "newer-task", origin = "origin", audioUrl = "https://example.com/newer.mp3",
+            podcastTitle = "Podcast", episodeTitle = "Newer", state = "PAUSED",
+            createdAt = 2L, updatedAt = 2L
+        ))
+
+        database.downloadTasks.updateState("older-task", "FAILED")
+
+        assertEquals(
+            listOf("newer-task", "older-task"),
+            database.downloadTasks.getAllActive().map { it.episodeId }
+        )
+    }
+
     // ── Helpers ──
 
     /** Create a test download record + dummy file, return the file reference. */

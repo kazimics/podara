@@ -2,8 +2,10 @@ package app.podara.desktop
 import app.podara.screen.DownloadsScreen
 
 import androidx.compose.ui.test.*
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.junit4.createComposeRule
 import app.podara.data.AppDatabase
+import app.podara.data.DownloadTask
 import app.podara.manager.DownloadManager
 import app.podara.theme.PodaraTheme
 import app.podara.util.Strings
@@ -178,6 +180,63 @@ class DownloadsScreenTest {
         composeTestRule.waitForIdle()
 
         assertTrue("Delete callback should have been triggered", deleteClicked)
+    }
+
+    @Test
+    fun testPausedTaskTransitionsToSingleInProgressRow() {
+        val episodeId = "transition-ep"
+        runBlocking {
+            database.downloadTasks.insert(DownloadTask(
+                episodeId = episodeId, origin = "origin", audioUrl = "https://example.com/episode.mp3",
+                podcastTitle = "Transition Podcast", episodeTitle = "Transition Episode",
+                downloadedBytes = 100L, totalBytes = 200L, state = "PAUSED",
+                createdAt = 1L, updatedAt = 1L
+            ))
+        }
+        val downloadingEpisodes = mutableStateOf(emptySet<String>())
+
+        composeTestRule.setContent {
+            PodaraTheme {
+                DownloadsScreen(
+                    database = database,
+                    downloadManager = downloadManager,
+                    downloadPath = testDownloadsDir.absolutePath,
+                    downloadingEpisodes = downloadingEpisodes.value,
+                    downloadProgress = mapOf(episodeId to Pair(100L, 200L)),
+                    downloadVersion = 1,
+                    completedDownloads = emptySet(),
+                    activeDownloadMeta = mapOf(episodeId to ("Transition Podcast" to "Transition Episode")),
+                    favoriteVersion = 0,
+                    onPauseDownload = {},
+                    onResumeDownload = {},
+                    onCancelDownload = {},
+                    onDeleteDownloaded = {},
+                    onDeleteDownloadedByOrigin = {},
+                    onBack = {},
+                    onOpenSettings = {}
+                )
+            }
+        }
+
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithText(Strings["downloads_status_paused"]).assertIsDisplayed()
+        composeTestRule.onNodeWithContentDescription(Strings["downloads_resume"]).assertIsDisplayed()
+
+        composeTestRule.runOnUiThread { downloadingEpisodes.value = setOf(episodeId) }
+
+        composeTestRule.waitForIdle()
+        composeTestRule.onAllNodesWithText("Transition Episode").assertCountEquals(1)
+        composeTestRule.onNodeWithText("(50%)").assertIsDisplayed()
+        composeTestRule.onNodeWithContentDescription(Strings["downloads_pause"]).assertIsDisplayed()
+        composeTestRule.onNodeWithContentDescription(Strings["downloads_resume"]).assertDoesNotExist()
+        composeTestRule.onNodeWithText(Strings["downloads_empty"]).assertDoesNotExist()
+
+        composeTestRule.runOnUiThread { downloadingEpisodes.value = emptySet() }
+
+        composeTestRule.waitForIdle()
+        composeTestRule.onAllNodesWithText("Transition Episode").assertCountEquals(1)
+        composeTestRule.onNodeWithText(Strings["downloads_status_paused"]).assertIsDisplayed()
+        composeTestRule.onNodeWithContentDescription(Strings["downloads_resume"]).assertIsDisplayed()
     }
 
     // ── In-progress downloads ──

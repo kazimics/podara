@@ -503,7 +503,6 @@ fun WindowScope.App(
             scope.launch {
                 // Track in downloadingEpisodes so DownloadsScreen shows it as in-progress
                 downloadingEpisodes = downloadingEpisodes + episodeId
-                downloadVersion++ // trigger UI refresh to show in-progress state
                 try {
                     val result = downloadManager.resumeDownload(episodeId) { current, total ->
                         downloadProgress = downloadProgress + (episodeId to Pair(current, total))
