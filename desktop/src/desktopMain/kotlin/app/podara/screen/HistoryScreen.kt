@@ -566,7 +566,7 @@ private fun HistoryItem(
             AddToQueueButton(
                 size = favoriteList.ActionButtonSize,
                 radius = favoriteList.ActionButtonRadius,
-                iconSize = favoriteList.ActionIconSize,
+                iconSize = favoriteList.QueueIconSize,
                 hoverBackgroundColor = favoriteList.ActionButtonHoverBackgroundColor,
                 defaultIconColor = favoriteList.QueueIconColor,
                 hoverIconColor = favoriteList.QueueIconHoverColor

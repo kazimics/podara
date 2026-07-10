@@ -432,6 +432,9 @@ private fun FavoriteItem(
                     durationMs = episode.duration * 1000L,
                     episodeId = episode.id
                 )
+                scope.launch {
+                    database.history.insert(episode.origin, episode.id)
+                }
             }
             .padding(horizontal = favoriteList.CardPaddingHorizontal, vertical = favoriteList.CardPaddingVertical),
         verticalAlignment = Alignment.CenterVertically
@@ -526,7 +529,7 @@ private fun FavoriteItem(
             AddToQueueButton(
                 size = favoriteList.ActionButtonSize,
                 radius = favoriteList.ActionButtonRadius,
-                iconSize = favoriteList.ActionIconSize,
+                iconSize = favoriteList.QueueIconSize,
                 hoverBackgroundColor = favoriteList.ActionButtonHoverBackgroundColor,
                 defaultIconColor = favoriteList.QueueIconColor,
                 hoverIconColor = favoriteList.QueueIconHoverColor

@@ -387,6 +387,7 @@ object DesignTokens {
         val ActionButtonRadius = (10f * Scale).dp
         val ActionButtonHoverBackgroundColor = Color.White.copy(alpha = 0.08f)
         val ActionIconSize = (22f * Scale).dp
+        val QueueIconSize = (26f * Scale).dp
         val ActionIconColor = Color(0xFFA5A8B0)
         val ActionIconHoverColor = Color.White
         val QueueIconColor = Color(0xFFA5A8B0)

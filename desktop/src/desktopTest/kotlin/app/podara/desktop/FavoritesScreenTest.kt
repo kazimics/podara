@@ -82,6 +82,43 @@ class FavoritesScreenTest {
     }
 
     @Test
+    fun testPlayingFavoriteRecordsHistory() {
+        val episode = PodcastEpisode(
+            id = "ep-history",
+            guid = "guid-history",
+            origin = "https://example.com/feed.xml",
+            link = "https://example.com/history",
+            title = "History Favorite Episode",
+            description = "Description",
+            imageUrl = null,
+            author = "Author",
+            pubDate = 1000L,
+            duration = 300,
+            audioUrl = "https://example.com/history.mp3",
+            podcastTitle = "Favorite Podcast"
+        )
+        runBlocking { database.favorites.insert(episode) }
+        val playerState = MediaPlayerState()
+
+        composeTestRule.setContent {
+            PodaraTheme {
+                FavoritesScreen(database = database, playerState = playerState, favoriteVersion = 0, onBack = {})
+            }
+        }
+
+        composeTestRule.onNodeWithText(episode.title).performClick()
+        composeTestRule.waitUntil(timeoutMillis = 5_000) {
+            runBlocking { database.history.getAllSync().any { it.episodeId == episode.id } }
+        }
+
+        val history = runBlocking { database.history.getAllSync() }
+        assert(history.single().origin == episode.origin)
+        assert(history.single().episodeId == episode.id)
+        assert(playerState.currentUrl == episode.audioUrl)
+        assert(playerState.currentEpisodeId == episode.id)
+    }
+
+    @Test
     fun testFavoritesShowsSavedEpisode() {
         runBlocking {
             database.favorites.insert(PodcastEpisode(
