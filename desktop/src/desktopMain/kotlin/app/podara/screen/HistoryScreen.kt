@@ -6,8 +6,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.interaction.collectIsPressedAsState
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -25,14 +23,14 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.podara.data.AppDatabase
 import app.podara.component.AddToQueueButton
+import app.podara.component.EpisodeListItem
+import app.podara.component.formatEpisodeMetadata
 import app.podara.component.FavoriteEpisodeButton
 import app.podara.component.PodaraEmptyState
 import app.podara.data.model.Podcast
@@ -43,7 +41,6 @@ import app.podara.player.QueueItem
 import app.podara.util.Strings
 import app.podara.theme.DesignTokens
 import app.podara.theme.PodaraTheme
-import coil3.compose.AsyncImage
 import java.awt.Cursor
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -360,22 +357,90 @@ fun HistoryScreen(
 
                     // Section items
                     items(section.items, key = { it.first.id }) { (history, episode) ->
-                        HistoryItem(
-                            history = history,
+                        val podcast = podcastMap[episode.origin]
+                        val favoriteList = DesignTokens.FavoriteEpisodeList
+                        val currentQueueItem = playerState.queue.getOrNull(playerState.queueIndex)
+                        EpisodeListItem(
                             episode = episode,
-                            podcast = podcastMap[episode.origin],
-                            contextItems = contextItems,
-                            scope = scope,
-                            database = database,
-                            playerState = playerState,
-                            isFavorite = episode.id in favoriteIds,
-                            onFavoriteToggled = { isFavorite ->
-                                favoriteIds = if (isFavorite) favoriteIds + episode.id else favoriteIds - episode.id
-                                onFavoriteChanged()
+                            podcast = podcast,
+                            isPlaying = currentQueueItem?.historyId == history.id,
+                            secondaryText = episode.podcastTitle,
+                            tertiaryText = formatEpisodeMetadata(formatRelativeTime(history.timestamp), episode.duration),
+                            onPlay = {
+                                playerState.playWithContext(
+                                    context = contextItems,
+                                    targetUrl = episode.audioUrl,
+                                    title = episode.title,
+                                    subtitle = episode.podcastTitle,
+                                    artworkUrl = episode.imageUrl,
+                                    podcastArtworkUrl = podcast?.imageUrl,
+                                    durationMs = episode.duration * 1000L,
+                                    episodeId = episode.id,
+                                    targetHistoryId = history.id
+                                )
                             },
-                            onHistoryChanged = { allHistoryItems = it },
-                            onShowPodcastDetail = onShowPodcastDetail
-                        )
+                            onPodcastClick = onShowPodcastDetail
+                        ) {
+                            AddToQueueButton(
+                                size = favoriteList.ActionButtonSize,
+                                radius = favoriteList.ActionButtonRadius,
+                                iconSize = favoriteList.QueueIconSize,
+                                hoverBackgroundColor = favoriteList.ActionButtonHoverBackgroundColor,
+                                defaultIconColor = favoriteList.QueueIconColor,
+                                hoverIconColor = favoriteList.QueueIconHoverColor
+                            ) {
+                                playerState.addToQueue(
+                                    url = episode.audioUrl,
+                                    title = episode.title,
+                                    artworkUrl = episode.imageUrl,
+                                    podcastArtworkUrl = podcast?.imageUrl,
+                                    episodeId = episode.id
+                                )
+                            }
+                            FavoriteEpisodeButton(
+                                isFavorite = episode.id in favoriteIds,
+                                size = favoriteList.ActionButtonSize,
+                                radius = favoriteList.ActionButtonRadius,
+                                iconSize = favoriteList.FavoriteIconSize,
+                                hoverBackgroundColor = favoriteList.ActionButtonHoverBackgroundColor,
+                                defaultIconColor = favoriteList.FavoriteInactiveColor,
+                                hoverIconColor = favoriteList.ActionIconHoverColor,
+                                selectedIconColor = favoriteList.FavoriteActiveColor
+                            ) {
+                                scope.launch {
+                                    database.episodes.insert(episode)
+                                    val isFavorite = database.favorites.toggle(episode)
+                                    favoriteIds = if (isFavorite) favoriteIds + episode.id else favoriteIds - episode.id
+                                    onFavoriteChanged()
+                                }
+                            }
+
+                            val removeInteractionSource = remember { MutableInteractionSource() }
+                            val isRemoveHovered by removeInteractionSource.collectIsHoveredAsState()
+                            val isRemovePressed by removeInteractionSource.collectIsPressedAsState()
+                            val removeIconColor = if (isRemoveHovered || isRemovePressed) favoriteList.ActionIconHoverColor else favoriteList.ActionIconColor
+                            Box(
+                                modifier = Modifier
+                                    .size(favoriteList.ActionButtonSize)
+                                    .clip(RoundedCornerShape(favoriteList.ActionButtonRadius))
+                                    .background(if (isRemoveHovered || isRemovePressed) favoriteList.ActionButtonHoverBackgroundColor else Color.Transparent)
+                                    .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
+                                    .clickable(interactionSource = removeInteractionSource, indication = null) {
+                                        scope.launch {
+                                            database.history.delete(episode.id)
+                                            allHistoryItems = database.history.getAllWithEpisode()
+                                        }
+                                    },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    Icons.Default.Close,
+                                    contentDescription = Strings["player_remove"],
+                                    tint = removeIconColor,
+                                    modifier = Modifier.size(favoriteList.ActionIconSize)
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -406,221 +471,6 @@ fun HistoryScreen(
             },
             containerColor = colors.surface
         )
-    }
-}
-
-// ── History Item ──
-@Composable
-private fun HistoryItem(
-    history: PodcastHistory,
-    episode: PodcastEpisode,
-    podcast: Podcast?,
-    contextItems: List<QueueItem>,
-    scope: kotlinx.coroutines.CoroutineScope,
-    database: AppDatabase,
-    playerState: MediaPlayerState,
-    isFavorite: Boolean,
-    onFavoriteToggled: (Boolean) -> Unit,
-    onHistoryChanged: (List<Pair<PodcastHistory, PodcastEpisode?>>) -> Unit,
-    onShowPodcastDetail: (Podcast) -> Unit
-) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val isHovered by interactionSource.collectIsHoveredAsState()
-    val isPressed by interactionSource.collectIsPressedAsState()
-    val favoriteList = DesignTokens.FavoriteEpisodeList
-    val shape = RoundedCornerShape(favoriteList.CardRadius)
-    val currentQueueItem = playerState.queue.getOrNull(playerState.queueIndex)
-    val isPlaying = currentQueueItem?.historyId == history.id
-    val itemBg by animateColorAsState(
-        targetValue = when {
-            isPlaying -> favoriteList.PlayingBackgroundColor
-            isPressed -> favoriteList.PressedBackgroundColor
-            isHovered -> favoriteList.HoverBackgroundColor
-            else -> favoriteList.BackgroundColor
-        },
-        animationSpec = tween(durationMillis = DesignTokens.Animation.HoverMs)
-    )
-    val borderColor by animateColorAsState(
-        targetValue = when {
-            isPlaying -> favoriteList.PlayingBorderColor
-            isHovered -> favoriteList.HoverBorderColor
-            else -> favoriteList.BorderColor
-        },
-        animationSpec = tween(durationMillis = DesignTokens.Animation.HoverMs)
-    )
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(favoriteList.CardHeight)
-            .clip(shape)
-            .background(itemBg)
-            .border(favoriteList.BorderWidth, borderColor, shape)
-            .clickable(
-                enabled = episode.audioUrl.isNotBlank(),
-                interactionSource = interactionSource,
-                indication = null
-            ) {
-                playerState.playWithContext(
-                    context = contextItems,
-                    targetUrl = episode.audioUrl,
-                    title = episode.title,
-                    subtitle = episode.podcastTitle,
-                    artworkUrl = episode.imageUrl,
-                    podcastArtworkUrl = podcast?.imageUrl,
-                    durationMs = episode.duration * 1000L,
-                    episodeId = episode.id,
-                    targetHistoryId = history.id
-                )
-            }
-            .padding(horizontal = favoriteList.CardPaddingHorizontal, vertical = favoriteList.CardPaddingVertical),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Box(
-            modifier = Modifier
-                .size(favoriteList.CoverSize)
-                .shadow(
-                    elevation = favoriteList.CoverShadowElevation,
-                    shape = RoundedCornerShape(favoriteList.CoverRadius),
-                    ambientColor = favoriteList.CoverShadowColor,
-                    spotColor = favoriteList.CoverShadowColor
-                )
-                .clip(RoundedCornerShape(favoriteList.CoverRadius))
-        ) {
-            AsyncImage(
-                model = episode.imageUrl ?: podcast?.imageUrl,
-                contentDescription = episode.title,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize()
-            )
-            if (episode.duration > 0) {
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.BottomEnd)
-                        .padding(favoriteList.DurationInset)
-                        .height(favoriteList.DurationHeight)
-                        .clip(RoundedCornerShape(favoriteList.DurationRadius))
-                        .background(favoriteList.DurationBackgroundColor)
-                        .padding(horizontal = favoriteList.DurationPaddingHorizontal),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = formatDurationCompact(episode.duration),
-                        color = favoriteList.DurationTextColor,
-                        fontSize = favoriteList.DurationTextSize,
-                        fontWeight = favoriteList.DurationTextWeight
-                    )
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.width(favoriteList.CoverContentGap))
-
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = episode.title,
-                color = favoriteList.TitleColor,
-                fontSize = favoriteList.TitleSize,
-                lineHeight = favoriteList.TitleLineHeight,
-                fontWeight = favoriteList.TitleWeight,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            Spacer(modifier = Modifier.height(favoriteList.PodcastNameMarginTop))
-            Text(
-                text = episode.podcastTitle,
-                color = favoriteList.PodcastNameColor,
-                fontSize = favoriteList.PodcastNameSize,
-                lineHeight = favoriteList.PodcastNameLineHeight,
-                fontWeight = favoriteList.PodcastNameWeight,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier
-                    .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
-                    .clickable(enabled = podcast != null) {
-                        if (podcast != null) onShowPodcastDetail(podcast)
-                    }
-            )
-            Spacer(modifier = Modifier.height(favoriteList.MetadataMarginTop))
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(DesignTokens.Spacing.sm)) {
-                Text(
-                    text = formatRelativeTime(history.timestamp),
-                    color = favoriteList.MetadataColor,
-                    fontSize = favoriteList.MetadataSize,
-                    maxLines = 1
-                )
-                if (episode.duration > 0) {
-                    Text(text = "·", color = favoriteList.MetadataColor, fontSize = favoriteList.MetadataSize)
-                    Text(
-                        text = formatDurationCompact(episode.duration),
-                        color = favoriteList.MetadataColor,
-                        fontSize = favoriteList.MetadataSize
-                    )
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.width(favoriteList.ContentActionsGap))
-
-        Row(horizontalArrangement = Arrangement.spacedBy(favoriteList.ActionsGap)) {
-            AddToQueueButton(
-                size = favoriteList.ActionButtonSize,
-                radius = favoriteList.ActionButtonRadius,
-                iconSize = favoriteList.QueueIconSize,
-                hoverBackgroundColor = favoriteList.ActionButtonHoverBackgroundColor,
-                defaultIconColor = favoriteList.QueueIconColor,
-                hoverIconColor = favoriteList.QueueIconHoverColor
-            ) {
-                playerState.addToQueue(
-                    url = episode.audioUrl,
-                    title = episode.title,
-                    artworkUrl = episode.imageUrl,
-                    podcastArtworkUrl = podcast?.imageUrl,
-                    episodeId = episode.id
-                )
-            }
-            FavoriteEpisodeButton(
-                isFavorite = isFavorite,
-                size = favoriteList.ActionButtonSize,
-                radius = favoriteList.ActionButtonRadius,
-                iconSize = favoriteList.FavoriteIconSize,
-                hoverBackgroundColor = favoriteList.ActionButtonHoverBackgroundColor,
-                defaultIconColor = favoriteList.FavoriteInactiveColor,
-                hoverIconColor = favoriteList.ActionIconHoverColor,
-                selectedIconColor = favoriteList.FavoriteActiveColor
-            ) {
-                scope.launch {
-                    database.episodes.insert(episode)
-                    onFavoriteToggled(database.favorites.toggle(episode))
-                }
-            }
-
-            val removeInteractionSource = remember { MutableInteractionSource() }
-            val isRemoveHovered by removeInteractionSource.collectIsHoveredAsState()
-            val isRemovePressed by removeInteractionSource.collectIsPressedAsState()
-            val removeIconColor = if (isRemoveHovered || isRemovePressed) favoriteList.ActionIconHoverColor else favoriteList.ActionIconColor
-            Box(
-                modifier = Modifier
-                    .size(favoriteList.ActionButtonSize)
-                    .clip(RoundedCornerShape(favoriteList.ActionButtonRadius))
-                    .background(if (isRemoveHovered || isRemovePressed) favoriteList.ActionButtonHoverBackgroundColor else Color.Transparent)
-                    .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
-                    .clickable(interactionSource = removeInteractionSource, indication = null) {
-                        scope.launch {
-                            database.history.delete(episode.id)
-                            onHistoryChanged(database.history.getAllWithEpisode())
-                        }
-                    },
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    Icons.Default.Close,
-                    contentDescription = Strings["player_remove"],
-                    tint = removeIconColor,
-                    modifier = Modifier.size(favoriteList.ActionIconSize)
-                )
-            }
-        }
     }
 }
 
@@ -690,15 +540,4 @@ private fun formatRelativeTime(timestamp: Long): String {
 private fun formatDateAbsolute(timestamp: Long): String {
     val sdf = SimpleDateFormat("MMM dd", Locale.getDefault())
     return sdf.format(Date(timestamp))
-}
-
-private fun formatDurationCompact(totalSeconds: Int): String {
-    val hours = totalSeconds / 3600
-    val minutes = (totalSeconds % 3600) / 60
-    val seconds = totalSeconds % 60
-    return if (hours > 0) {
-        String.format("%d:%02d:%02d", hours, minutes, seconds)
-    } else {
-        String.format("%d:%02d", minutes, seconds)
-    }
 }

@@ -563,7 +563,11 @@ private fun InProgressRow(
             // Progress bar
             LinearProgressIndicator(
                 progress = { progress.coerceIn(0f, 1f) },
-                modifier = Modifier.fillMaxWidth().height(4.dp).clip(RoundedCornerShape(2.dp)),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(end = 30.dp)
+                    .height(4.dp)
+                    .clip(RoundedCornerShape(2.dp)),
                 color = colors.accent,
                 trackColor = colors.elevated,
             )

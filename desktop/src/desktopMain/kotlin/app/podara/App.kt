@@ -57,7 +57,10 @@ import app.podara.api.rss.FetchPodcastClient
 import app.podara.api.rss.FetchPodcastClientResult
 import app.podara.component.AddToQueueButton
 import app.podara.component.EpisodeActionIconButton
+import app.podara.component.EpisodeListItem
+import app.podara.component.EpisodeListItemSecondaryTextRole
 import app.podara.component.FavoriteEpisodeButton
+import app.podara.component.formatEpisodeMetadata
 import app.podara.component.PodaraEmptyState
 import app.podara.data.AppDatabase
 import app.podara.data.model.Podcast
@@ -2160,194 +2163,137 @@ private fun PodcastDetailScreen(
                 Spacer(modifier = Modifier.height(4.dp))
 
                 // ── Episode list ──
-                LazyColumn(modifier = Modifier.fillMaxWidth().weight(1f)) {
+                LazyColumn(
+                    modifier = Modifier.fillMaxWidth().weight(1f),
+                    contentPadding = PaddingValues(
+                        top = DesignTokens.FavoriteEpisodeList.ListPaddingTop,
+                        bottom = DesignTokens.FavoriteEpisodeList.ListPaddingBottom
+                    ),
+                    verticalArrangement = Arrangement.spacedBy(DesignTokens.FavoriteEpisodeList.CardGap)
+                ) {
                     items(episodes) { episode ->
                         val isDownloading = episode.id in allDownloading
                         val progress = downloadProgress[episode.id] ?: activeTaskProgress[episode.id]
                         val isDbTask = episode.id in activeTaskProgress && episode.id !in downloadProgress
 
-                        val rowInteractionSource = remember { MutableInteractionSource() }
-                        val isRowHovered by rowInteractionSource.collectIsHoveredAsState()
-                        val rowAnimatedBg by animateColorAsState(if (isRowHovered) colors.elevated else Color.Transparent, tween(150))
-
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(88.dp)
-                                .padding(horizontal = 32.dp)
-                                .background(rowAnimatedBg)
-                                .clickable(interactionSource = rowInteractionSource, indication = null) {
-                                    scope.launch {
-                                        val downloadRecord = database.downloads.getByEpisodeId(episode.id)
-                                        val url = if (downloadRecord != null && File(downloadRecord.filePath).exists()) {
-                                            downloadRecord.filePath
-                                        } else {
-                                            episode.audioUrl
-                                        }
-                                        val epWithUrl = episode.copy(audioUrl = url)
-                                        playerState.playWithContext(
-                                            context = episodeContextItems.map { item ->
-                                                if (item.url == epWithUrl.audioUrl) item.copy(url = url) else item
-                                            },
-                                            targetUrl = url,
-                                            title = epWithUrl.title,
-                                            subtitle = epWithUrl.podcastTitle,
-                                            artworkUrl = epWithUrl.imageUrl,
-                                            podcastArtworkUrl = podcast.imageUrl,
-                                            durationMs = epWithUrl.duration * 1000L,
-                                            episodeId = epWithUrl.id
-                                        )
-                                        database.episodes.insert(epWithUrl)
-                                        database.history.insert(epWithUrl.origin, epWithUrl.id)
+                        EpisodeListItem(
+                            episode = episode,
+                            podcast = podcast,
+                            isPlaying = playerState.currentEpisodeId == episode.id || playerState.currentUrl == episode.audioUrl,
+                            secondaryText = formatEpisodeMetadata(formatDate(episode.pubDate), episode.duration),
+                            tertiaryText = stripHtml(episode.description),
+                            secondaryTextRole = EpisodeListItemSecondaryTextRole.Metadata,
+                            modifier = Modifier.padding(horizontal = 32.dp),
+                            onPlay = {
+                                scope.launch {
+                                    val downloadRecord = database.downloads.getByEpisodeId(episode.id)
+                                    val url = if (downloadRecord != null && File(downloadRecord.filePath).exists()) {
+                                        downloadRecord.filePath
+                                    } else {
+                                        episode.audioUrl
                                     }
-                                }
-                                .padding(start = 12.dp, end = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            // Cover
-                            AsyncImage(
-                                model = episode.imageUrl ?: podcast.imageUrl,
-                                contentDescription = episode.title,
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier
-                                    .size(72.dp)
-                                    .clip(RoundedCornerShape(8.dp))
-                            )
-                            Spacer(modifier = Modifier.width(12.dp))
-
-                            // Content
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = episode.title,
-                                    color = colors.textPrimary,
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.Medium,
-                                    maxLines = 2,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    val dateStr = formatDate(episode.pubDate)
-                                    if (dateStr.isNotEmpty()) {
-                                        Text(
-                                            text = dateStr,
-                                            color = colors.textMuted,
-                                            fontSize = 12.sp
-                                        )
-                                        Text(text = " · ", color = colors.textMuted, fontSize = 12.sp)
-                                    }
-                                    Text(
-                                        text = formatDuration(episode.duration),
-                                        color = colors.textMuted,
-                                        fontSize = 12.sp
+                                    val epWithUrl = episode.copy(audioUrl = url)
+                                    playerState.playWithContext(
+                                        context = episodeContextItems.map { item ->
+                                            if (item.url == epWithUrl.audioUrl) item.copy(url = url) else item
+                                        },
+                                        targetUrl = url,
+                                        title = epWithUrl.title,
+                                        subtitle = epWithUrl.podcastTitle,
+                                        artworkUrl = epWithUrl.imageUrl,
+                                        podcastArtworkUrl = podcast.imageUrl,
+                                        durationMs = epWithUrl.duration * 1000L,
+                                        episodeId = epWithUrl.id
                                     )
+                                    database.episodes.insert(epWithUrl)
+                                    database.history.insert(epWithUrl.origin, epWithUrl.id)
                                 }
-                                if (episode.description.isNotEmpty()) {
-                                    Spacer(modifier = Modifier.height(2.dp))
-                                    Text(
-                                        text = stripHtml(episode.description),
-                                        color = colors.textMuted,
-                                        fontSize = 11.sp,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
+                            },
+                        ) {
+                            FavoriteEpisodeButton(isFavorite = episode.id in favoriteIds) {
+                                scope.launch {
+                                    database.episodes.insert(episode)
+                                    val isFavorite = database.favorites.toggle(episode)
+                                    favoriteIds = if (isFavorite) favoriteIds + episode.id else favoriteIds - episode.id
+                                    onFavoriteChanged()
+                                }
+                            }
+
+                            AddToQueueButton {
+                                scope.launch {
+                                    val downloadRecord = database.downloads.getByEpisodeId(episode.id)
+                                    val url = if (downloadRecord != null && File(downloadRecord.filePath).exists()) {
+                                        downloadRecord.filePath
+                                    } else {
+                                        episode.audioUrl
+                                    }
+                                    playerState.addToQueue(
+                                        url = url,
+                                        title = episode.title,
+                                        artworkUrl = episode.imageUrl,
+                                        podcastArtworkUrl = podcast.imageUrl,
+                                        episodeId = episode.id,
+                                        isDownloaded = episode.id in completedDownloads
                                     )
                                 }
                             }
 
-                            Spacer(modifier = Modifier.width(8.dp))
-
-                            // Action buttons
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                FavoriteEpisodeButton(isFavorite = episode.id in favoriteIds) {
-                                    scope.launch {
-                                        database.episodes.insert(episode)
-                                        val isFavorite = database.favorites.toggle(episode)
-                                        favoriteIds = if (isFavorite) favoriteIds + episode.id else favoriteIds - episode.id
-                                        onFavoriteChanged()
-                                    }
-                                }
-
-                                // Add to queue
-                                AddToQueueButton {
-                                    scope.launch {
-                                        val downloadRecord = database.downloads.getByEpisodeId(episode.id)
-                                        val url = if (downloadRecord != null && File(downloadRecord.filePath).exists()) {
-                                            downloadRecord.filePath
-                                        } else {
-                                            episode.audioUrl
-                                        }
-                                        playerState.addToQueue(
-                                            url = url,
-                                            title = episode.title,
-                                            artworkUrl = episode.imageUrl,
-                                            podcastArtworkUrl = podcast.imageUrl,
-                                            episodeId = episode.id,
-                                            isDownloaded = episode.id in completedDownloads
+                            Box(modifier = Modifier.size(36.dp), contentAlignment = Alignment.Center) {
+                                if (episode.id in completedDownloads) {
+                                    Icon(
+                                        Icons.Default.CheckCircle,
+                                        contentDescription = Strings["episode_downloaded"],
+                                        tint = colors.success
+                                    )
+                                } else if (isDownloading) {
+                                    val fraction = if (progress != null && progress.second > 0) {
+                                        progress.first.toFloat() / progress.second
+                                    } else 0f
+                                    val ringInteractionSource = remember { MutableInteractionSource() }
+                                    val isRingHovered by ringInteractionSource.collectIsHoveredAsState()
+                                    val ringAnimatedBg by animateColorAsState(if (isRingHovered) colors.elevated else Color.Transparent, tween(150))
+                                    Box(
+                                        modifier = Modifier
+                                            .size(36.dp)
+                                            .clip(CircleShape)
+                                            .background(ringAnimatedBg)
+                                            .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
+                                            .clickable(interactionSource = ringInteractionSource, indication = null) {
+                                                if (isDbTask) {
+                                                    onResumeDownload(episode.id)
+                                                } else {
+                                                    onPauseDownload(episode.id)
+                                                }
+                                            },
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        CircularProgressIndicator(
+                                            progress = { fraction },
+                                            modifier = Modifier.size(20.dp),
+                                            strokeWidth = 2.dp,
+                                            color = colors.accent
                                         )
                                     }
-                                }
-
-                                // Download / Downloaded / Downloading
-                                Box(modifier = Modifier.size(36.dp), contentAlignment = Alignment.Center) {
-                                    if (episode.id in completedDownloads) {
-                                        Icon(
-                                            Icons.Default.CheckCircle,
-                                            contentDescription = Strings["episode_downloaded"],
-                                            tint = colors.success
-                                        )
-                                    } else if (isDownloading) {
-                                        val fraction = if (progress != null && progress.second > 0) {
-                                            progress.first.toFloat() / progress.second
-                                        } else 0f
-                                        val ringInteractionSource = remember { MutableInteractionSource() }
-                                        val isRingHovered by ringInteractionSource.collectIsHoveredAsState()
-                                        val ringAnimatedBg by animateColorAsState(if (isRingHovered) colors.elevated else Color.Transparent, tween(150))
-                                        Box(
-                                            modifier = Modifier
-                                                .size(36.dp)
-                                                .clip(CircleShape)
-                                                .background(ringAnimatedBg)
-                                                .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
-                                                .clickable(interactionSource = ringInteractionSource, indication = null) {
-                                                    if (isDbTask) {
-                                                        // Paused/failed task from DB → resume
-                                                        onResumeDownload(episode.id)
-                                                    } else {
-                                                        // Active download → pause
-                                                        onPauseDownload(episode.id)
-                                                    }
-                                                },
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            CircularProgressIndicator(
-                                                progress = { fraction },
-                                                modifier = Modifier.size(20.dp),
-                                                strokeWidth = 2.dp,
-                                                color = colors.accent
-                                            )
-                                        }
-                                    } else {
-                                        val dInteractionSource = remember { MutableInteractionSource() }
-                                        val isDHovered by dInteractionSource.collectIsHoveredAsState()
-                                        val dAnimatedBg by animateColorAsState(if (isDHovered) colors.elevated else Color.Transparent, tween(150))
-                                        Box(
-                                            modifier = Modifier
-                                                .size(36.dp)
-                                                .clip(CircleShape)
-                                                .background(dAnimatedBg)
-                                                .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
-                                                .clickable(interactionSource = dInteractionSource, indication = null) {
-                                                    onStartDownload(episode, podcast.title)
-                                                },
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            Icon(Icons.Default.Download, contentDescription = Strings["episode_download"], tint = colors.textSecondary, modifier = Modifier.size(20.dp))
-                                        }
+                                } else {
+                                    val dInteractionSource = remember { MutableInteractionSource() }
+                                    val isDHovered by dInteractionSource.collectIsHoveredAsState()
+                                    val dAnimatedBg by animateColorAsState(if (isDHovered) colors.elevated else Color.Transparent, tween(150))
+                                    Box(
+                                        modifier = Modifier
+                                            .size(36.dp)
+                                            .clip(CircleShape)
+                                            .background(dAnimatedBg)
+                                            .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
+                                            .clickable(interactionSource = dInteractionSource, indication = null) {
+                                                onStartDownload(episode, podcast.title)
+                                            },
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(Icons.Default.Download, contentDescription = Strings["episode_download"], tint = colors.textSecondary, modifier = Modifier.size(20.dp))
                                     }
                                 }
                             }
                         }
-                        HorizontalDivider(color = colors.divider)
                     }
                 }
             }
@@ -2444,15 +2390,4 @@ internal fun formatDate(timestamp: Long): String {
     if (timestamp <= 0) return ""
     val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
     return sdf.format(Date(timestamp))
-}
-
-private fun formatDuration(seconds: Int): String {
-    val hours = seconds / 3600
-    val minutes = (seconds % 3600) / 60
-    val secs = seconds % 60
-    return if (hours > 0) {
-        "%d:%02d:%02d".format(hours, minutes, secs)
-    } else {
-        "%d:%02d".format(minutes, secs)
-    }
 }

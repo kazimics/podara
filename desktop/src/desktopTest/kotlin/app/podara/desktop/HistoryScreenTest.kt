@@ -4,11 +4,14 @@ import app.podara.screen.HistoryScreen
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
 import app.podara.data.AppDatabase
+import app.podara.data.model.Podcast
+import app.podara.data.model.PodcastEpisode
 import app.podara.player.MediaPlayerState
 import app.podara.theme.PodaraTheme
 import app.podara.util.Strings
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.setMain
 import kotlinx.coroutines.test.resetMain
@@ -100,6 +103,50 @@ class HistoryScreenTest {
             }
         }
         composeTestRule.onNodeWithText(Strings["history_search_placeholder"]).assertIsDisplayed()
+    }
+
+    @Test
+    fun testHistoryShowsSavedEpisode() {
+        val podcast = Podcast(
+            origin = "https://example.com/feed.xml",
+            link = "https://example.com",
+            title = "History Podcast",
+            description = "Description",
+            author = "Author",
+            imageUrl = "",
+            languageCode = "en"
+        )
+        val episode = PodcastEpisode(
+            id = "history-episode",
+            guid = "history-guid",
+            origin = podcast.origin,
+            link = "https://example.com/history-episode",
+            title = "History Episode",
+            description = "Description",
+            imageUrl = null,
+            author = "Author",
+            pubDate = 1_000L,
+            duration = 300,
+            audioUrl = "https://example.com/history-episode.mp3",
+            podcastTitle = podcast.title
+        )
+        runBlocking {
+            database.podcasts.insert(podcast)
+            database.episodes.insert(episode)
+            database.history.insert(podcast.origin, episode.id)
+        }
+
+        composeTestRule.setContent {
+            PodaraTheme {
+                HistoryScreen(database = database, playerState = MediaPlayerState(), favoriteVersion = 0, onBack = {})
+            }
+        }
+
+        composeTestRule.waitUntil(timeoutMillis = 5_000) {
+            composeTestRule.onAllNodesWithText(episode.title).fetchSemanticsNodes().isNotEmpty()
+        }
+        composeTestRule.onNodeWithText(episode.title).assertIsDisplayed()
+        composeTestRule.onNodeWithText(podcast.title).assertIsDisplayed()
     }
 
     @Test
