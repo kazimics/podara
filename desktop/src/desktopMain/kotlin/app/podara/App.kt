@@ -63,6 +63,7 @@ import app.podara.component.formatEpisodeMetadata
 import app.podara.component.PodaraDropdownMenu
 import app.podara.component.PodaraDropdownMenuItem
 import app.podara.component.PodaraEmptyState
+import app.podara.component.ToolbarPillButton
 import app.podara.data.AppDatabase
 import app.podara.data.model.Podcast
 import app.podara.data.model.PodcastEpisode
@@ -1141,87 +1142,14 @@ private fun HomeScreen(
                 bottom = DesignTokens.Spacing.sm
             )
     ) {
-        // ── Header (hidden in edit mode, replaced by selection bar) ──
-        if (isEditing) {
-            val toolbarButton = DesignTokens.ToolbarButton
-            // Selection header
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // Close button (32dp square matching Sort/Manage style)
-                val closeInteractionSource = remember { MutableInteractionSource() }
-                val isCloseHovered by closeInteractionSource.collectIsHoveredAsState()
-                Box(
-                    modifier = Modifier
-                        .size(toolbarButton.Size)
-                        .clip(RoundedCornerShape(toolbarButton.Radius))
-                        .background(if (isCloseHovered) toolbarButton.HoverBackgroundColor else toolbarButton.BackgroundColor)
-                        .border(toolbarButton.BorderWidth, toolbarButton.BorderColor, RoundedCornerShape(toolbarButton.Radius))
-                        .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
-                        .clickable(interactionSource = closeInteractionSource, indication = null) {
-                            isEditing = false; selectedPodcasts = emptySet()
-                        },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(Icons.Default.Close, contentDescription = Strings["home_cancel"], tint = colors.textPrimary, modifier = Modifier.size(toolbarButton.IconSize))
-                }
-
-                Spacer(Modifier.width(DesignTokens.Spacing.md))
-
-                Text(
-                    text = Strings.get("home_selected_count", selectedPodcasts.size),
-                    fontSize = toolbarButton.StrongTextSize,
-                    fontWeight = FontWeight.SemiBold,
-                    color = colors.textPrimary
-                )
-
-                Spacer(Modifier.weight(1f))
-
-                // Select all — clean text button
-                Text(
-                    text = Strings["home_select_all"],
-                    color = colors.accent,
-                    fontSize = toolbarButton.TextSize,
-                    fontWeight = FontWeight.Medium,
-                    modifier = Modifier
-                        .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
-                        .clickable(
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = null
-                        ) {
-                            selectedPodcasts = if (selectedPodcasts.size == filteredPodcasts.size) emptySet()
-                            else filteredPodcasts.map { it.origin }.toSet()
-                        }
-                )
-
-                Spacer(Modifier.width(DesignTokens.Spacing.md))
-
-                // Delete button (32dp square with danger color)
-                val deleteInteractionSource = remember { MutableInteractionSource() }
-                val isDeleteHovered by deleteInteractionSource.collectIsHoveredAsState()
-                Box(
-                    modifier = Modifier
-                        .size(toolbarButton.Size)
-                        .clip(RoundedCornerShape(toolbarButton.Radius))
-                        .background(if (isDeleteHovered) toolbarButton.DangerHoverBackgroundColor else toolbarButton.BackgroundColor)
-                        .border(toolbarButton.BorderWidth, toolbarButton.BorderColor, RoundedCornerShape(toolbarButton.Radius))
-                        .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
-                        .clickable(interactionSource = deleteInteractionSource, indication = null) { showBatchUnsubscribeDialog = true },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(Icons.Default.Delete, contentDescription = Strings["home_delete_selected"], tint = colors.danger, modifier = Modifier.size(toolbarButton.IconSize))
-                }
-            }
-        } else {
-            val header = DesignTokens.PageHeader
-            val search = DesignTokens.SearchBar
-            // ── Header: Title + Subtitle + Toolbar (right-aligned) ──
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Top
-            ) {
+        // ── Page header ──
+        val header = DesignTokens.PageHeader
+        val search = DesignTokens.SearchBar
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.Top
+        ) {
                 // Left: Title + Subtitle
                 Column {
                     Text(
@@ -1282,25 +1210,70 @@ private fun HomeScreen(
                     }
                 }
             }
-        }
 
         Spacer(modifier = Modifier.height(16.dp))
 
         val toolbarButton = DesignTokens.ToolbarButton
+        val selectionToolbar = DesignTokens.SubscriptionSelectionToolbar
         // ── List toolbar: count + actions ──
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(toolbarButton.PillHeight),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Text(
-                text = Strings.get("home_subscription_count", podcasts.size),
-                color = colors.textPrimary,
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Medium
-            )
+            if (isEditing) {
+                Row(horizontalArrangement = Arrangement.spacedBy(toolbarButton.Gap)) {
+                    ToolbarPillButton(
+                        icon = Icons.Default.Close,
+                        label = Strings["home_cancel"],
+                        contentDescription = Strings["home_cancel"],
+                        onClick = {
+                            isEditing = false; selectedPodcasts = emptySet()
+                        }
+                    )
+                    Text(
+                        text = Strings.get("home_selected_count", selectedPodcasts.size),
+                        fontSize = DesignTokens.ToolbarButton.PillTextSize,
+                        fontWeight = FontWeight.Medium,
+                        color = colors.textPrimary,
+                        modifier = Modifier.align(Alignment.CenterVertically)
+                    )
+                }
+            } else {
+                Text(
+                    text = Strings.get("home_subscription_count", podcasts.size),
+                    color = colors.textPrimary,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium
+                )
+            }
             Row(horizontalArrangement = Arrangement.spacedBy(toolbarButton.Gap)) {
-                if (!isEditing) {
+                if (isEditing) {
+                    ToolbarPillButton(
+                        icon = Icons.Default.SelectAll,
+                        label = Strings["home_select_all"],
+                        contentDescription = Strings["home_select_all"],
+                        onClick = {
+                            selectedPodcasts = if (selectedPodcasts.size == filteredPodcasts.size) emptySet()
+                            else filteredPodcasts.map { it.origin }.toSet()
+                        }
+                    )
+                    ToolbarPillButton(
+                        icon = Icons.Default.Delete,
+                        label = Strings["home_delete_selected"],
+                        contentDescription = Strings["home_delete_selected"],
+                        onClick = { showBatchUnsubscribeDialog = true },
+                        iconColor = selectionToolbar.DeleteIconColor,
+                        hoverIconColor = selectionToolbar.DeleteIconHoverColor,
+                        textColor = selectionToolbar.DeleteIconColor,
+                        hoverTextColor = selectionToolbar.DeleteIconHoverColor,
+                        hoverBackgroundColor = selectionToolbar.DeleteButtonHoverBackgroundColor,
+                        pressedBackgroundColor = selectionToolbar.DeleteButtonPressedBackgroundColor,
+                        hoverBorderColor = selectionToolbar.DeleteButtonHoverBorderColor
+                    )
+                } else {
                     val currentSortLabel = when (sortOption) {
                         "name_asc" -> Strings["home_sort_name_asc"]
                         "name_desc" -> Strings["home_sort_name_desc"]
@@ -1310,59 +1283,12 @@ private fun HomeScreen(
                     }
 
                     // Manage button
-                    val manageInteractionSource = remember { MutableInteractionSource() }
-                    val isManageHovered by manageInteractionSource.collectIsHoveredAsState()
-                    val isManagePressed by manageInteractionSource.collectIsPressedAsState()
-                    val manageShape = RoundedCornerShape(toolbarButton.PillRadius)
-                    val manageTextColor = if (isManageHovered || isManagePressed) toolbarButton.PillHoverTextColor else toolbarButton.PillTextColor
-                    val manageIconColor = if (isManageHovered || isManagePressed) toolbarButton.PillHoverIconColor else toolbarButton.PillIconColor
-                    Box(
-                        modifier = Modifier
-                            .height(toolbarButton.PillHeight)
-                            .widthIn(min = toolbarButton.ManageMinWidth)
-                            .shadow(
-                                if (isManageHovered) toolbarButton.PillHoverShadowElevation else 0.dp,
-                                manageShape,
-                                ambientColor = toolbarButton.PillHoverShadowColor,
-                                spotColor = toolbarButton.PillHoverShadowColor
-                            )
-                            .clip(manageShape)
-                            .background(
-                                when {
-                                    isManagePressed -> toolbarButton.PillPressedBackgroundColor
-                                    isManageHovered -> toolbarButton.PillHoverBackgroundColor
-                                    else -> toolbarButton.PillDefaultBackgroundColor
-                                }
-                            )
-                            .border(
-                                toolbarButton.BorderWidth,
-                                if (isManageHovered || isManagePressed) toolbarButton.PillHoverBorderColor else toolbarButton.PillDefaultBorderColor,
-                                manageShape
-                            )
-                            .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
-                            .clickable(interactionSource = manageInteractionSource, indication = null) { isEditing = true }
-                            .padding(horizontal = toolbarButton.PillPaddingHorizontal),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(toolbarButton.PillIconTextGap)
-                        ) {
-                            Icon(
-                                Icons.Default.Edit,
-                                contentDescription = Strings["home_manage"],
-                                tint = manageIconColor,
-                                modifier = Modifier.size(toolbarButton.PillIconSize)
-                            )
-                            Text(
-                                text = Strings["home_manage"],
-                                color = manageTextColor,
-                                fontSize = toolbarButton.PillTextSize,
-                                lineHeight = toolbarButton.PillLineHeight,
-                                fontWeight = toolbarButton.PillTextWeight
-                            )
-                        }
-                    }
+                    ToolbarPillButton(
+                        icon = Icons.Default.Edit,
+                        label = Strings["home_manage"],
+                        contentDescription = Strings["home_manage"],
+                        onClick = { isEditing = true }
+                    )
 
                     Box {
                         // Sort button
@@ -1643,7 +1569,9 @@ private fun SubscriptionCard(
             .clip(shape)
             .background(animatedBg)
             .border(card.BorderWidth, borderColor, shape)
-            .clickable(interactionSource = interactionSource, indication = null) { onClick() }
+            .clickable(interactionSource = interactionSource, indication = null) {
+                if (isEditing) onToggleSelect(!isSelected) else onClick()
+            }
             .padding(horizontal = card.CardPaddingHorizontal, vertical = card.CardPaddingVertical),
         verticalAlignment = Alignment.CenterVertically
     ) {

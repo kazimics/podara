@@ -35,6 +35,7 @@ import app.podara.component.EpisodeListItem
 import app.podara.component.formatEpisodeMetadata
 import app.podara.component.FavoriteEpisodeButton
 import app.podara.component.PodaraEmptyState
+import app.podara.component.ToolbarPillButton
 import app.podara.data.AppDatabase
 import app.podara.data.model.Podcast
 import app.podara.data.model.PodcastEpisode
@@ -255,62 +256,12 @@ fun FavoritesScreen(
                     fontWeight = FontWeight.Medium
                 )
 
-                val toolbarButton = DesignTokens.ToolbarButton
-                val clearInteractionSource = remember { MutableInteractionSource() }
-                val isClearHovered by clearInteractionSource.collectIsHoveredAsState()
-                val isClearPressed by clearInteractionSource.collectIsPressedAsState()
-                val clearShape = RoundedCornerShape(toolbarButton.PillRadius)
-                val clearTextColor = if (isClearHovered || isClearPressed) toolbarButton.PillHoverTextColor else toolbarButton.PillTextColor
-                val clearIconColor = if (isClearHovered || isClearPressed) toolbarButton.PillHoverIconColor else toolbarButton.PillIconColor
-                Box(
-                    modifier = Modifier
-                        .height(toolbarButton.PillHeight)
-                        .widthIn(min = toolbarButton.ManageMinWidth)
-                        .shadow(
-                            if (isClearHovered) toolbarButton.PillHoverShadowElevation else 0.dp,
-                            clearShape,
-                            ambientColor = toolbarButton.PillHoverShadowColor,
-                            spotColor = toolbarButton.PillHoverShadowColor
-                        )
-                        .clip(clearShape)
-                        .background(
-                            when {
-                                isClearPressed -> toolbarButton.PillPressedBackgroundColor
-                                isClearHovered -> toolbarButton.PillHoverBackgroundColor
-                                else -> toolbarButton.PillDefaultBackgroundColor
-                            }
-                        )
-                        .border(
-                            toolbarButton.BorderWidth,
-                            if (isClearHovered || isClearPressed) toolbarButton.PillHoverBorderColor else toolbarButton.PillDefaultBorderColor,
-                            clearShape
-                        )
-                        .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
-                        .clickable(interactionSource = clearInteractionSource, indication = null) {
-                            showClearDialog = true
-                        }
-                        .padding(horizontal = toolbarButton.PillPaddingHorizontal),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(toolbarButton.PillIconTextGap)
-                    ) {
-                        Icon(
-                            Icons.Default.DeleteSweep,
-                            contentDescription = Strings["favorites_clear"],
-                            tint = clearIconColor,
-                            modifier = Modifier.size(toolbarButton.PillIconSize)
-                        )
-                        Text(
-                            text = Strings["favorites_clear_button"],
-                            color = clearTextColor,
-                            fontSize = toolbarButton.PillTextSize,
-                            lineHeight = toolbarButton.PillLineHeight,
-                            fontWeight = toolbarButton.PillTextWeight
-                        )
-                    }
-                }
+                ToolbarPillButton(
+                    icon = Icons.Default.DeleteSweep,
+                    label = Strings["toolbar_clear"],
+                    contentDescription = Strings["favorites_clear"],
+                    onClick = { showClearDialog = true }
+                )
             }
 
             Spacer(modifier = Modifier.height(DesignTokens.Spacing.sm))

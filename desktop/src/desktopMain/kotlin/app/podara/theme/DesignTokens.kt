@@ -83,6 +83,15 @@ object DesignTokens {
         val PillHoverShadowColor = Color.Black.copy(alpha = 0.25f)
     }
 
+    // ── Subscription selection toolbar ──
+    object SubscriptionSelectionToolbar {
+        val DeleteButtonHoverBackgroundColor = Color(0x1AFF5268)
+        val DeleteButtonPressedBackgroundColor = Color(0x2EFF5268)
+        val DeleteButtonHoverBorderColor = Color(0x59FF5268)
+        val DeleteIconColor = Color(0xFFFF5D73)
+        val DeleteIconHoverColor = Color(0xFFFF7E91)
+    }
+
     // ── Dropdown menus ──
     object DropdownMenu {
         val Width = 192.dp
