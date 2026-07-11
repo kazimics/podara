@@ -4,6 +4,24 @@ All notable changes to podara will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Unreleased]
+
+### Changed
+- Refined the visual system with subtle metallic surfaces and consistent hover, pressed, border, and accent states across primary controls
+- Redesigned subscription, History, Favorites, and Downloads views around consistent episode cards, selection toolbars, empty states, spacing, and action affordances
+- Refined the playback queue and full-player controls for clearer hierarchy and consistent pill-style actions
+- Unified Settings controls and in-app confirmation dialogs with shared layouts, action styles, and visual states
+- Standardized dropdown menus and toolbar actions across list-management workflows
+
+### Fixed
+- Fixed the currently playing History entry so the selected play record is highlighted accurately
+- Fixed paused and active download task transitions to keep each task visible once with the correct progress, state, and actions
+- Fixed “Recent Update” subscription sorting to use each podcast’s latest episode date, with deterministic tie-breaking
+- Fixed playing an episode from Favorites so it is recorded in listening history
+
+### Tests
+- Added regression coverage for History selection state, download-task state transitions and ordering, latest-episode subscription sorting, favorite playback history recording, and updated Compose screen interactions
+
 ## [1.0.0] - 2026-07-09
 
 ### Fixed
