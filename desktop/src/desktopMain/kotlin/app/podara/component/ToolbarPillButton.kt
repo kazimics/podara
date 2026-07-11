@@ -28,12 +28,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
+import androidx.compose.ui.unit.dp
 import app.podara.theme.DesignTokens
 import java.awt.Cursor
 
 @Composable
 fun ToolbarPillButton(
-    icon: ImageVector,
+    icon: ImageVector? = null,
     label: String,
     contentDescription: String,
     onClick: () -> Unit,
@@ -41,12 +42,12 @@ fun ToolbarPillButton(
     height: androidx.compose.ui.unit.Dp = DesignTokens.ToolbarButton.PillHeight,
     radius: androidx.compose.ui.unit.Dp = DesignTokens.ToolbarButton.PillRadius,
     borderWidth: androidx.compose.ui.unit.Dp = DesignTokens.ToolbarButton.BorderWidth,
-    horizontalPadding: androidx.compose.ui.unit.Dp = DesignTokens.ToolbarButton.PillPaddingHorizontal,
+    horizontalPadding: androidx.compose.ui.unit.Dp = if (label.isBlank()) 0.dp else DesignTokens.ToolbarButton.PillPaddingHorizontal,
     iconSize: androidx.compose.ui.unit.Dp = DesignTokens.ToolbarButton.PillIconSize,
     iconTextGap: androidx.compose.ui.unit.Dp = DesignTokens.ToolbarButton.PillIconTextGap,
     textSize: androidx.compose.ui.unit.TextUnit = DesignTokens.ToolbarButton.PillTextSize,
     lineHeight: androidx.compose.ui.unit.TextUnit = DesignTokens.ToolbarButton.PillLineHeight,
-    minWidth: androidx.compose.ui.unit.Dp = DesignTokens.ToolbarButton.ManageMinWidth,
+    minWidth: androidx.compose.ui.unit.Dp = if (label.isBlank()) DesignTokens.ToolbarButton.PillHeight else DesignTokens.ToolbarButton.ManageMinWidth,
     iconColor: Color = DesignTokens.ToolbarButton.PillIconColor,
     hoverIconColor: Color = DesignTokens.ToolbarButton.PillHoverIconColor,
     textColor: Color = DesignTokens.ToolbarButton.PillTextColor,
@@ -96,20 +97,24 @@ fun ToolbarPillButton(
         Row(
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = contentDescription,
-                tint = iconTint,
-                modifier = Modifier.size(iconSize)
-            )
-            Spacer(Modifier.width(iconTextGap))
-            Text(
-                text = label,
-                color = foregroundColor,
-                fontSize = textSize,
-                lineHeight = lineHeight,
-                fontWeight = toolbarButton.PillTextWeight
-            )
+            icon?.let {
+                Icon(
+                    imageVector = it,
+                    contentDescription = contentDescription,
+                    tint = iconTint,
+                    modifier = Modifier.size(iconSize)
+                )
+            }
+            if (label.isNotBlank()) {
+                if (icon != null) Spacer(Modifier.width(iconTextGap))
+                Text(
+                    text = label,
+                    color = foregroundColor,
+                    fontSize = textSize,
+                    lineHeight = lineHeight,
+                    fontWeight = toolbarButton.PillTextWeight
+                )
+            }
         }
     }
 }

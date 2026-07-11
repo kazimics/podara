@@ -494,55 +494,10 @@ class AppGUITest {
         composeTestRule.onNodeWithText(Strings["player_episode_notes"]).assertIsDisplayed()
     }
 
-    @Test
-    fun testFullPlayerShowsYouMightAlsoLikeWithRecommendations() {
-        // Insert multiple episodes from the same podcast for recommendations
-        val origin = "https://example.com/recommend-feed.xml"
-        kotlinx.coroutines.runBlocking {
-            database.episodes.insert(app.podara.data.model.PodcastEpisode(
-                id = "test:rec-main", guid = "g1", origin = origin, link = "",
-                title = "Main Episode", description = "Main desc", author = "A",
-                pubDate = 1000L, duration = 600, audioUrl = "https://example.com/a.mp3",
-                podcastTitle = "Test Podcast"
-            ))
-            database.episodes.insert(app.podara.data.model.PodcastEpisode(
-                id = "test:rec-1", guid = "g2", origin = origin, link = "",
-                title = "Rec 1", description = "", author = "A",
-                pubDate = 900L, duration = 500, audioUrl = "https://example.com/b.mp3",
-                podcastTitle = "Test Podcast"
-            ))
-        }
-
-        composeTestRule.setContent {
-            PodaraTheme {
-                val playerState = MediaPlayerState()
-                playerState.play(
-                    url = "https://example.com/a.mp3",
-                    title = "Main Episode",
-                    subtitle = "Test Podcast",
-                    artworkUrl = null,
-                    durationMs = 600000L,
-                    episodeId = "test:rec-main"
-                )
-                app.podara.player.FullPlayer(
-                    state = playerState,
-                    database = database,
-                    onClose = {}
-                )
-            }
-        }
-        composeTestRule.waitForIdle()
-        composeTestRule.onNodeWithText(Strings["player_you_might_also_like"]).assertIsDisplayed()
-        composeTestRule.onNodeWithText("Rec 1").assertIsDisplayed()
-    }
-
-    // === Strings: New Key Tests ===
+    // === Strings: Player UI Tests ===
 
     @Test
-    fun testNewStringKeysResolveToNonEmptyValues() {
+    fun testPlayerStringKeysResolveToNonEmptyValues() {
         assert(Strings["player_episode_notes"].isNotEmpty())
-        assert(Strings["player_show_more"].isNotEmpty())
-        assert(Strings["player_show_less"].isNotEmpty())
-        assert(Strings["player_you_might_also_like"].isNotEmpty())
     }
 }

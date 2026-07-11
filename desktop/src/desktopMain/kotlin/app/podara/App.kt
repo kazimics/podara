@@ -823,6 +823,7 @@ fun WindowScope.App(
                                     database = database,
                                     favoriteVersion = favoritesVersion,
                                     onFavoriteChanged = { favoritesVersion++ },
+                                    onStartDownload = { episode -> startDownload(episode, episode.podcastTitle) },
                                     onShowQueue = { showQueueFromMini = true },
                                     onClose = { showFullPlayer = false }
                                 )

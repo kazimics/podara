@@ -49,14 +49,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.IntOffset
-import androidx.compose.ui.unit.IntRect
-import androidx.compose.ui.unit.IntSize
-import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Popup
-import androidx.compose.ui.window.PopupPositionProvider
-import androidx.compose.ui.window.PopupProperties
 import app.podara.component.FavoriteEpisodeButton
+import app.podara.component.PodaraDropdownMenu
+import app.podara.component.PodaraDropdownMenuItem
 import app.podara.component.ToolbarPillButton
 import app.podara.data.AppDatabase
 import app.podara.data.model.PodcastEpisode
@@ -394,11 +390,9 @@ fun FullPlayer(
     var isDragging by remember { mutableStateOf(false) }
     var showSleepTimer by remember { mutableStateOf(false) }
     var showSpeedMenu by remember { mutableStateOf(false) }
-    var notesExpanded by remember { mutableStateOf(false) }
 
     // ── Episode data from DB ──
     var currentEpisode by remember { mutableStateOf<PodcastEpisode?>(null) }
-    var recommendations by remember { mutableStateOf<List<PodcastEpisode>>(emptyList()) }
     var currentOrigin by remember { mutableStateOf<String?>(null) }
     var isDownloaded by remember { mutableStateOf(false) }
     var favoriteIds by remember { mutableStateOf(setOf<String>()) }
@@ -413,8 +407,6 @@ fun FullPlayer(
         currentEpisode = ep
         if (ep != null) {
             currentOrigin = ep.origin
-            val allEps = database.episodes.getAllByOrigin(ep.origin)
-            recommendations = allEps.filter { it.id != episodeId }.take(3)
             val dl = database.downloads.getByEpisodeId(episodeId)
             isDownloaded = dl != null
         }
@@ -443,29 +435,49 @@ fun FullPlayer(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                IconButton(onClick = onClose) {
-                    Icon(Icons.Default.KeyboardArrowDown, contentDescription = Strings["player_close"], tint = colors.textMuted)
-                }
-                IconButton(onClick = onShowQueue) {
-                    Icon(Icons.Default.QueueMusic, contentDescription = Strings["player_queue"], tint = colors.textMuted)
-                }
+                ToolbarPillButton(
+                    icon = Icons.Default.KeyboardArrowDown,
+                    label = "",
+                    contentDescription = Strings["player_close"],
+                    onClick = onClose,
+                    iconColor = colors.textPrimary,
+                    hoverIconColor = Color.White,
+                    defaultBackgroundColor = Color.White.copy(alpha = 0.08f),
+                    defaultBorderColor = Color.Transparent,
+                    hoverBackgroundColor = Color.White.copy(alpha = 0.14f),
+                    hoverBorderColor = Color.Transparent
+                )
+                ToolbarPillButton(
+                    icon = Icons.Default.QueueMusic,
+                    label = "",
+                    contentDescription = Strings["player_queue"],
+                    onClick = onShowQueue,
+                    iconColor = colors.textPrimary,
+                    hoverIconColor = Color.White,
+                    defaultBackgroundColor = Color.White.copy(alpha = 0.08f),
+                    defaultBorderColor = Color.Transparent,
+                    hoverBackgroundColor = Color.White.copy(alpha = 0.14f),
+                    hoverBorderColor = Color.Transparent
+                )
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(24.dp))
 
             // ══════════════════════════════════════
             // 1. HEADER: Cover + Episode Info
             // ══════════════════════════════════════
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 43.dp),
                 horizontalArrangement = Arrangement.spacedBy(24.dp),
                 verticalAlignment = Alignment.Top
             ) {
-                // Cover 160dp radius:12
-                Box(modifier = Modifier.width(160.dp)) {
+                // Cover 208dp radius:12
+                Box(modifier = Modifier.width(208.dp)) {
                     Box(
                         modifier = Modifier
-                            .size(160.dp)
+                            .size(208.dp)
                             .clip(RoundedCornerShape(12.dp))
                             .background(colors.elevated)
                     ) {
@@ -543,13 +555,31 @@ fun FullPlayer(
                     }
 
                     // Action Buttons
+                    val origin = currentOrigin
+                    var showMore by remember { mutableStateOf(false) }
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         val epToDownload = currentEpisode
                         if (epToDownload != null) {
-                            FavoriteEpisodeButton(isFavorite = epToDownload.id in favoriteIds) {
+                            DownloadActionButton(
+                                isDownloaded = isDownloaded,
+                                onClick = {
+                                    onStartDownload?.invoke(epToDownload)
+                                    isDownloaded = true
+                                }
+                            )
+                            FavoriteEpisodeButton(
+                                isFavorite = epToDownload.id in favoriteIds,
+                                size = 40.dp,
+                                radius = 10.dp,
+                                iconSize = 20.dp,
+                                hoverBackgroundColor = Color.White.copy(alpha = 0.14f),
+                                defaultIconColor = colors.textPrimary,
+                                hoverIconColor = Color.White,
+                                selectedIconColor = colors.accent
+                            ) {
                                 scope.launch {
                                     database.episodes.insert(epToDownload)
                                     val isFavorite = database.favorites.toggle(epToDownload)
@@ -557,36 +587,26 @@ fun FullPlayer(
                                     onFavoriteChanged()
                                 }
                             }
-                            DownloadActionButton(
-                                isDownloaded = isDownloaded,
-                                onClick = { onStartDownload?.invoke(epToDownload); isDownloaded = true }
-                            )
                         }
-
-                        // More Button (40dp circle)
-                        val origin = currentOrigin
-                        var showMore by remember { mutableStateOf(false) }
-                        val moreInteractionSource = remember { MutableInteractionSource() }
-                        val isMoreHovered by moreInteractionSource.collectIsHoveredAsState()
-                        val moreBg by animateColorAsState(
-                            targetValue = if (isMoreHovered) colors.elevated else colors.surface,
-                            animationSpec = tween(150),
-                            label = "moreButtonBg"
+                        ToolbarPillButton(
+                            icon = Icons.Default.MoreHoriz,
+                            label = "",
+                            contentDescription = Strings["discover_more"],
+                            onClick = { showMore = true },
+                            iconColor = colors.textPrimary,
+                            hoverIconColor = Color.White,
+                            defaultBackgroundColor = Color.White.copy(alpha = 0.08f),
+                            defaultBorderColor = Color.Transparent,
+                            hoverBackgroundColor = Color.White.copy(alpha = 0.14f),
+                            hoverBorderColor = Color.Transparent
                         )
-                        Box(
-                            modifier = Modifier
-                                .size(40.dp)
-                                .clip(CircleShape)
-                                .border(1.dp, colors.border, CircleShape)
-                                .background(moreBg)
-                                .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
-                                .clickable(interactionSource = moreInteractionSource, indication = null) { showMore = true },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(Icons.Default.MoreHoriz, contentDescription = Strings["discover_more"], tint = colors.textSecondary, modifier = Modifier.size(20.dp))
-                            DropdownMenu(expanded = showMore, onDismissRequest = { showMore = false }) {
-                                DropdownMenuItem(
-                                    text = { Text(Strings["dialog_copy_to_clipboard"]) },
+                        PodaraDropdownMenu(
+                            expanded = showMore,
+                            onDismissRequest = { showMore = false },
+                            items = listOf(
+                                PodaraDropdownMenuItem(
+                                    label = Strings["dialog_copy_to_clipboard"],
+                                    icon = Icons.Default.ContentCopy,
                                     onClick = {
                                         showMore = false
                                         val clipboard = java.awt.Toolkit.getDefaultToolkit().systemClipboard
@@ -594,8 +614,8 @@ fun FullPlayer(
                                         clipboard.setContents(selection, null)
                                     }
                                 )
-                            }
-                        }
+                            )
+                        )
                     }
                 }
             }
@@ -606,16 +626,40 @@ fun FullPlayer(
             // 2. TIMELINE
             // ══════════════════════════════════════
             Column(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 38.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 Slider(
                     value = sliderPosition,
                     onValueChange = { sliderPosition = it; isDragging = true },
                     onValueChangeFinished = { isDragging = false; state.seek((sliderPosition * state.duration).toLong()) },
-                    modifier = Modifier.fillMaxWidth().height(12.dp),
+                    modifier = Modifier.fillMaxWidth().height(20.dp),
+                    thumb = {
+                        Box(
+                            modifier = Modifier
+                                .size(15.dp)
+                                .clip(CircleShape)
+                                .background(PrimaryButtonGradient)
+                                .border(2.dp, PrimaryButtonBorder, CircleShape)
+                                .padding(2.dp)
+                                .clip(CircleShape)
+                                .background(Color.White)
+                        )
+                    },
+                    track = { sliderState ->
+                        SliderDefaults.Track(
+                            sliderState = sliderState,
+                            modifier = Modifier.height(6.dp),
+                            thumbTrackGapSize = 0.dp,
+                            colors = SliderDefaults.colors(
+                                activeTrackColor = colors.accent,
+                                inactiveTrackColor = colors.elevated
+                            )
+                        )
+                    },
                     colors = SliderDefaults.colors(
-                        thumbColor = Color.White,
                         activeTrackColor = colors.accent,
                         inactiveTrackColor = colors.elevated
                     )
@@ -626,7 +670,7 @@ fun FullPlayer(
                 }
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
             // ══════════════════════════════════════
             // 3. PLAYBACK CONTROLS
@@ -636,63 +680,46 @@ fun FullPlayer(
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Speed selector — uses Popup for reliable positioning
+                // Speed selector
                 Box {
-                    Box(
-                        modifier = Modifier
-                            .width(38.dp)
-                            .height(30.dp)
-                            .clip(RoundedCornerShape(6.dp))
-                            .background(colors.elevated)
-                            .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
-                            .clickable { showSpeedMenu = true },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(text = "${state.playbackSpeed}x", color = colors.textSecondary, fontSize = 13.sp, fontWeight = FontWeight.Medium)
-                    }
-
-                    if (showSpeedMenu) {
-                        Popup(
-                            popupPositionProvider = object : PopupPositionProvider {
-                                override fun calculatePosition(
-                                    anchorBounds: IntRect,
-                                    windowSize: IntSize,
-                                    layoutDirection: LayoutDirection,
-                                    popupContentSize: IntSize
-                                ): IntOffset {
-                                    return IntOffset(
-                                        x = anchorBounds.left,
-                                        y = anchorBounds.bottom
-                                    )
+                    ToolbarPillButton(
+                        label = "${state.playbackSpeed}x",
+                        contentDescription = Strings["player_speed"],
+                        onClick = { showSpeedMenu = true },
+                        height = 30.dp,
+                        radius = 8.dp,
+                        minWidth = 40.dp,
+                        horizontalPadding = 8.dp,
+                        textSize = 14.sp,
+                        iconColor = colors.textPrimary,
+                        textColor = colors.textPrimary,
+                        hoverTextColor = Color.White,
+                        defaultBackgroundColor = Color.White.copy(alpha = 0.08f),
+                        defaultBorderColor = Color.Transparent,
+                        hoverBackgroundColor = Color.White.copy(alpha = 0.14f),
+                        hoverBorderColor = Color.Transparent
+                    )
+                    PodaraDropdownMenu(
+                        expanded = showSpeedMenu,
+                        onDismissRequest = { showSpeedMenu = false },
+                        items = listOf(0.5f, 0.75f, 1.0f, 1.25f, 1.5f, 1.75f, 2.0f).map { speed ->
+                            PodaraDropdownMenuItem(
+                                label = "${speed}x",
+                                isSelected = speed == state.playbackSpeed,
+                                onClick = {
+                                    state.changePlaybackSpeed(speed)
+                                    showSpeedMenu = false
                                 }
-                            },
-                            onDismissRequest = { showSpeedMenu = false },
-                            properties = PopupProperties(focusable = true)
-                        ) {
-                            Surface(
-                                shape = RoundedCornerShape(8.dp),
-                                color = colors.surface,
-                                shadowElevation = 8.dp,
-                                border = androidx.compose.foundation.BorderStroke(1.dp, colors.border)
-                            ) {
-                                Column(modifier = Modifier.width(IntrinsicSize.Min)) {
-                                    listOf(0.5f, 0.75f, 1.0f, 1.25f, 1.5f, 1.75f, 2.0f).forEach { speed ->
-                                        DropdownMenuItem(
-                                            text = { Text("${speed}x", color = colors.textPrimary) },
-                                            onClick = { state.changePlaybackSpeed(speed); showSpeedMenu = false }
-                                        )
-                                    }
-                                }
-                            }
+                            )
                         }
-                    }
+                    )
                 }
 
-                Spacer(modifier = Modifier.width(20.dp))
+                Spacer(modifier = Modifier.width(16.dp))
 
-                CircleControlButton(size = 40.dp, icon = Icons.Default.Replay10, contentDescription = Strings["player_seek_back"], tint = colors.textMuted, onClick = { state.seekBack() })
+                CircleControlButton(size = 48.dp, icon = Icons.Default.Replay10, contentDescription = Strings["player_seek_back"], tint = colors.textMuted, onClick = { state.seekBack() })
 
-                Spacer(modifier = Modifier.width(20.dp))
+                Spacer(modifier = Modifier.width(16.dp))
 
                 // Play/Pause 56dp (matching MiniPlayer)
                 Box(
@@ -711,25 +738,18 @@ fun FullPlayer(
                         if (state.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
                         contentDescription = if (state.isPlaying) Strings["player_pause"] else Strings["player_play"],
                         tint = PrimaryButtonIcon,
-                        modifier = Modifier.size(30.dp)
+                        modifier = Modifier.size(40.dp)
                     )
                 }
 
-                Spacer(modifier = Modifier.width(20.dp))
+                Spacer(modifier = Modifier.width(16.dp))
 
                 CircleControlButton(size = 40.dp, icon = Icons.Default.Forward10, contentDescription = Strings["player_seek_forward"], tint = colors.textMuted, onClick = { state.seekForward() })
 
-                Spacer(modifier = Modifier.width(20.dp))
+                Spacer(modifier = Modifier.width(16.dp))
 
                 CircleControlButton(size = 40.dp, icon = Icons.Default.Timer, contentDescription = Strings["player_sleep_timer"], tint = colors.textMuted, onClick = { showSleepTimer = true })
             }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // ══════════════════════════════════════
-            // 4. DIVIDER
-            // ══════════════════════════════════════
-            HorizontalDivider(color = colors.divider)
 
             Spacer(modifier = Modifier.height(24.dp))
 
@@ -742,73 +762,34 @@ fun FullPlayer(
                     modifier = Modifier.fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Text(
-                        text = Strings["player_episode_notes"],
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = colors.textPrimary
-                    )
-                    Text(
-                        text = parseSimpleHtml(rawDesc),
-                        fontSize = 13.sp,
-                        lineHeight = 20.sp,
-                        color = colors.textSecondary,
-                        maxLines = if (notesExpanded) Int.MAX_VALUE else 4,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    TextButton(onClick = { notesExpanded = !notesExpanded }) {
-                        Text(text = if (notesExpanded) Strings["player_show_less"] else Strings["player_show_more"], color = colors.accent)
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(Color(0xFF0E1116))
+                            .border(DesignTokens.Border.Width, colors.border, RoundedCornerShape(10.dp))
+                            .padding(horizontal = 28.dp, vertical = 26.dp)
+                    ) {
+                        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                            Text(
+                                text = Strings["player_episode_notes"],
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = colors.textPrimary
+                            )
+                            Text(
+                                text = parseSimpleHtml(rawDesc),
+                                fontSize = 13.sp,
+                                lineHeight = 20.sp,
+                                color = colors.textSecondary
+                            )
+                        }
                     }
                 }
 
                 Spacer(modifier = Modifier.height(24.dp))
                 HorizontalDivider(color = colors.divider)
                 Spacer(modifier = Modifier.height(24.dp))
-            }
-
-            // ══════════════════════════════════════
-            // 6. RECOMMENDATIONS
-            // ══════════════════════════════════════
-            if (recommendations.isNotEmpty()) {
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    Text(
-                        text = Strings["player_you_might_also_like"],
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = colors.textPrimary
-                    )
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        recommendations.forEach { ep ->
-                            RecommendationCard(
-                                title = ep.title,
-                                subtitle = ep.podcastTitle,
-                                duration = formatDuration(ep.duration),
-                                imageUrl = ep.imageUrl,
-                                isFavorite = ep.id in favoriteIds,
-                                onToggleFavorite = {
-                                    scope.launch {
-                                        database.episodes.insert(ep)
-                                        val isFavorite = database.favorites.toggle(ep)
-                                        favoriteIds = if (isFavorite) favoriteIds + ep.id else favoriteIds - ep.id
-                                        onFavoriteChanged()
-                                    }
-                                },
-                                onClick = {
-                                    scope.launch {
-                                        state.play(url = ep.audioUrl, title = ep.title, subtitle = ep.podcastTitle, artworkUrl = ep.imageUrl, durationMs = ep.duration * 1000L, episodeId = ep.id)
-                                    }
-                                }
-                            )
-                        }
-                    }
-                }
             }
         }
     }
@@ -823,72 +804,40 @@ private fun DownloadActionButton(isDownloaded: Boolean, onClick: () -> Unit) {
     val colors = PodaraTheme.colors
     val interactionSource = remember { MutableInteractionSource() }
     val isHovered by interactionSource.collectIsHoveredAsState()
-    val animatedBg by animateColorAsState(
-        targetValue = if (isHovered) colors.elevated else colors.surface,
-        animationSpec = tween(150),
-        label = "downloadButtonBg"
-    )
+    val shape = RoundedCornerShape(10.dp)
 
     Box(
         modifier = Modifier
-            .width(108.dp).height(40.dp)
-            .clip(RoundedCornerShape(10.dp))
-            .border(1.dp, colors.border, RoundedCornerShape(10.dp))
-            .background(animatedBg)
+            .width(108.dp)
+            .height(40.dp)
+            .shadow(
+                if (isHovered) 10.dp else 6.dp,
+                shape,
+                ambientColor = Color.Black.copy(alpha = 0.28f),
+                spotColor = Color.Black.copy(alpha = 0.28f)
+            )
+            .clip(shape)
+            .border(1.dp, PrimaryButtonBorder, shape)
+            .background(if (isDownloaded) Brush.verticalGradient(listOf(colors.success, colors.success.copy(alpha = 0.72f))) else PrimaryButtonGradient)
             .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
             .clickable(interactionSource = interactionSource, indication = null) { if (!isDownloaded) onClick() },
         contentAlignment = Alignment.Center
     ) {
+        Box(modifier = Modifier.matchParentSize().background(PrimaryButtonInnerHighlight))
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            Icon(if (isDownloaded) Icons.Default.CheckCircle else Icons.Default.Download, contentDescription = null,
-                tint = if (isDownloaded) colors.success else colors.textSecondary, modifier = Modifier.size(16.dp))
-            Text(text = if (isDownloaded) Strings["episode_downloaded"] else Strings["episode_download"],
-                fontSize = 13.sp, fontWeight = FontWeight.Medium, color = if (isDownloaded) colors.success else colors.textPrimary)
+            Icon(
+                if (isDownloaded) Icons.Default.CheckCircle else Icons.Default.Download,
+                contentDescription = null,
+                tint = PrimaryButtonIcon,
+                modifier = Modifier.size(16.dp)
+            )
+            Text(
+                text = if (isDownloaded) Strings["episode_downloaded"] else Strings["episode_download"],
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Medium,
+                color = PrimaryButtonText
+            )
         }
-    }
-}
-
-@Composable
-private fun RecommendationCard(
-    title: String,
-    subtitle: String,
-    duration: String,
-    imageUrl: String?,
-    isFavorite: Boolean,
-    onToggleFavorite: () -> Unit,
-    onClick: () -> Unit
-) {
-    val colors = PodaraTheme.colors
-    val interactionSource = remember { MutableInteractionSource() }
-    val isHovered by interactionSource.collectIsHoveredAsState()
-    val animatedBg by animateColorAsState(
-        targetValue = if (isHovered) colors.elevated else colors.surface,
-        animationSpec = tween(150),
-        label = "recommendationCardBg"
-    )
-
-    Row(
-        modifier = Modifier
-            .width(240.dp).height(72.dp)
-            .clip(RoundedCornerShape(10.dp))
-            .background(animatedBg)
-            .border(1.dp, colors.border, RoundedCornerShape(10.dp))
-            .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
-            .clickable(interactionSource = interactionSource, indication = null) { onClick() }
-            .padding(10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp)
-    ) {
-        Box(modifier = Modifier.size(52.dp).clip(RoundedCornerShape(8.dp)).background(colors.elevated)) {
-            AsyncImage(model = imageUrl, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
-        }
-        Column(modifier = Modifier.weight(1f)) {
-            Text(text = title, color = colors.textPrimary, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            Spacer(modifier = Modifier.height(2.dp))
-            Text(text = subtitle, color = colors.textMuted, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(text = duration, color = colors.textDisabled, fontSize = 11.sp)
-        }
-        FavoriteEpisodeButton(isFavorite = isFavorite, onToggle = onToggleFavorite)
     }
 }
 
@@ -900,16 +849,32 @@ private fun CircleControlButton(
     tint: Color,
     onClick: () -> Unit
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isHovered by interactionSource.collectIsHoveredAsState()
+    val backgroundColor by animateColorAsState(
+        targetValue = if (isHovered) Color.White.copy(alpha = 0.10f) else Color.Transparent,
+        animationSpec = tween(DesignTokens.Animation.HoverMs),
+        label = "playerControlBackground"
+    )
+    val iconColor by animateColorAsState(
+        targetValue = if (isHovered) Color.White else tint,
+        animationSpec = tween(DesignTokens.Animation.HoverMs),
+        label = "playerControlIcon"
+    )
+
     IconButton(
         onClick = onClick,
         modifier = Modifier
             .size(size)
-            .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR)))
+            .clip(CircleShape)
+            .background(backgroundColor)
+            .pointerHoverIcon(PointerIcon(Cursor(Cursor.HAND_CURSOR))),
+        interactionSource = interactionSource
     ) {
         Icon(
             icon,
             contentDescription = contentDescription,
-            tint = tint,
+            tint = iconColor,
             modifier = Modifier.size(size * 0.55f)
         )
     }
@@ -1094,7 +1059,8 @@ fun QueueDrawer(
             modifier = Modifier
                 .fillMaxHeight()
                 .width(DesignTokens.QueuePanel.Width)
-                .align(Alignment.CenterEnd),
+                .align(Alignment.CenterEnd)
+                .clip(RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp)),
             color = colors.surface
         ) {
             Box(
