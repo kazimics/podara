@@ -29,6 +29,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import app.podara.component.PodaraDropdownMenu
+import app.podara.component.PodaraDropdownMenuItem
+import app.podara.component.ToolbarPillButton
 import app.podara.data.AppDatabase
 import app.podara.manager.ExportManager
 import app.podara.manager.ImportManager
@@ -66,7 +69,8 @@ fun SettingsScreen(
     var isImporting by remember { mutableStateOf(false) }
     var downloadPath by remember { mutableStateOf(Settings.getDownloadPath()) }
     var currentLanguage by remember { mutableStateOf(Settings.getLanguage()) }
-    var showLanguageDialog by remember { mutableStateOf(false) }
+    var selectedLanguage by remember { mutableStateOf(currentLanguage) }
+    var showLanguageMenu by remember { mutableStateOf(false) }
     var localSpeedLimitInput by remember { mutableStateOf("") }
     var showSpeedLimitDialog by remember { mutableStateOf(false) }
     var speedLimitError by remember { mutableStateOf<String?>(null) }
@@ -99,253 +103,196 @@ fun SettingsScreen(
                 .verticalScroll(rememberScrollState())
         ) {
             // ── Language section ──
-            SectionHeader(Strings["settings_language"])
-            Spacer(Modifier.height(DesignTokens.Spacing.sm))
-
-            SettingsRow(
-                icon = Icons.Default.Language,
-                title = Strings["settings_language"],
-                subtitle = if (currentLanguage == "zh") "简体中文" else "English",
-                action = {
-                    SettingsActionText(
-                        text = Strings["settings_change"],
-                        color = colors.accent,
-                        onClick = { showLanguageDialog = true }
-                    )
-                },
-                colors = colors
-            )
-
-            HorizontalDivider(color = colors.divider, modifier = Modifier.padding(vertical = 8.dp))
-
-            // ── Data section ──
-            SectionHeader(Strings["settings_data"])
-            Spacer(Modifier.height(DesignTokens.Spacing.sm))
-
-            SettingsRow(
-                icon = Icons.Default.FileDownload,
-                title = Strings["settings_export_opml"],
-                subtitle = Strings["settings_export_opml_desc"],
-                action = {
-                    SettingsActionText(
-                        text = Strings["settings_export"],
-                        color = colors.accent,
-                        onClick = {
-                            scope.launch {
-                                exportedOpml = exportManager.exportOpml()
-                                showExportDialog = true
-                            }
-                        }
-                    )
-                },
-                colors = colors
-            )
-
-            SettingsRow(
-                icon = Icons.Default.FileUpload,
-                title = Strings["settings_import_opml"],
-                subtitle = Strings["settings_import_opml_desc"],
-                action = {
-                    if (isImporting) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(16.dp),
-                            strokeWidth = 2.dp,
-                            color = colors.accent
-                        )
-                    } else {
-                        SettingsActionText(
-                            text = Strings["settings_import"],
-                            color = colors.accent,
-                            onClick = {
-                                scope.launch {
-                                    isImporting = true
-                                    try {
-                                        val file = openFilePicker("Select OPML File", "opml", "xml")
-                                        if (file != null) {
-                                            val content = file.readText()
-                                            val result = importManager.importOpml(content)
-                                            showImportResult = result
-                                        }
-                                    } finally {
-                                        isImporting = false
-                                    }
+            SettingsSection(title = Strings["settings_language"], colors = colors) {
+                SettingsRow(
+                    icon = Icons.Default.Language,
+                    title = Strings["settings_language"],
+                    subtitle = if (currentLanguage == "zh") "简体中文" else "English",
+                    action = {
+                        LanguageSelector(
+                            selectedLanguage = selectedLanguage,
+                            expanded = showLanguageMenu,
+                            onExpandedChange = { showLanguageMenu = it },
+                            onLanguageSelected = { selectedLanguage = it },
+                            onChange = {
+                                if (currentLanguage != selectedLanguage) {
+                                    currentLanguage = selectedLanguage
+                                    Settings.setLanguage(selectedLanguage)
+                                    Strings.updateLanguage(selectedLanguage)
+                                    onLanguageChanged?.invoke(selectedLanguage)
                                 }
                             }
                         )
-                    }
-                },
-                colors = colors
-            )
-
-            HorizontalDivider(color = colors.divider, modifier = Modifier.padding(vertical = 8.dp))
-
-            // ── Downloads section ──
-            SectionHeader(Strings["settings_downloads"])
-            Spacer(Modifier.height(DesignTokens.Spacing.sm))
-
-            SettingsRow(
-                icon = Icons.Default.Folder,
-                title = Strings["settings_download_location"],
-                subtitle = downloadPath,
-                action = {
-                    SettingsActionText(
-                        text = Strings["settings_change"],
-                        color = colors.accent,
-                        onClick = {
-                            val dir = openDirectoryPicker("Select Download Folder")
-                            if (dir != null) {
-                                Settings.setDownloadPath(dir)
-                                downloadPath = dir
-                                onDownloadPathChanged?.invoke(dir)
-                                Logger.i("Settings", "Download path changed to: $dir")
-                            }
-                        }
-                    )
-                },
-                colors = colors
-            )
-
-            if (downloadPath != java.io.File(System.getProperty("user.home"), ".podara/downloads").absolutePath) {
-                SettingsActionText(
-                    text = Strings["settings_reset_default"],
-                    color = colors.textSecondary,
-                    onClick = {
-                        Settings.resetDownloadPath()
-                        downloadPath = Settings.getDownloadPath()
-                        onDownloadPathChanged?.invoke(downloadPath)
-                        Logger.i("Settings", "Download path reset to default")
                     },
-                    modifier = Modifier.padding(start = 64.dp)
+                    colors = colors
                 )
             }
 
-            Spacer(Modifier.height(DesignTokens.Spacing.xs))
+            Spacer(Modifier.height(DesignTokens.Spacing.sm))
 
-            SettingsRow(
-                icon = Icons.Default.Star,
-                title = Strings["settings_download_speed_limit"],
-                subtitle = if (downloadSpeedLimitKbps <= 0) {
-                    Strings["settings_download_speed_unlimited"]
-                } else {
-                    "${downloadSpeedLimitKbps} ${Strings["settings_download_speed_unit"]}"
-                },
-                action = {
-                    SettingsActionText(
-                        text = Strings["settings_change"],
-                        color = colors.accent,
-                        onClick = {
-                            localSpeedLimitInput = downloadSpeedLimitKbps.toString()
-                            speedLimitError = null
-                            showSpeedLimitDialog = true
+            // ── Data section ──
+            SettingsSection(title = Strings["settings_data"], colors = colors) {
+                SettingsRow(
+                    icon = Icons.Default.FileDownload,
+                    title = Strings["settings_export_opml"],
+                    subtitle = Strings["settings_export_opml_desc"],
+                    action = {
+                        SettingsActionButton(
+                            text = Strings["settings_export"],
+                            color = colors.accent,
+                            onClick = {
+                                scope.launch {
+                                    exportedOpml = exportManager.exportOpml()
+                                    showExportDialog = true
+                                }
+                            }
+                        )
+                    },
+                    colors = colors
+                )
+
+                SettingsRow(
+                    icon = Icons.Default.FileUpload,
+                    title = Strings["settings_import_opml"],
+                    subtitle = Strings["settings_import_opml_desc"],
+                    action = {
+                        if (isImporting) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(16.dp),
+                                strokeWidth = 2.dp,
+                                color = colors.accent
+                            )
+                        } else {
+                            SettingsActionButton(
+                                text = Strings["settings_import"],
+                                color = colors.accent,
+                                onClick = {
+                                    scope.launch {
+                                        isImporting = true
+                                        try {
+                                            val file = openFilePicker("Select OPML File", "opml", "xml")
+                                            if (file != null) {
+                                                val content = file.readText()
+                                                val result = importManager.importOpml(content)
+                                                showImportResult = result
+                                            }
+                                        } finally {
+                                            isImporting = false
+                                        }
+                                    }
+                                }
+                            )
                         }
-                    )
-                },
-                colors = colors
-            )
+                    },
+                    colors = colors
+                )
+            }
 
-            HorizontalDivider(color = colors.divider, modifier = Modifier.padding(vertical = 8.dp))
+            Spacer(Modifier.height(DesignTokens.Spacing.sm))
+
+            // ── Downloads section ──
+            SettingsSection(title = Strings["settings_downloads"], colors = colors) {
+                SettingsRow(
+                    icon = Icons.Default.Folder,
+                    title = Strings["settings_download_location"],
+                    subtitle = downloadPath,
+                    action = {
+                        SettingsActionButton(
+                            text = Strings["settings_change"],
+                            color = colors.accent,
+                            onClick = {
+                                val dir = openDirectoryPicker("Select Download Folder")
+                                if (dir != null) {
+                                    Settings.setDownloadPath(dir)
+                                    downloadPath = dir
+                                    onDownloadPathChanged?.invoke(dir)
+                                    Logger.i("Settings", "Download path changed to: $dir")
+                                }
+                            }
+                        )
+                    },
+                    colors = colors
+                )
+
+                if (downloadPath != java.io.File(System.getProperty("user.home"), ".podara/downloads").absolutePath) {
+                    SettingsActionText(
+                        text = Strings["settings_reset_default"],
+                        color = colors.textSecondary,
+                        onClick = {
+                            Settings.resetDownloadPath()
+                            downloadPath = Settings.getDownloadPath()
+                            onDownloadPathChanged?.invoke(downloadPath)
+                            Logger.i("Settings", "Download path reset to default")
+                        },
+                        modifier = Modifier.padding(start = 64.dp)
+                    )
+                }
+
+                Spacer(Modifier.height(DesignTokens.Spacing.xs))
+
+                SettingsRow(
+                    icon = Icons.Default.Star,
+                    title = Strings["settings_download_speed_limit"],
+                    subtitle = if (downloadSpeedLimitKbps <= 0) {
+                        Strings["settings_download_speed_unlimited"]
+                    } else {
+                        "$downloadSpeedLimitKbps ${Strings["settings_download_speed_unit"]}"
+                    },
+                    action = {
+                        SettingsActionButton(
+                            text = Strings["settings_change"],
+                            color = colors.accent,
+                            onClick = {
+                                localSpeedLimitInput = downloadSpeedLimitKbps.toString()
+                                speedLimitError = null
+                                showSpeedLimitDialog = true
+                            }
+                        )
+                    },
+                    colors = colors
+                )
+            }
+
+            Spacer(Modifier.height(DesignTokens.Spacing.sm))
 
             // ── Close Behavior section ──
-            SectionHeader(Strings["settings_close_behavior"])
+            SettingsSection(title = Strings["settings_close_behavior"], colors = colors) {
+                SettingsRow(
+                    icon = Icons.Default.ExitToApp,
+                    title = Strings["settings_close_behavior"],
+                    subtitle = when (Settings.getCloseAction()) {
+                        "quit" -> Strings["settings_close_quit"]
+                        "minimize_to_tray" -> Strings["settings_close_minimize_tray"]
+                        else -> Strings["settings_close_ask"]
+                    },
+                    action = {
+                        SettingsActionButton(
+                            text = Strings["settings_change"],
+                            color = colors.accent,
+                            onClick = { showCloseBehaviorDialog = true }
+                        )
+                    },
+                    colors = colors
+                )
+            }
+
             Spacer(Modifier.height(DesignTokens.Spacing.sm))
-
-            SettingsRow(
-                icon = Icons.Default.ExitToApp,
-                title = Strings["settings_close_behavior"],
-                subtitle = when (Settings.getCloseAction()) {
-                    "quit" -> Strings["settings_close_quit"]
-                    "minimize_to_tray" -> Strings["settings_close_minimize_tray"]
-                    else -> Strings["settings_close_ask"]
-                },
-                action = {
-                    SettingsActionText(
-                        text = Strings["settings_change"],
-                        color = colors.accent,
-                        onClick = { showCloseBehaviorDialog = true }
-                    )
-                },
-                colors = colors
-            )
-
-            HorizontalDivider(color = colors.divider, modifier = Modifier.padding(vertical = 8.dp))
 
             // ── About section ──
-            SectionHeader(Strings["settings_about"])
-            Spacer(Modifier.height(DesignTokens.Spacing.sm))
-            Text(
-                text = Strings["settings_about_desc"],
-                fontSize = 14.sp,
-                color = colors.textSecondary
-            )
-            Spacer(Modifier.height(4.dp))
-            Text(
-                text = Strings.get("settings_version", "0.1.0"),
-                fontSize = 12.sp,
-                color = colors.textMuted
-            )
-        }
-    }
-
-    // ── Language dialog ──
-    if (showLanguageDialog) {
-        val languages = listOf("en" to "English", "zh" to "简体中文")
-        AlertDialog(
-            onDismissRequest = { showLanguageDialog = false },
-            shape = RoundedCornerShape(0),
-            modifier = Modifier.widthIn(max = 380.dp),
-            containerColor = colors.surface,
-            title = { Text(Strings["settings_language"], color = colors.textPrimary) },
-            text = {
-                Column {
-                    languages.forEach { (code, name) ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(48.dp)
-                                .pointerHoverIcon(PointerIcon(java.awt.Cursor(java.awt.Cursor.HAND_CURSOR)))
-                                .clickable(
-                                    interactionSource = remember { MutableInteractionSource() },
-                                    indication = null
-                                ) {
-                                    currentLanguage = code
-                                    Settings.setLanguage(code)
-                                    Strings.updateLanguage(code)
-                                    showLanguageDialog = false
-                                    onLanguageChanged?.invoke(code)
-                                }
-                                .padding(horizontal = 12.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            RadioButton(
-                                selected = currentLanguage == code,
-                                onClick = {
-                                    currentLanguage = code
-                                    Settings.setLanguage(code)
-                                    Strings.updateLanguage(code)
-                                    showLanguageDialog = false
-                                    onLanguageChanged?.invoke(code)
-                                },
-                                colors = RadioButtonDefaults.colors(
-                                    selectedColor = colors.accent,
-                                    unselectedColor = colors.textSecondary
-                                )
-                            )
-                            Spacer(Modifier.width(8.dp))
-                            Text(
-                                text = name,
-                                fontSize = 14.sp,
-                                color = colors.textPrimary
-                            )
-                        }
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = { showLanguageDialog = false }) {
-                    Text(Strings["dialog_cancel"], color = colors.textSecondary)
-                }
+            SettingsSection(title = Strings["settings_about"], colors = colors) {
+                Text(
+                    text = Strings["settings_about_desc"],
+                    fontSize = 14.sp,
+                    color = colors.textSecondary
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = Strings.get("settings_version", "0.1.0"),
+                    fontSize = 12.sp,
+                    color = colors.textMuted
+                )
             }
-        )
+        }
     }
 
     // ── Download speed limit dialog ──
@@ -673,6 +620,28 @@ fun SettingsScreen(
     }
 }
 
+// ── Reusable card section ──
+@Composable
+private fun SettingsSection(
+    title: String,
+    colors: PodaraColors,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    val shape = RoundedCornerShape(12.dp)
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = shape,
+        colors = CardDefaults.cardColors(containerColor = colors.surface)
+    ) {
+        Column(modifier = Modifier.padding(horizontal = DesignTokens.Spacing.lg, vertical = 18.dp)) {
+            SectionHeader(title)
+            Spacer(Modifier.height(DesignTokens.Spacing.sm))
+            content()
+        }
+    }
+}
+
 // ── Reusable section header ──
 @Composable
 private fun SectionHeader(title: String) {
@@ -682,6 +651,106 @@ private fun SectionHeader(title: String) {
         fontWeight = FontWeight.SemiBold,
         fontFamily = FontFamily.Serif,
         color = PodaraTheme.colors.textPrimary
+    )
+}
+
+// ── Language selection controls ──
+@Composable
+private fun LanguageSelector(
+    selectedLanguage: String,
+    expanded: Boolean,
+    onExpandedChange: (Boolean) -> Unit,
+    onLanguageSelected: (String) -> Unit,
+    onChange: () -> Unit
+) {
+    val colors = PodaraTheme.colors
+    val toolbarButton = DesignTokens.ToolbarButton
+    val selectedLabel = if (selectedLanguage == "zh") "简体中文" else "English"
+
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+        Box {
+            val interactionSource = remember { MutableInteractionSource() }
+            val shape = RoundedCornerShape(toolbarButton.PillRadius)
+            Box(
+                modifier = Modifier
+                    .height(32.dp)
+                    .widthIn(min = 108.dp)
+                    .clip(shape)
+                    .background(if (expanded) toolbarButton.PillSelectedBackgroundColor else toolbarButton.PillSortBackgroundColor)
+                    .pointerHoverIcon(PointerIcon(java.awt.Cursor(java.awt.Cursor.HAND_CURSOR)))
+                    .clickable(interactionSource = interactionSource, indication = null) { onExpandedChange(true) }
+                    .padding(horizontal = 12.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(toolbarButton.PillIconTextGap)
+                ) {
+                    Text(
+                        text = selectedLabel,
+                        color = if (expanded) toolbarButton.PillSelectedTextColor else colors.textPrimary,
+                        fontSize = toolbarButton.PillTextSize,
+                        lineHeight = toolbarButton.PillLineHeight,
+                        fontWeight = if (expanded) toolbarButton.PillActiveTextWeight else toolbarButton.PillTextWeight
+                    )
+                    Icon(
+                        imageVector = Icons.Default.KeyboardArrowDown,
+                        contentDescription = Strings["settings_language"],
+                        tint = if (expanded) toolbarButton.PillSelectedIconColor else toolbarButton.PillIconColor,
+                        modifier = Modifier.size(toolbarButton.PillTrailingIconSize)
+                    )
+                }
+            }
+
+            PodaraDropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { onExpandedChange(false) },
+                items = listOf(
+                    PodaraDropdownMenuItem(
+                        label = "English",
+                        isSelected = selectedLanguage == "en",
+                        onClick = { onLanguageSelected("en"); onExpandedChange(false) }
+                    ),
+                    PodaraDropdownMenuItem(
+                        label = "简体中文",
+                        isSelected = selectedLanguage == "zh",
+                        onClick = { onLanguageSelected("zh"); onExpandedChange(false) }
+                    )
+                )
+            )
+        }
+        SettingsActionButton(
+            text = Strings["settings_change"],
+            color = colors.accent,
+            onClick = onChange
+        )
+    }
+}
+
+// ── Settings action button ──
+@Composable
+private fun SettingsActionButton(
+    text: String,
+    color: Color,
+    onClick: () -> Unit
+) {
+    val toolbarButton = DesignTokens.ToolbarButton
+
+    ToolbarPillButton(
+        label = text,
+        contentDescription = text,
+        onClick = onClick,
+        height = 32.dp,
+        radius = 8.dp,
+        minWidth = 0.dp,
+        horizontalPadding = 12.dp,
+        textColor = color,
+        hoverTextColor = color,
+        defaultBackgroundColor = toolbarButton.PillSortBackgroundColor,
+        hoverBackgroundColor = toolbarButton.PillSortBackgroundColor,
+        pressedBackgroundColor = toolbarButton.PillSelectedBackgroundColor,
+        defaultBorderColor = Color.Transparent,
+        hoverBorderColor = Color.Transparent
     )
 }
 
