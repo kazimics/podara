@@ -35,6 +35,7 @@ import app.podara.component.EpisodeListItem
 import app.podara.component.formatEpisodeMetadata
 import app.podara.component.FavoriteEpisodeButton
 import app.podara.component.PodaraEmptyState
+import app.podara.component.PodaraConfirmDialog
 import app.podara.component.ToolbarPillButton
 import app.podara.data.AppDatabase
 import app.podara.data.model.Podcast
@@ -341,28 +342,20 @@ fun FavoritesScreen(
     }
 
     if (showClearDialog) {
-        AlertDialog(
-            onDismissRequest = { showClearDialog = false },
-            title = { Text(Strings["favorites_clear"], color = colors.textPrimary) },
-            text = { Text(Strings["favorites_clear_confirm"], color = colors.textSecondary) },
-            confirmButton = {
-                TextButton(onClick = {
-                    scope.launch {
-                        database.favorites.deleteAll()
-                        allFavoriteItems = emptyList()
-                        onFavoriteChanged()
-                    }
-                    showClearDialog = false
-                }) {
-                    Text(Strings["favorites_clear_action"], color = colors.danger)
+        PodaraConfirmDialog(
+            title = Strings["favorites_clear"],
+            description = androidx.compose.ui.text.AnnotatedString(Strings["favorites_clear_confirm"]),
+            confirmLabel = Strings["favorites_clear_action"],
+            dismissLabel = Strings["dialog_cancel"],
+            onConfirm = {
+                scope.launch {
+                    database.favorites.deleteAll()
+                    allFavoriteItems = emptyList()
+                    onFavoriteChanged()
                 }
+                showClearDialog = false
             },
-            dismissButton = {
-                TextButton(onClick = { showClearDialog = false }) {
-                    Text(Strings["dialog_cancel"], color = colors.textSecondary)
-                }
-            },
-            containerColor = colors.surface
+            onDismissRequest = { showClearDialog = false }
         )
     }
 }

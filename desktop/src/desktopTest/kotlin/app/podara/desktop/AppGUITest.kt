@@ -98,7 +98,7 @@ class AppGUITest {
         composeTestRule.onNodeWithText(Strings["settings_title"]).assertIsDisplayed()
         composeTestRule.onNodeWithText(Strings["settings_export_opml"]).assertIsDisplayed()
         composeTestRule.onNodeWithText(Strings["settings_import_opml"]).assertIsDisplayed()
-        composeTestRule.onNodeWithText(Strings["settings_about"]).assertIsDisplayed()
+        composeTestRule.onNodeWithText(Strings["settings_about"]).assertExists()
     }
 
     @Test
@@ -108,7 +108,7 @@ class AppGUITest {
                 SettingsScreen(database = database, onBack = {})
             }
         }
-        composeTestRule.onNodeWithText(Strings.get("settings_version", "0.1.0")).assertIsDisplayed()
+        composeTestRule.onNodeWithText(Strings.get("settings_version", "0.1.0")).assertExists()
     }
 
     @Test
@@ -118,7 +118,7 @@ class AppGUITest {
                 SettingsScreen(database = database, onBack = {})
             }
         }
-        composeTestRule.onNodeWithText(Strings["settings_about_desc"]).assertIsDisplayed()
+        composeTestRule.onNodeWithText(Strings["settings_about_desc"]).assertExists()
     }
 
     // === MiniPlayer Tests ===

@@ -123,6 +123,97 @@ object DesignTokens {
         val EnterMs = 150
     }
 
+    // ── Dialogs ──
+    object Dialog {
+        // The existing Material TextButton label is 14sp; supplied dialog tokens use 17px.
+        private const val SourceActionLabelSize = 17f
+        private val Scale = Button.TextSize.value / SourceActionLabelSize
+
+        object Container {
+            val CompactWidth = (320f * Scale).dp
+            val StandardWidth = (400f * Scale).dp
+            val WideWidth = (560f * Scale).dp
+            val StandardMinHeight = (360f * Scale).dp
+            val Radius = (28f * Scale).dp
+            val Background = Color(0xFF1B1D22)
+            val BorderWidth = (1f * Scale).dp
+            val BorderColor = Color.White.copy(alpha = 0.06f)
+            val ShadowElevation = (24f * Scale).dp
+            val ShadowColor = Color.Black.copy(alpha = 0.55f)
+            val PaddingTop = (32f * Scale).dp
+            val PaddingHorizontal = (36f * Scale).dp
+            val PaddingBottom = (32f * Scale).dp
+            val ContentGap = (24f * Scale).dp
+            val ScrollableContentMaxHeight = 320.dp
+        }
+
+        object Typography {
+            val TitleSize = (24f * Scale).sp
+            val TitleLineHeight = (32f * Scale).sp
+            val TitleWeight = FontWeight.Bold
+            val TitleColor = Color(0xFFF5F6F7)
+            val BodySize = (17f * Scale).sp
+            val BodyLineHeight = (28f * Scale).sp
+            val BodyColor = Color(0xFFC6C8CE)
+            val EmphasisWeight = FontWeight.SemiBold
+            val EmphasisColor = Color.White
+        }
+
+        object Icon {
+            val ContainerSize = (64f * Scale).dp
+            val ContainerRadius = (32f * Scale).dp
+            val ContainerBackground = Color(0x14E0B183)
+            val ContainerBorderWidth = (1f * Scale).dp
+            val ContainerBorderColor = Color(0x2EE0B183)
+            val Size = (30f * Scale).dp
+            val Color = Color(0xFFE0B183)
+        }
+
+        object Action {
+            val Gap = (14f * Scale).dp
+            val MarginTop = (8f * Scale).dp
+            val Width = (150f * Scale).dp
+            val Height = (48f * Scale).dp
+            val Radius = (14f * Scale).dp
+            val LabelSize = (17f * Scale).sp
+            val LabelWeight = FontWeight.Normal
+            const val DisabledContentAlpha = 0.45f
+            const val DisabledBackgroundAlpha = 0.40f
+
+            object Primary {
+                val HoverOverlay = Color.White.copy(alpha = 0.08f)
+                val PressedOverlay = Color.Black.copy(alpha = 0.12f)
+            }
+
+            object Secondary {
+                val Background = Color(0xFF252932)
+                val HoverBackground = Color(0xFF2D313B)
+                val PressedBackground = Color(0xFF22262E)
+                val TextColor = Color(0xFFECEDEF)
+            }
+
+            object Destructive {
+                val Background = Color(0xFFB8454A)
+                val HoverBackground = Color(0xFFD0575D)
+                val PressedBackground = Color(0xFF92353A)
+                val TextColor = Color.White
+                val ShadowColor = Color(0x40FF5A5F)
+            }
+
+            object Text {
+                val TextColor = Color(0xFFE0B183)
+                val HoverBackground = Color.White.copy(alpha = 0.06f)
+                val PressedBackground = Color.White.copy(alpha = 0.10f)
+            }
+        }
+
+        object Motion {
+            val EnterDurationMs = 180
+            val EnterStartScale = 0.96f
+            val EnterStartTranslationY = (10f * Scale).dp
+        }
+    }
+
     // ── Status badges ──
     object Badge {
         val Radius = 9.dp

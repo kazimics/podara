@@ -33,6 +33,7 @@ import app.podara.component.EpisodeListItem
 import app.podara.component.formatEpisodeMetadata
 import app.podara.component.FavoriteEpisodeButton
 import app.podara.component.PodaraEmptyState
+import app.podara.component.PodaraConfirmDialog
 import app.podara.component.ToolbarPillButton
 import app.podara.data.model.Podcast
 import app.podara.data.model.PodcastEpisode
@@ -400,27 +401,19 @@ fun HistoryScreen(
 
     // ── Clear history dialog ──
     if (showClearDialog) {
-        AlertDialog(
-            onDismissRequest = { showClearDialog = false },
-            title = { Text(Strings["history_clear"], color = colors.textPrimary) },
-            text = { Text(Strings["history_clear_confirm"], color = colors.textSecondary) },
-            confirmButton = {
-                TextButton(onClick = {
-                    scope.launch {
-                        database.history.deleteAll()
-                        allHistoryItems = emptyList()
-                    }
-                    showClearDialog = false
-                }) {
-                    Text(Strings["history_clear_action"], color = colors.danger)
+        PodaraConfirmDialog(
+            title = Strings["history_clear"],
+            description = androidx.compose.ui.text.AnnotatedString(Strings["history_clear_confirm"]),
+            confirmLabel = Strings["history_clear_action"],
+            dismissLabel = Strings["dialog_cancel"],
+            onConfirm = {
+                scope.launch {
+                    database.history.deleteAll()
+                    allHistoryItems = emptyList()
                 }
+                showClearDialog = false
             },
-            dismissButton = {
-                TextButton(onClick = { showClearDialog = false }) {
-                    Text(Strings["dialog_cancel"], color = colors.textSecondary)
-                }
-            },
-            containerColor = colors.surface
+            onDismissRequest = { showClearDialog = false }
         )
     }
 }

@@ -31,6 +31,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.podara.component.PodaraDropdownMenu
 import app.podara.component.PodaraDropdownMenuItem
+import app.podara.component.PodaraDialog
+import app.podara.component.PodaraDialogActionButton
+import app.podara.component.PodaraDialogActionStyle
+import app.podara.component.PodaraDialogBody
+import app.podara.component.PodaraDialogSize
+import app.podara.component.PodaraDialogTitle
 import app.podara.component.ToolbarPillButton
 import app.podara.data.AppDatabase
 import app.podara.manager.ExportManager
@@ -297,19 +303,12 @@ fun SettingsScreen(
 
     // ── Download speed limit dialog ──
     if (showSpeedLimitDialog) {
-        AlertDialog(
+        PodaraDialog(
             onDismissRequest = { showSpeedLimitDialog = false; speedLimitError = null },
-            shape = RoundedCornerShape(0),
-            modifier = Modifier.widthIn(max = 380.dp),
-            containerColor = colors.surface,
-            title = { Text(Strings["settings_download_speed_limit"], color = colors.textPrimary) },
-            text = {
+            title = { PodaraDialogTitle(Strings["settings_download_speed_limit"], textAlign = androidx.compose.ui.text.style.TextAlign.Start) },
+            content = {
                 Column {
-                    Text(
-                        text = Strings["settings_download_speed_hint"],
-                        fontSize = 13.sp,
-                        color = colors.textSecondary
-                    )
+                    PodaraDialogBody(Strings["settings_download_speed_hint"])
                     Spacer(Modifier.height(8.dp))
                     OutlinedTextField(
                         value = localSpeedLimitInput,
@@ -331,36 +330,34 @@ fun SettingsScreen(
                             errorLabelColor = colors.danger
                         )
                     )
-                    if (speedLimitError != null) {
+                    speedLimitError?.let {
                         Spacer(Modifier.height(4.dp))
-                        Text(
-                            text = speedLimitError!!,
-                            color = colors.danger,
-                            fontSize = 12.sp
-                        )
+                        Text(text = it, color = colors.danger, fontSize = 12.sp)
                     }
                 }
             },
-            confirmButton = {
-                TextButton(onClick = {
-                    val trimmed = localSpeedLimitInput.trim()
-                    val parsed = trimmed.toIntOrNull()
-                    if (parsed == null || parsed < 0 || trimmed != parsed.toString()) {
-                        speedLimitError = Strings["settings_download_speed_error"]
-                    } else {
-                        Settings.setDownloadSpeedLimitKbps(parsed)
-                        onDownloadSpeedLimitChanged?.invoke(parsed)
-                        showSpeedLimitDialog = false
-                        speedLimitError = null
-                    }
-                }) {
-                    Text(Strings["dialog_ok"], color = colors.accent)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showSpeedLimitDialog = false; speedLimitError = null }) {
-                    Text(Strings["dialog_cancel"], color = colors.textSecondary)
-                }
+            actions = {
+                PodaraDialogActionButton(
+                    label = Strings["dialog_cancel"],
+                    onClick = { showSpeedLimitDialog = false; speedLimitError = null },
+                    style = PodaraDialogActionStyle.Secondary
+                )
+                PodaraDialogActionButton(
+                    label = Strings["dialog_ok"],
+                    onClick = {
+                        val trimmed = localSpeedLimitInput.trim()
+                        val parsed = trimmed.toIntOrNull()
+                        if (parsed == null || parsed < 0 || trimmed != parsed.toString()) {
+                            speedLimitError = Strings["settings_download_speed_error"]
+                        } else {
+                            Settings.setDownloadSpeedLimitKbps(parsed)
+                            onDownloadSpeedLimitChanged?.invoke(parsed)
+                            showSpeedLimitDialog = false
+                            speedLimitError = null
+                        }
+                    },
+                    style = PodaraDialogActionStyle.Primary
+                )
             }
         )
     }
@@ -368,149 +365,58 @@ fun SettingsScreen(
     // ── Close behavior dialog ──
     if (showCloseBehaviorDialog) {
         var selectedAction by remember { mutableStateOf(Settings.getCloseAction()) }
-
-        AlertDialog(
+        PodaraDialog(
             onDismissRequest = { showCloseBehaviorDialog = false },
-            shape = RoundedCornerShape(0),
-            modifier = Modifier.widthIn(max = 380.dp),
-            containerColor = colors.surface,
-            title = { Text(Strings["settings_close_behavior"], color = colors.textPrimary) },
-            text = {
+            title = { PodaraDialogTitle(Strings["settings_close_behavior"], textAlign = androidx.compose.ui.text.style.TextAlign.Start) },
+            content = {
                 Column {
-                    Text(
-                        text = Strings["settings_close_behavior_desc"],
-                        fontSize = 13.sp,
-                        color = colors.textSecondary
-                    )
+                    PodaraDialogBody(Strings["settings_close_behavior_desc"])
                     Spacer(Modifier.height(8.dp))
-
-                    // Ask every time
-                    val askInteractionSource = remember { MutableInteractionSource() }
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(44.dp)
-                            .pointerHoverIcon(PointerIcon(java.awt.Cursor(java.awt.Cursor.HAND_CURSOR)))
-                            .clickable(interactionSource = askInteractionSource, indication = null) {
-                                selectedAction = "ask"
-                            }
-                            .padding(horizontal = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        RadioButton(
-                            selected = selectedAction == "ask",
-                            onClick = { selectedAction = "ask" },
-                            colors = RadioButtonDefaults.colors(
-                                selectedColor = colors.accent,
-                                unselectedColor = colors.textSecondary
+                    listOf(
+                        "ask" to Strings["settings_close_ask"],
+                        "quit" to Strings["settings_close_quit"],
+                        "minimize_to_tray" to Strings["settings_close_minimize_tray"]
+                    ).forEach { (action, label) ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth().height(44.dp).clickable { selectedAction = action },
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(
+                                selected = selectedAction == action,
+                                onClick = { selectedAction = action },
+                                colors = RadioButtonDefaults.colors(selectedColor = colors.accent, unselectedColor = colors.textSecondary)
                             )
-                        )
-                        Spacer(Modifier.width(8.dp))
-                        Text(
-                            text = Strings["settings_close_ask"],
-                            fontSize = 14.sp,
-                            color = colors.textPrimary
-                        )
-                    }
-
-                    // Quit
-                    val quitInteractionSource = remember { MutableInteractionSource() }
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(44.dp)
-                            .pointerHoverIcon(PointerIcon(java.awt.Cursor(java.awt.Cursor.HAND_CURSOR)))
-                            .clickable(interactionSource = quitInteractionSource, indication = null) {
-                                selectedAction = "quit"
-                            }
-                            .padding(horizontal = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        RadioButton(
-                            selected = selectedAction == "quit",
-                            onClick = { selectedAction = "quit" },
-                            colors = RadioButtonDefaults.colors(
-                                selectedColor = colors.accent,
-                                unselectedColor = colors.textSecondary
-                            )
-                        )
-                        Spacer(Modifier.width(8.dp))
-                        Text(
-                            text = Strings["settings_close_quit"],
-                            fontSize = 14.sp,
-                            color = colors.textPrimary
-                        )
-                    }
-
-                    // Minimize to tray
-                    val minimizeInteractionSource = remember { MutableInteractionSource() }
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(44.dp)
-                            .pointerHoverIcon(PointerIcon(java.awt.Cursor(java.awt.Cursor.HAND_CURSOR)))
-                            .clickable(interactionSource = minimizeInteractionSource, indication = null) {
-                                selectedAction = "minimize_to_tray"
-                            }
-                            .padding(horizontal = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        RadioButton(
-                            selected = selectedAction == "minimize_to_tray",
-                            onClick = { selectedAction = "minimize_to_tray" },
-                            colors = RadioButtonDefaults.colors(
-                                selectedColor = colors.accent,
-                                unselectedColor = colors.textSecondary
-                            )
-                        )
-                        Spacer(Modifier.width(8.dp))
-                        Text(
-                            text = Strings["settings_close_minimize_tray"],
-                            fontSize = 14.sp,
-                            color = colors.textPrimary
-                        )
+                            Spacer(Modifier.width(8.dp))
+                            Text(label, fontSize = 14.sp, color = colors.textPrimary)
+                        }
                     }
                 }
             },
-            confirmButton = {
-                TextButton(onClick = {
+            actions = {
+                PodaraDialogActionButton(Strings["dialog_cancel"], { showCloseBehaviorDialog = false }, PodaraDialogActionStyle.Secondary)
+                PodaraDialogActionButton(Strings["dialog_ok"], {
                     Settings.setCloseAction(selectedAction)
                     showCloseBehaviorDialog = false
-                }) {
-                    Text(Strings["dialog_ok"], color = colors.accent)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showCloseBehaviorDialog = false }) {
-                    Text(Strings["dialog_cancel"], color = colors.textSecondary)
-                }
+                }, PodaraDialogActionStyle.Primary)
             }
         )
     }
 
     // ── Export dialog ──
     if (showExportDialog && exportedOpml != null) {
-        AlertDialog(
+        PodaraDialog(
             onDismissRequest = { showExportDialog = false },
-            shape = RoundedCornerShape(0),
-            modifier = Modifier.widthIn(max = 380.dp),
-            containerColor = colors.surface,
-            title = { Text(Strings["opml_export_title"], color = colors.textPrimary) },
-            text = {
+            size = PodaraDialogSize.Wide,
+            title = { PodaraDialogTitle(Strings["opml_export_title"], textAlign = androidx.compose.ui.text.style.TextAlign.Start) },
+            content = {
                 Column {
-                    Text(
-                        text = Strings["opml_export_copy_hint"],
-                        fontSize = 13.sp,
-                        color = colors.textSecondary
-                    )
+                    PodaraDialogBody(Strings["opml_export_copy_hint"])
                     Spacer(Modifier.height(8.dp))
                     OutlinedTextField(
                         value = exportedOpml!!,
                         onValueChange = {},
                         readOnly = true,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .heightIn(min = 200.dp, max = 400.dp),
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 200.dp, max = DesignTokens.Dialog.Container.ScrollableContentMaxHeight),
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = colors.border,
                             unfocusedBorderColor = colors.border,
@@ -520,19 +426,13 @@ fun SettingsScreen(
                     )
                 }
             },
-            confirmButton = {
-                TextButton(onClick = {
+            actions = {
+                PodaraDialogActionButton(Strings["dialog_close"], { showExportDialog = false }, PodaraDialogActionStyle.Secondary)
+                PodaraDialogActionButton(Strings["dialog_copy_to_clipboard"], {
                     clipboardManager.setText(AnnotatedString(exportedOpml!!))
                     showExportDialog = false
                     showCopiedSnackbar = true
-                }) {
-                    Text(Strings["dialog_copy_to_clipboard"], color = colors.accent)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showExportDialog = false }) {
-                    Text(Strings["dialog_close"], color = colors.textSecondary)
-                }
+                }, PodaraDialogActionStyle.Primary)
             }
         )
     }
@@ -556,63 +456,39 @@ fun SettingsScreen(
     showImportResult?.let { result ->
         when (result) {
             is ImportResult.Success -> {
-                AlertDialog(
+                PodaraDialog(
                     onDismissRequest = { showImportResult = null },
-                    shape = RoundedCornerShape(0),
-                    modifier = Modifier.widthIn(max = 380.dp),
-                    containerColor = colors.surface,
-                    title = { Text(Strings["opml_import_title"], color = colors.textPrimary) },
-                    text = {
-                        Column {
-                            Text(
-                                text = Strings.get("opml_import_added", result.added),
-                                color = colors.textSecondary,
-                                fontSize = 14.sp
-                            )
-                            Text(
-                                text = Strings.get("opml_import_skipped", result.skipped),
-                                color = colors.textSecondary,
-                                fontSize = 14.sp
-                            )
+                    size = PodaraDialogSize.Wide,
+                    title = { PodaraDialogTitle(Strings["opml_import_title"], textAlign = androidx.compose.ui.text.style.TextAlign.Start) },
+                    content = {
+                        Column(
+                            modifier = Modifier.heightIn(max = DesignTokens.Dialog.Container.ScrollableContentMaxHeight).verticalScroll(rememberScrollState())
+                        ) {
+                            PodaraDialogBody(Strings.get("opml_import_added", result.added))
+                            PodaraDialogBody(Strings.get("opml_import_skipped", result.skipped))
                             if (result.failed > 0) {
-                                Text(
-                                    text = Strings.get("opml_import_failed", result.failed),
-                                    color = colors.danger,
-                                    fontSize = 14.sp
+                                PodaraDialogBody(
+                                    Strings.get("opml_import_failed", result.failed),
+                                    color = colors.danger
                                 )
                                 result.errors.forEach { error ->
-                                    Text(
-                                        text = "  - $error",
-                                        color = colors.danger,
-                                        fontSize = 12.sp
-                                    )
+                                    Text(text = "  - $error", color = colors.danger, fontSize = 12.sp)
                                 }
                             }
                         }
                     },
-                    confirmButton = {
-                        TextButton(onClick = { showImportResult = null }) {
-                            Text(Strings["dialog_ok"], color = colors.accent)
-                        }
+                    actions = {
+                        PodaraDialogActionButton(Strings["dialog_ok"], { showImportResult = null }, PodaraDialogActionStyle.Primary)
                     }
                 )
             }
             is ImportResult.Error -> {
-                AlertDialog(
+                PodaraDialog(
                     onDismissRequest = { showImportResult = null },
-                    containerColor = colors.surface,
-                    title = { Text(Strings["opml_import_error"], color = colors.textPrimary) },
-                    text = {
-                        Text(
-                            text = result.message,
-                            color = colors.textSecondary,
-                            fontSize = 14.sp
-                        )
-                    },
-                    confirmButton = {
-                        TextButton(onClick = { showImportResult = null }) {
-                            Text(Strings["dialog_ok"], color = colors.accent)
-                        }
+                    title = { PodaraDialogTitle(Strings["opml_import_error"], textAlign = androidx.compose.ui.text.style.TextAlign.Start) },
+                    content = { PodaraDialogBody(result.message) },
+                    actions = {
+                        PodaraDialogActionButton(Strings["dialog_ok"], { showImportResult = null }, PodaraDialogActionStyle.Primary)
                     }
                 )
             }

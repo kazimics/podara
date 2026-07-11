@@ -53,6 +53,11 @@ import androidx.compose.ui.unit.sp
 import app.podara.component.FavoriteEpisodeButton
 import app.podara.component.PodaraDropdownMenu
 import app.podara.component.PodaraDropdownMenuItem
+import app.podara.component.PodaraDialog
+import app.podara.component.PodaraDialogActionButton
+import app.podara.component.PodaraDialogActionStyle
+import app.podara.component.PodaraDialogBody
+import app.podara.component.PodaraDialogTitle
 import app.podara.component.ToolbarPillButton
 import app.podara.data.AppDatabase
 import app.podara.data.model.PodcastEpisode
@@ -770,7 +775,7 @@ fun FullPlayer(
                             .border(DesignTokens.Border.Width, colors.border, RoundedCornerShape(10.dp))
                             .padding(horizontal = 28.dp, vertical = 26.dp)
                     ) {
-                        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                        Column(verticalArrangement = Arrangement.spacedBy(22.dp)) {
                             Text(
                                 text = Strings["player_episode_notes"],
                                 fontSize = 18.sp,
@@ -780,7 +785,7 @@ fun FullPlayer(
                             Text(
                                 text = parseSimpleHtml(rawDesc),
                                 fontSize = 13.sp,
-                                lineHeight = 20.sp,
+                                lineHeight = 18.sp,
                                 color = colors.textSecondary
                             )
                         }
@@ -1591,50 +1596,38 @@ private fun SleepTimerSheet(
 
     val sleepMinutes = state.sleepTimerMinutes
 
-    AlertDialog(
+    PodaraDialog(
         onDismissRequest = onDismiss,
-        title = {
+        title = { PodaraDialogTitle(Strings["player_sleep_timer"], textAlign = androidx.compose.ui.text.style.TextAlign.Start) },
+        content = {
             Column {
-                Text(Strings["player_sleep_timer"])
-                if (sleepMinutes != null) {
-                    Text(
-                        text = Strings.get("player_sleep_timer_active", sleepMinutes),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.primary
+                sleepMinutes?.let {
+                    PodaraDialogBody(
+                        text = Strings.get("player_sleep_timer_active", it),
+                        color = PodaraTheme.colors.accent
                     )
-                }
-            }
-        },
-        text = {
-            Column {
-                if (state.sleepTimerMinutes != null) {
-                    TextButton(
-                        onClick = {
-                            state.cancelSleepTimer()
-                            onDismiss()
-                        }
-                    ) {
-                        Text(Strings["player_cancel_timer"])
-                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    PodaraDialogActionButton(
+                        label = Strings["player_cancel_timer"],
+                        onClick = { state.cancelSleepTimer(); onDismiss() },
+                        style = PodaraDialogActionStyle.Destructive,
+                        modifier = Modifier.fillMaxWidth()
+                    )
                     Spacer(modifier = Modifier.height(8.dp))
                 }
                 options.forEach { minutes ->
-                    TextButton(
-                        onClick = {
-                            state.setSleepTimer(minutes)
-                            onDismiss()
-                        },
+                    PodaraDialogActionButton(
+                        label = Strings.get("player_minutes", minutes),
+                        onClick = { state.setSleepTimer(minutes); onDismiss() },
+                        style = PodaraDialogActionStyle.Secondary,
                         modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(Strings.get("player_minutes", minutes))
-                    }
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
                 }
             }
         },
-        confirmButton = {
-            TextButton(onClick = onDismiss) {
-                Text(Strings["dialog_close"])
-            }
+        actions = {
+            PodaraDialogActionButton(Strings["dialog_close"], onDismiss, PodaraDialogActionStyle.Primary)
         }
     )
 }

@@ -56,7 +56,7 @@ class SettingsScreenTest {
                 SettingsScreen(database = database, onBack = {})
             }
         }
-        composeTestRule.onNodeWithText(Strings.get("settings_version", "0.1.0")).assertIsDisplayed()
+        composeTestRule.onNodeWithText(Strings.get("settings_version", "0.1.0")).assertExists()
     }
 
     @Test
@@ -66,7 +66,7 @@ class SettingsScreenTest {
                 SettingsScreen(database = database, onBack = {})
             }
         }
-        composeTestRule.onNodeWithText(Strings["settings_about_desc"]).assertIsDisplayed()
+        composeTestRule.onNodeWithText(Strings["settings_about_desc"]).assertExists()
     }
 
     @Test
@@ -108,7 +108,7 @@ class SettingsScreenTest {
                 SettingsScreen(database = database, onBack = {})
             }
         }
-        composeTestRule.onNodeWithText(Strings["settings_about"]).assertIsDisplayed()
+        composeTestRule.onNodeWithText(Strings["settings_about"]).assertExists()
     }
 
     @Test

@@ -37,7 +37,10 @@ import androidx.compose.ui.graphics.decodeToImageBitmap
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -60,6 +63,12 @@ import app.podara.component.EpisodeListItem
 import app.podara.component.EpisodeListItemSecondaryTextRole
 import app.podara.component.FavoriteEpisodeButton
 import app.podara.component.formatEpisodeMetadata
+import app.podara.component.PodaraConfirmDialog
+import app.podara.component.PodaraDialog
+import app.podara.component.PodaraDialogActionButton
+import app.podara.component.PodaraDialogActionStyle
+import app.podara.component.PodaraDialogBody
+import app.podara.component.PodaraDialogTitle
 import app.podara.component.PodaraDropdownMenu
 import app.podara.component.PodaraDropdownMenuItem
 import app.podara.component.PodaraEmptyState
@@ -903,101 +912,36 @@ fun WindowScope.App(
         var chosenAction by remember { mutableStateOf(Settings.getCloseAction()) }
         var rememberChoice by remember { mutableStateOf(false) }
 
-        AlertDialog(
+        PodaraDialog(
             onDismissRequest = { showCloseDialog = false },
-            shape = RoundedCornerShape(0),
-            modifier = Modifier.widthIn(max = 380.dp),
-            containerColor = dialogColors.surface,
-            title = {
-                Text(
-                    text = Strings["close_dialog_title"],
-                    color = dialogColors.textPrimary
-                )
-            },
-            text = {
+            title = { PodaraDialogTitle(Strings["close_dialog_title"], textAlign = androidx.compose.ui.text.style.TextAlign.Start) },
+            content = {
                 Column {
-                    Text(
-                        text = Strings["close_dialog_message"],
-                        fontSize = 14.sp,
-                        color = dialogColors.textSecondary
-                    )
+                    PodaraDialogBody(Strings["close_dialog_message"])
                     Spacer(Modifier.height(12.dp))
-
-                    // Quit option
-                    val quitInteractionSource = remember { MutableInteractionSource() }
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(44.dp)
-                            .pointerHoverIcon(PointerIcon(java.awt.Cursor(java.awt.Cursor.HAND_CURSOR)))
-                            .clickable(interactionSource = quitInteractionSource, indication = null) {
-                                chosenAction = "quit"
-                            }
-                            .padding(horizontal = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        RadioButton(
-                            selected = chosenAction == "quit",
-                            onClick = { chosenAction = "quit" },
-                            colors = RadioButtonDefaults.colors(
-                                selectedColor = dialogColors.accent,
-                                unselectedColor = dialogColors.textSecondary
+                    listOf(
+                        "quit" to Strings["close_action_quit"],
+                        "minimize_to_tray" to Strings["close_action_minimize"]
+                    ).forEach { (action, label) ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth().height(44.dp).clickable { chosenAction = action },
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(
+                                selected = chosenAction == action,
+                                onClick = { chosenAction = action },
+                                colors = RadioButtonDefaults.colors(
+                                    selectedColor = dialogColors.accent,
+                                    unselectedColor = dialogColors.textSecondary
+                                )
                             )
-                        )
-                        Spacer(Modifier.width(8.dp))
-                        Column {
-                            Text(
-                                text = Strings["close_action_quit"],
-                                fontSize = 14.sp,
-                                color = dialogColors.textPrimary
-                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text(label, fontSize = 14.sp, color = dialogColors.textPrimary)
                         }
                     }
-
-                    // Minimize to tray option
-                    val minimizeInteractionSource = remember { MutableInteractionSource() }
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(44.dp)
-                            .pointerHoverIcon(PointerIcon(java.awt.Cursor(java.awt.Cursor.HAND_CURSOR)))
-                            .clickable(interactionSource = minimizeInteractionSource, indication = null) {
-                                chosenAction = "minimize_to_tray"
-                            }
-                            .padding(horizontal = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        RadioButton(
-                            selected = chosenAction == "minimize_to_tray",
-                            onClick = { chosenAction = "minimize_to_tray" },
-                            colors = RadioButtonDefaults.colors(
-                                selectedColor = dialogColors.accent,
-                                unselectedColor = dialogColors.textSecondary
-                            )
-                        )
-                        Spacer(Modifier.width(8.dp))
-                        Column {
-                            Text(
-                                text = Strings["close_action_minimize"],
-                                fontSize = 14.sp,
-                                color = dialogColors.textPrimary
-                            )
-                        }
-                    }
-
                     Spacer(Modifier.height(8.dp))
-
-                    // Remember choice checkbox
                     Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(40.dp)
-                            .pointerHoverIcon(PointerIcon(java.awt.Cursor(java.awt.Cursor.HAND_CURSOR)))
-                            .clickable(
-                                interactionSource = remember { MutableInteractionSource() },
-                                indication = null
-                            ) { rememberChoice = !rememberChoice }
-                            .padding(horizontal = 8.dp),
+                        modifier = Modifier.fillMaxWidth().height(40.dp).clickable { rememberChoice = !rememberChoice },
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Checkbox(
@@ -1010,16 +954,13 @@ fun WindowScope.App(
                             )
                         )
                         Spacer(Modifier.width(4.dp))
-                        Text(
-                            text = Strings["close_remember"],
-                            fontSize = 13.sp,
-                            color = dialogColors.textSecondary
-                        )
+                        Text(Strings["close_remember"], fontSize = 13.sp, color = dialogColors.textSecondary)
                     }
                 }
             },
-            confirmButton = {
-                TextButton(onClick = {
+            actions = {
+                PodaraDialogActionButton(Strings["dialog_cancel"], { showCloseDialog = false }, PodaraDialogActionStyle.Secondary)
+                PodaraDialogActionButton(Strings["dialog_ok"], {
                     if (rememberChoice) {
                         Settings.setCloseAction(chosenAction)
                         Settings.setCloseActionRemembered(true)
@@ -1035,14 +976,7 @@ fun WindowScope.App(
                         }
                     }
                     showCloseDialog = false
-                }) {
-                    Text(Strings["dialog_ok"], color = dialogColors.accent)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showCloseDialog = false }) {
-                    Text(Strings["dialog_cancel"], color = dialogColors.textSecondary)
-                }
+                }, PodaraDialogActionStyle.Primary)
             }
         )
     }
@@ -1283,6 +1217,13 @@ private fun HomeScreen(
                         else -> Strings["home_sort"]
                     }
 
+                    ToolbarPillButton(
+                        icon = Icons.Default.Add,
+                        label = Strings["home_add_podcast"],
+                        contentDescription = Strings["home_add_podcast"],
+                        onClick = onAddPodcast
+                    )
+
                     // Manage button
                     ToolbarPillButton(
                         icon = Icons.Default.Edit,
@@ -1487,41 +1428,56 @@ private fun HomeScreen(
 
     // ── Dialogs ──
     if (showUnsubscribeDialog && podcastToUnsubscribe != null) {
-        AlertDialog(
-            onDismissRequest = { showUnsubscribeDialog = false; podcastToUnsubscribe = null },
-            title = { Text(Strings["unsubscribe"]) },
-            text = { Text(Strings.get("unsubscribe_confirm", podcastToUnsubscribe!!.title)) },
-            confirmButton = {
-                TextButton(onClick = {
-                    scope.launch {
-                        subscriptionManager.unsubscribe(podcastToUnsubscribe!!.origin)
-                        onPodcastsChanged(database.podcasts.getAllSync())
-                        showUnsubscribeDialog = false; podcastToUnsubscribe = null
-                    }
-                }) { Text(Strings["unsubscribe"]) }
+        val podcast = podcastToUnsubscribe!!
+        val confirmationMessage = Strings.get("unsubscribe_confirm", podcast.title)
+        val confirmationText = buildAnnotatedString {
+            append(confirmationMessage)
+            val titleStart = confirmationMessage.indexOf(podcast.title)
+            if (titleStart >= 0) {
+                addStyle(
+                    SpanStyle(
+                        fontWeight = DesignTokens.Dialog.Typography.EmphasisWeight,
+                        color = DesignTokens.Dialog.Typography.EmphasisColor
+                    ),
+                    titleStart,
+                    titleStart + podcast.title.length
+                )
+            }
+        }
+        PodaraConfirmDialog(
+            title = Strings["unsubscribe"],
+            description = confirmationText,
+            confirmLabel = Strings["unsubscribe"],
+            dismissLabel = Strings["dialog_cancel"],
+            onConfirm = {
+                scope.launch {
+                    subscriptionManager.unsubscribe(podcast.origin)
+                    onPodcastsChanged(database.podcasts.getAllSync())
+                    showUnsubscribeDialog = false
+                    podcastToUnsubscribe = null
+                }
             },
-            dismissButton = {
-                TextButton(onClick = { showUnsubscribeDialog = false; podcastToUnsubscribe = null }) { Text(Strings["dialog_cancel"]) }
+            onDismissRequest = {
+                showUnsubscribeDialog = false
+                podcastToUnsubscribe = null
             }
         )
     }
 
     if (showBatchUnsubscribeDialog) {
-        AlertDialog(
-            onDismissRequest = { showBatchUnsubscribeDialog = false },
-            containerColor = colors.surface,
-            title = { Text(Strings["batch_unsubscribe"], color = colors.textPrimary) },
-            text = { Text(Strings.get("batch_unsubscribe_confirm", selectedPodcasts.size), color = colors.textSecondary) },
-            confirmButton = {
-                TextButton(onClick = {
-                    scope.launch {
-                        selectedPodcasts.forEach { subscriptionManager.unsubscribe(it) }
-                        onPodcastsChanged(database.podcasts.getAllSync())
-                        selectedPodcasts = emptySet(); isEditing = false; showBatchUnsubscribeDialog = false
-                    }
-                }) { Text(Strings["unsubscribe"], color = colors.danger) }
+        PodaraConfirmDialog(
+            title = Strings["batch_unsubscribe"],
+            description = AnnotatedString(Strings.get("batch_unsubscribe_confirm", selectedPodcasts.size)),
+            confirmLabel = Strings["unsubscribe"],
+            dismissLabel = Strings["dialog_cancel"],
+            onConfirm = {
+                scope.launch {
+                    selectedPodcasts.forEach { subscriptionManager.unsubscribe(it) }
+                    onPodcastsChanged(database.podcasts.getAllSync())
+                    selectedPodcasts = emptySet(); isEditing = false; showBatchUnsubscribeDialog = false
+                }
             },
-            dismissButton = { TextButton(onClick = { showBatchUnsubscribeDialog = false }) { Text(Strings["dialog_cancel"], color = colors.textSecondary) } }
+            onDismissRequest = { showBatchUnsubscribeDialog = false }
         )
     }
 }
@@ -2169,27 +2125,20 @@ private fun PodcastDetailScreen(
     }
 
     if (showUnsubscribeDialog) {
-        AlertDialog(
-            onDismissRequest = { showUnsubscribeDialog = false },
-            title = { Text(Strings["unsubscribe"]) },
-            text = { Text(Strings.get("unsubscribe_confirm", podcast.title)) },
-            confirmButton = {
-                TextButton(onClick = {
-                    scope.launch {
-                        subscriptionManager.unsubscribe(podcast.origin)
-                        onUnsubscribed()
-                        onBack()
-                        showUnsubscribeDialog = false
-                    }
-                }) {
-                    Text(Strings["unsubscribe"])
+        PodaraConfirmDialog(
+            title = Strings["unsubscribe"],
+            description = AnnotatedString(Strings.get("unsubscribe_confirm", podcast.title)),
+            confirmLabel = Strings["unsubscribe"],
+            dismissLabel = Strings["dialog_cancel"],
+            onConfirm = {
+                scope.launch {
+                    subscriptionManager.unsubscribe(podcast.origin)
+                    onUnsubscribed()
+                    onBack()
+                    showUnsubscribeDialog = false
                 }
             },
-            dismissButton = {
-                TextButton(onClick = { showUnsubscribeDialog = false }) {
-                    Text(Strings["dialog_cancel"])
-                }
-            }
+            onDismissRequest = { showUnsubscribeDialog = false }
         )
     }
 }
@@ -2201,13 +2150,14 @@ private fun AddPodcastDialog(
     error: String? = null
 ) {
     var url by remember { mutableStateOf("") }
+    val colors = PodaraTheme.colors
 
-    AlertDialog(
+    PodaraDialog(
         onDismissRequest = onDismiss,
-        title = { Text(Strings["home_add_podcast"]) },
-        text = {
+        title = { PodaraDialogTitle(Strings["home_add_podcast"], textAlign = androidx.compose.ui.text.style.TextAlign.Start) },
+        content = {
             Column {
-                Text(Strings["add_podcast_hint"])
+                PodaraDialogBody(Strings["add_podcast_hint"])
                 Spacer(modifier = Modifier.height(8.dp))
                 OutlinedTextField(
                     value = url,
@@ -2215,33 +2165,35 @@ private fun AddPodcastDialog(
                     label = { Text(Strings["add_podcast_rss_label"]) },
                     placeholder = { Text(Strings["add_podcast_rss_placeholder"]) },
                     modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
-                )
-                if (error != null) {
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = error,
-                        color = MaterialTheme.colorScheme.error,
-                        style = MaterialTheme.typography.bodySmall
+                    singleLine = true,
+                    isError = error != null,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = colors.accent,
+                        unfocusedBorderColor = colors.border,
+                        cursorColor = colors.accent,
+                        focusedLabelColor = colors.accent,
+                        unfocusedLabelColor = colors.textSecondary,
+                        focusedTextColor = colors.textPrimary,
+                        unfocusedTextColor = colors.textPrimary,
+                        errorTextColor = colors.danger,
+                        errorBorderColor = colors.danger,
+                        errorLabelColor = colors.danger
                     )
+                )
+                error?.let {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(text = it, color = colors.danger, style = MaterialTheme.typography.bodySmall)
                 }
             }
         },
-        confirmButton = {
-            TextButton(
-                onClick = {
-                    if (url.isNotBlank()) {
-                        onConfirm(url)
-                    }
-                }
-            ) {
-                Text(Strings["dialog_ok"])
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text(Strings["dialog_cancel"])
-            }
+        actions = {
+            PodaraDialogActionButton(Strings["dialog_cancel"], onDismiss, PodaraDialogActionStyle.Secondary)
+            PodaraDialogActionButton(
+                label = Strings["dialog_ok"],
+                onClick = { if (url.isNotBlank()) onConfirm(url) },
+                style = PodaraDialogActionStyle.Primary,
+                enabled = url.isNotBlank()
+            )
         }
     )
 }

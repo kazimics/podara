@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.sp
 import app.podara.component.EpisodeActionIconButton
 import app.podara.component.FavoriteEpisodeButton
 import app.podara.component.PodaraEmptyState
+import app.podara.component.PodaraConfirmDialog
 import app.podara.data.AppDatabase
 import app.podara.data.PodcastDownload
 import app.podara.data.model.PodcastFavorite
@@ -418,52 +419,33 @@ fun DownloadsScreen(
 
     // ── Single delete confirm dialog ──
     showDeleteConfirm?.let { episodeId ->
-        AlertDialog(
-            onDismissRequest = { showDeleteConfirm = null },
-            title = { Text(Strings["downloads_delete"], color = colors.textPrimary) },
-            text = { Text(Strings["downloads_delete_confirm"], color = colors.textSecondary) },
-            confirmButton = {
-                TextButton(onClick = {
-                    onDeleteDownloaded(episodeId)
-                    showDeleteConfirm = null
-                }) {
-                    Text(Strings["downloads_delete"], color = colors.danger)
-                }
+        PodaraConfirmDialog(
+            title = Strings["downloads_delete"],
+            description = androidx.compose.ui.text.AnnotatedString(Strings["downloads_delete_confirm"]),
+            confirmLabel = Strings["downloads_delete"],
+            dismissLabel = Strings["dialog_cancel"],
+            onConfirm = {
+                onDeleteDownloaded(episodeId)
+                showDeleteConfirm = null
             },
-            dismissButton = {
-                TextButton(onClick = { showDeleteConfirm = null }) {
-                    Text(Strings["dialog_cancel"], color = colors.textSecondary)
-                }
-            },
-            containerColor = colors.surface
+            onDismissRequest = { showDeleteConfirm = null }
         )
     }
 
     // ── Batch delete confirm dialog ──
     showBatchDeleteConfirm?.let { (origin, title) ->
-        AlertDialog(
-            onDismissRequest = { showBatchDeleteConfirm = null },
-            title = { Text(Strings["downloads_delete_all"], color = colors.textPrimary) },
-            text = {
-                Text(
-                    Strings.get("downloads_delete_podcast_confirm", title),
-                    color = colors.textSecondary
-                )
+        PodaraConfirmDialog(
+            title = Strings["downloads_delete_all"],
+            description = androidx.compose.ui.text.AnnotatedString(
+                Strings.get("downloads_delete_podcast_confirm", title)
+            ),
+            confirmLabel = Strings["downloads_delete"],
+            dismissLabel = Strings["dialog_cancel"],
+            onConfirm = {
+                onDeleteDownloadedByOrigin(origin)
+                showBatchDeleteConfirm = null
             },
-            confirmButton = {
-                TextButton(onClick = {
-                    onDeleteDownloadedByOrigin(origin)
-                    showBatchDeleteConfirm = null
-                }) {
-                    Text(Strings["downloads_delete"], color = colors.danger)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showBatchDeleteConfirm = null }) {
-                    Text(Strings["dialog_cancel"], color = colors.textSecondary)
-                }
-            },
-            containerColor = colors.surface
+            onDismissRequest = { showBatchDeleteConfirm = null }
         )
     }
 }
