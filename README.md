@@ -92,3 +92,7 @@ podara/
 ## License
 
 [GNU General Public License v3.0](/LICENSE)
+
+## Acknowledgments
+
+Special thanks to [podium](https://github.com/aimok04/podium) for the inspiration and foundational ideas that helped shape this project.
