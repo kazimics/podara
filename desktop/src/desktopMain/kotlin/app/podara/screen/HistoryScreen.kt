@@ -109,7 +109,7 @@ fun HistoryScreen(
     // Build context queue items for playWithContext
     val contextItems = remember(displayItems) {
         displayItems.map { (history, episode) ->
-            QueueItem(url = episode.audioUrl, title = episode.title, subtitle = episode.podcastTitle, artworkUrl = episode.imageUrl, episodeId = episode.id, historyId = history.id)
+            QueueItem(url = episode.audioUrl, title = episode.title, subtitle = episode.podcastTitle, artworkUrl = episode.imageUrl, podcastArtworkUrl = podcastMap[episode.origin]?.imageUrl, episodeId = episode.id, historyId = history.id)
         }
     }
 

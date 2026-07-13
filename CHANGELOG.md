@@ -4,7 +4,7 @@ All notable changes to podara will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [Unreleased]
+## [1.0.0] - 2026-07-11
 
 ### Changed
 - Refined the visual system with subtle metallic surfaces and consistent hover, pressed, border, and accent states across primary controls
@@ -22,7 +22,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Tests
 - Added regression coverage for History selection state, download-task state transitions and ordering, latest-episode subscription sorting, favorite playback history recording, and updated Compose screen interactions
 
-## [1.0.0] - 2026-07-09
+## [Unreleased]
+
+### Fixed
+- Queue episode cards now fall back to the podcast artwork when an episode has no cover image, consistent with the episode list behavior (applies to playback initiated from PodcastDetail, History, Favorites, and Downloads)
+- Add Podcast dialog now shows a centered loading spinner with "Adding…" while the RSS feed is being fetched, and only closes on success
+
+## [1.0.1] - 2026-07-13
 
 ### Fixed
 - System window close requests now use the same close handler as the custom title bar, so Alt+F4/taskbar close respects saved close behavior and persists the playback session before quitting

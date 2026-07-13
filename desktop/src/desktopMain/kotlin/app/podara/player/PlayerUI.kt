@@ -1508,9 +1508,11 @@ private fun QueueEpisodeCard(
                 .clip(RoundedCornerShape(queuePanel.CoverRadius))
                 .hoverable(coverInteractionSource)
         ) {
-            if (!item.artworkUrl.isNullOrBlank()) {
+            val displayArtworkUrl = item.artworkUrl?.takeIf { it.isNotBlank() }
+                ?: item.podcastArtworkUrl?.takeIf { it.isNotBlank() }
+            if (displayArtworkUrl != null) {
                 AsyncImage(
-                    model = item.artworkUrl,
+                    model = displayArtworkUrl,
                     contentDescription = item.title,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize()

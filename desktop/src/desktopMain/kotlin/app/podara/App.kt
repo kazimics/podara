@@ -434,6 +434,7 @@ fun WindowScope.App(
     var showAddDialog by remember { mutableStateOf(false) }
     var showCloseDialog by remember { mutableStateOf(false) }
     var addError by remember { mutableStateOf<String?>(null) }
+    var isAddingPodcast by remember { mutableStateOf(false) }
     var downloadProgress by remember { mutableStateOf(mapOf<String, Pair<Long, Long>>()) }
     var downloadingEpisodes by remember { mutableStateOf(setOf<String>()) }
     var downloadVersion by remember { mutableIntStateOf(0) }
@@ -879,26 +880,31 @@ fun WindowScope.App(
 
     if (showAddDialog) {
         AddPodcastDialog(
+            isLoading = isAddingPodcast,
             onDismiss = {
-                showAddDialog = false
-                addError = null
+                if (!isAddingPodcast) {
+                    showAddDialog = false
+                    addError = null
+                }
             },
             onConfirm = { url ->
-                showAddDialog = false
+                isAddingPodcast = true
                 scope.launch {
                     try {
                         when (val result = podcastManager.addPodcast(url, null)) {
                             is AddPodcastResult.Created -> {
                                 podcasts = database.podcasts.getAllSync()
+                                showAddDialog = false
+                                addError = null
                             }
                             is AddPodcastResult.Duplicate -> {
                                 addError = Strings.get("podcast_already_exists", result.duplicate.title)
-                                showAddDialog = true
                             }
                         }
                     } catch (e: Exception) {
                         addError = Strings.get("error_adding_podcast", e.message ?: "")
-                        showAddDialog = true
+                    } finally {
+                        isAddingPodcast = false
                     }
                 }
             },
@@ -1673,7 +1679,7 @@ private fun PodcastDetailScreen(
     // Build context queue items for playWithContext
     val episodeContextItems: List<QueueItem> = remember(episodes) {
         episodes.map { ep ->
-            QueueItem(url = ep.audioUrl, title = ep.title, subtitle = ep.podcastTitle, artworkUrl = ep.imageUrl, episodeId = ep.id)
+            QueueItem(url = ep.audioUrl, title = ep.title, subtitle = ep.podcastTitle, artworkUrl = ep.imageUrl, podcastArtworkUrl = podcast.imageUrl, episodeId = ep.id)
         }
     }
 
@@ -2147,52 +2153,82 @@ private fun PodcastDetailScreen(
 private fun AddPodcastDialog(
     onDismiss: () -> Unit,
     onConfirm: (String) -> Unit,
+    isLoading: Boolean = false,
     error: String? = null
 ) {
     var url by remember { mutableStateOf("") }
     val colors = PodaraTheme.colors
 
     PodaraDialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = { if (!isLoading) onDismiss() },
         title = { PodaraDialogTitle(Strings["home_add_podcast"], textAlign = androidx.compose.ui.text.style.TextAlign.Start) },
         content = {
-            Column {
-                PodaraDialogBody(Strings["add_podcast_hint"])
-                Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = url,
-                    onValueChange = { url = it },
-                    label = { Text(Strings["add_podcast_rss_label"]) },
-                    placeholder = { Text(Strings["add_podcast_rss_placeholder"]) },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                    isError = error != null,
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = colors.accent,
-                        unfocusedBorderColor = colors.border,
-                        cursorColor = colors.accent,
-                        focusedLabelColor = colors.accent,
-                        unfocusedLabelColor = colors.textSecondary,
-                        focusedTextColor = colors.textPrimary,
-                        unfocusedTextColor = colors.textPrimary,
-                        errorTextColor = colors.danger,
-                        errorBorderColor = colors.danger,
-                        errorLabelColor = colors.danger
-                    )
-                )
-                error?.let {
+            if (isLoading) {
+                Box(
+                    modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min).padding(vertical = 40.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(20.dp),
+                            strokeWidth = 2.dp,
+                            color = colors.accent
+                        )
+                        Text(
+                            text = Strings["add_podcast_adding"],
+                            color = colors.textSecondary,
+                            fontSize = 14.sp
+                        )
+                    }
+                }
+            } else {
+                Column {
+                    PodaraDialogBody(Strings["add_podcast_hint"])
                     Spacer(modifier = Modifier.height(8.dp))
-                    Text(text = it, color = colors.danger, style = MaterialTheme.typography.bodySmall)
+                    OutlinedTextField(
+                        value = url,
+                        onValueChange = { if (!isLoading) url = it },
+                        label = { Text(Strings["add_podcast_rss_label"]) },
+                        placeholder = { Text(Strings["add_podcast_rss_placeholder"]) },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        enabled = !isLoading,
+                        isError = error != null,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = colors.accent,
+                            unfocusedBorderColor = colors.border,
+                            cursorColor = colors.accent,
+                            focusedLabelColor = colors.accent,
+                            unfocusedLabelColor = colors.textSecondary,
+                            focusedTextColor = colors.textPrimary,
+                            unfocusedTextColor = colors.textPrimary,
+                            errorTextColor = colors.danger,
+                            errorBorderColor = colors.danger,
+                            errorLabelColor = colors.danger
+                        )
+                    )
+                    error?.let {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(text = it, color = colors.danger, style = MaterialTheme.typography.bodySmall)
+                    }
                 }
             }
         },
         actions = {
-            PodaraDialogActionButton(Strings["dialog_cancel"], onDismiss, PodaraDialogActionStyle.Secondary)
             PodaraDialogActionButton(
-                label = Strings["dialog_ok"],
+                label = Strings["dialog_cancel"],
+                onClick = onDismiss,
+                style = PodaraDialogActionStyle.Secondary,
+                enabled = !isLoading
+            )
+            PodaraDialogActionButton(
+                label = if (isLoading) Strings["add_podcast_adding"] else Strings["dialog_ok"],
                 onClick = { if (url.isNotBlank()) onConfirm(url) },
                 style = PodaraDialogActionStyle.Primary,
-                enabled = url.isNotBlank()
+                enabled = url.isNotBlank() && !isLoading
             )
         }
     )

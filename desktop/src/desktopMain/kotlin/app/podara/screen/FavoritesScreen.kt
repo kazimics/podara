@@ -97,7 +97,7 @@ fun FavoritesScreen(
 
     val contextItems = remember(displayItems) {
         displayItems.map { (_, episode) ->
-            QueueItem(url = episode.audioUrl, title = episode.title, subtitle = episode.podcastTitle, artworkUrl = episode.imageUrl, episodeId = episode.id)
+            QueueItem(url = episode.audioUrl, title = episode.title, subtitle = episode.podcastTitle, artworkUrl = episode.imageUrl, podcastArtworkUrl = podcastMap[episode.origin]?.imageUrl, episodeId = episode.id)
         }
     }
 
