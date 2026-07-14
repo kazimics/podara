@@ -96,3 +96,5 @@ podara/
 ## Acknowledgments
 
 Special thanks to [podium](https://github.com/aimok04/podium) for the inspiration and foundational ideas that helped shape this project.
+
+Thanks to [LINUX DO](https://linux.do/) community for the support and encouragement.
